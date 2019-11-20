@@ -17,7 +17,7 @@ from monitor.charts import (
     historical_known_nodes_line_chart
 )
 from monitor.crawler import Crawler
-from monitor.db import NodeMetadataDBClient
+from monitor.db import CrawlerDBClient, CrawlerNodeStorage
 
 
 class Dashboard:
@@ -25,12 +25,19 @@ class Dashboard:
     Dash Status application for monitoring a swarm of nucypher Ursula nodes.
     """
 
-    def __init__(self, registry, flask_server: Flask, route_url: str):
+    def __init__(self,
+                 registry,
+                 flask_server: Flask,
+                 route_url: str,
+                 db_host: str = 'localhost',
+                 db_port: int = 8086):
         self.log = Logger(self.__class__.__name__)
 
         # Database
-        self.network_crawler_db_client = Crawler.get_network_crawler_db_client()
-        self.node_metadata_db_client = NodeMetadataDBClient()
+        self.node_metadata_db_client = CrawlerNodeStorage(federated_only=False)  # TODO
+        self.network_crawler_db_client = CrawlerDBClient(host=db_host,
+                                                         port=db_port,
+                                                         database=Crawler.BLOCKCHAIN_DB_NAME)
 
         # Blockchain & Contracts
         self.registry = registry

@@ -114,6 +114,20 @@ class Crawler(Learner):
         else:
             self.log.info(f'Database {self.BLOCKCHAIN_DB_NAME} already exists, no need to create it')
 
+    def learn_from_teacher_node(self, *args, **kwargs):
+        try:
+            current_teacher = self.current_teacher_node(cycle=False)
+        except self.NotEnoughTeachers as e:
+            self.log.warn("Can't learn right now: {}".format(e.args[0]))
+            return
+
+        new_nodes = super().learn_from_teacher_node(*args, **kwargs)
+
+        # update metadata of teacher
+        self.node_storage.store_node_metadata(current_teacher)
+
+        return new_nodes
+
     def _learn_about_nodes_contract_info(self):
         agent = self.staking_agent
 
