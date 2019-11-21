@@ -22,12 +22,14 @@ from twisted.logger import Logger
 
 
 class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
-    _name = 'network_crawler'
+    _name = 'crawler'
 
-    DB_FILE_NAME = 'network-crawler-storage-metadata.sqlite'
+    DB_FILE_NAME = 'crawler-storage.sqlite'
     DEFAULT_DB_FILEPATH = os.path.join(DEFAULT_CONFIG_ROOT, DB_FILE_NAME)
 
     STATE_DB_NAME = 'fleet_state'
+    TEACHER_DB_NAME = 'teacher'
+    TEACHER_ID = 'current_teacher'
 
     def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, federated_only: bool = False, *args, **kwargs):
         super().__init__(db_filepath=db_filepath, federated_only=federated_only, *args, **kwargs)
@@ -35,19 +37,23 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
     def init_db_tables(self):
         with self.db_conn:
             # ensure table is empty
-            self.db_conn.execute(f"DROP TABLE IF EXISTS {self.STATE_DB_NAME}")
+            for table in [self.STATE_DB_NAME, self.TEACHER_DB_NAME]:
+                self.db_conn.execute(f"DROP TABLE IF EXISTS {table}")
 
             # create fresh new state table (same column names as FleetStateTracker.abridged_state_details)
             self.db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} (nickname text primary key, symbol text, "
                                  f"color_hex text, color_name text, updated text)")
 
+            # create new teacher table
+            self.db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} (id text primary key, checksum_address text)")
         super().init_db_tables()
 
     def clear(self, metadata: bool = True, certificates: bool = True) -> None:
         if metadata is True:
             with self.db_conn:
                 # TODO: do we need to clear the states table here?
-                self.db_conn.execute(f"DELETE FROM {self.STATE_DB_NAME}")
+                for table in [self.STATE_DB_NAME, self.TEACHER_DB_NAME]:
+                    self.db_conn.execute(f"DELETE FROM {table}")
 
         super().clear(metadata=metadata, certificates=certificates)
 
@@ -64,6 +70,12 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
         with self.db_conn:
             self.db_conn.execute(f'REPLACE INTO {self.STATE_DB_NAME} VALUES(?,?,?,?,?)', db_row)
             # TODO we should limit the size of this table - no reason to store really old state values
+
+    def store_current_teacher(self, teacher_checksum: str):
+        with self.db_conn:
+            self.db_conn.execute(f'REPLACE INTO {self.TEACHER_DB_NAME} VALUES (?,?)',
+                                 (self.TEACHER_ID, teacher_checksum))
+
 
 class Crawler(Learner):
     """
@@ -121,7 +133,8 @@ class Crawler(Learner):
 
         super().__init__(save_metadata=True, node_storage=node_storage, *args, **kwargs)
         self.log = Logger(self.__class__.__name__)
-        self.log.info(f"Storing node metadata in DB file: {node_storage.db_filepath}")
+        self.log.info(f"Storing node metadata in DB: {node_storage.db_filepath}")
+        self.log.info(f"Storing blockchain metadata in DB: {db_host}:{db_port}")
 
         self._refresh_rate = refresh_rate
         self._restart_on_error = restart_on_error
@@ -169,8 +182,9 @@ class Crawler(Learner):
 
         new_nodes = super().learn_from_teacher_node(*args, **kwargs)
 
-        # update metadata of teacher
+        # update metadata of teacher - not just in memory but in the underlying storage system (db in this case)
         self.node_storage.store_node_metadata(current_teacher)
+        self.node_storage.store_current_teacher(current_teacher.checksum_address)
 
         return new_nodes
 

@@ -74,7 +74,10 @@ class Dashboard:
                            [Input('node-update-button', 'n_clicks'), Input('half-minute-interval', 'n_intervals')])
         def known_nodes(n_clicks, n_intervals):
             known_nodes_dict = monitor.node_metadata_db_client.get_known_nodes_metadata()
-            return components.known_nodes(nodes_dict=known_nodes_dict, registry=monitor.registry)
+            teacher_checksum = monitor.node_metadata_db_client.get_current_teacher_checksum()
+            return components.known_nodes(nodes_dict=known_nodes_dict,
+                                          registry=monitor.registry,
+                                          teacher_checksum=teacher_checksum)
 
         @dash_app.callback(Output('active-stakers', 'children'), [Input('minute-interval', 'n_intervals')])
         def active_stakers(n):

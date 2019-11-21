@@ -59,6 +59,17 @@ class CrawlerNodeMetadataDBClient:
         finally:
             db_conn.close()
 
+    def get_current_teacher_checksum(self):
+        db_conn = sqlite3.connect(self._db_filepath)
+        try:
+            result = db_conn.execute(f"SELECT checksum_address from {CrawlerNodeStorage.TEACHER_DB_NAME} LIMIT 1")
+            for row in result:
+                return row[0]
+
+            return None
+        finally:
+            db_conn.close()
+
 
 class CrawlerBlockchainDBClient:
     """
