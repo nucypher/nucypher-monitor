@@ -1,3 +1,5 @@
+import os
+
 import click
 from flask import Flask
 from nucypher.cli import actions
@@ -10,8 +12,6 @@ from twisted.internet import reactor
 from monitor.cli._utils import _get_registry, _get_tls_hosting_power
 from monitor.crawler import Crawler
 from monitor.dashboard import Dashboard
-import os
-
 
 MONITOR_BANNER = r"""
  _____         _ _           
@@ -25,6 +25,7 @@ MONITOR_BANNER = r"""
 
 DEFAULT_PROVIDER = f'file://{os.path.expanduser("~")}/.ethereum/goerli/geth.ipc'
 DEFAULT_TEACHER = 'https://discover.nucypher.network:9151'
+DEFAULT_NETWORK = 'goerli'
 
 
 @click.group()
@@ -37,7 +38,7 @@ def monitor():
 @click.option('--teacher', 'teacher_uri', help="An Ursula URI to start learning from (seednode)", type=click.STRING, default=DEFAULT_TEACHER)
 @click.option('--registry-filepath', help="Custom contract registry filepath", type=EXISTING_READABLE_FILE)
 @click.option('--min-stake', help="The minimum stake the teacher must have to be a teacher", type=click.INT, default=0)
-@click.option('--network', help="Network Domain Name", type=click.STRING, default='goerli')
+@click.option('--network', help="Network Domain Name", type=click.STRING, default=DEFAULT_NETWORK)
 @click.option('--learn-on-launch', help="Conduct first learning loop on main thread at launch.", is_flag=True)
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
 @nucypher_click_config
@@ -90,7 +91,7 @@ def crawl(click_config,
 @click.option('--certificate-filepath', help="Pre-signed TLS certificate filepath")
 @click.option('--tls-key-filepath', help="TLS private key filepath")
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
-@click.option('--network', help="Network Domain Name", type=click.STRING, default='goerli')
+@click.option('--network', help="Network Domain Name", type=click.STRING, default=DEFAULT_NETWORK)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the node", is_flag=True)
 @nucypher_click_config
 def dashboard(click_config,
@@ -118,7 +119,7 @@ def dashboard(click_config,
     # WSGI Service
     #
     rest_app = Flask("monitor-dashboard")
-    Dashboard(flask_server=rest_app, route_url='/', registry=registry)
+    Dashboard(flask_server=rest_app, route_url='/', registry=registry, domain=network)
 
     #
     # Server

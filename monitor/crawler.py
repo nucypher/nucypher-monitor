@@ -1,3 +1,5 @@
+import os
+
 import requests
 from influxdb import InfluxDBClient
 from maya import MayaDT
@@ -11,14 +13,57 @@ from nucypher.blockchain.eth.agents import (
 )
 from nucypher.blockchain.eth.token import NU, StakeList
 from nucypher.blockchain.eth.utils import datetime_at_period
+from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import SQLiteForgetfulNodeStorage
 from nucypher.network.nodes import FleetStateTracker
 from nucypher.network.nodes import Learner
 from twisted.internet import task
 from twisted.logger import Logger
 
-from monitor.db import CrawlerDBClient
 
+class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
+    _name = 'network_crawler'
+
+    DB_FILE_NAME = 'network-crawler-storage-metadata.sqlite'
+    DEFAULT_DB_FILEPATH = os.path.join(DEFAULT_CONFIG_ROOT, DB_FILE_NAME)
+
+    STATE_DB_NAME = 'fleet_state'
+
+    def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, federated_only: bool = False, *args, **kwargs):
+        super().__init__(db_filepath=db_filepath, federated_only=federated_only, *args, **kwargs)
+
+    def init_db_tables(self):
+        with self.db_conn:
+            # ensure table is empty
+            self.db_conn.execute(f"DROP TABLE IF EXISTS {self.STATE_DB_NAME}")
+
+            # create fresh new state table (same column names as FleetStateTracker.abridged_state_details)
+            self.db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} (nickname text primary key, symbol text, "
+                                 f"color_hex text, color_name text, updated text)")
+
+        super().init_db_tables()
+
+    def clear(self, metadata: bool = True, certificates: bool = True) -> None:
+        if metadata is True:
+            with self.db_conn:
+                # TODO: do we need to clear the states table here?
+                self.db_conn.execute(f"DELETE FROM {self.STATE_DB_NAME}")
+
+        super().clear(metadata=metadata, certificates=certificates)
+
+    def store_state_metadata(self, state):
+        self.__write_state_metadata(state)
+
+    def __write_state_metadata(self, state):
+        from nucypher.network.nodes import FleetStateTracker
+        state_dict = FleetStateTracker.abridged_state_details(state)
+        # convert updated timestamp format for supported sqlite3 sorting
+        state_dict['updated'] = state.updated.rfc3339()
+        db_row = (state_dict['nickname'], state_dict['symbol'], state_dict['color_hex'],
+                  state_dict['color_name'], state_dict['updated'])
+        with self.db_conn:
+            self.db_conn.execute(f'REPLACE INTO {self.STATE_DB_NAME} VALUES(?,?,?,?,?)', db_row)
+            # TODO we should limit the size of this table - no reason to store really old state values
 
 class Crawler(Learner):
     """
@@ -63,7 +108,7 @@ class Crawler(Learner):
 
         self.registry = registry
         self.federated_only = federated_only
-        node_storage = SQLiteForgetfulNodeStorage(federated_only=False)
+        node_storage = CrawlerNodeStorage()
 
         class MonitoringTracker(FleetStateTracker):
             def record_fleet_state(self, *args, **kwargs):
@@ -75,7 +120,8 @@ class Crawler(Learner):
         self.tracker_class = MonitoringTracker
 
         super().__init__(save_metadata=True, node_storage=node_storage, *args, **kwargs)
-        self.log = Logger('network-crawler')
+        self.log = Logger(self.__class__.__name__)
+        self.log.info(f"Storing node metadata in DB file: {node_storage.db_filepath}")
 
         self._refresh_rate = refresh_rate
         self._restart_on_error = restart_on_error
@@ -195,14 +241,15 @@ class Crawler(Learner):
     def start(self):
         """Start the crawler if not already running"""
         if not self.is_running:
-            self.log.info('Starting Network Crawler')
+            self.log.info('Starting Monitor Crawler')
             if self._blockchain_db_client is None:
-                self._blockchain_db_client = InfluxDBClient(host='localhost',
-                                                            port=8086,
+                self._blockchain_db_client = InfluxDBClient(host=self._db_host,
+                                                            port=self._db_port,
                                                             database=self.BLOCKCHAIN_DB_NAME)
 
             # start tasks
-            node_learner_deferred = self._nodes_contract_info_learning_task.start(interval=self._refresh_rate, now=False)
+            node_learner_deferred = self._nodes_contract_info_learning_task.start(interval=self._refresh_rate,
+                                                                                  now=False)
 
             # hookup error callbacks
             node_learner_deferred.addErrback(self._handle_errors)
@@ -212,7 +259,7 @@ class Crawler(Learner):
     def stop(self):
         """Stop the crawler if currently running"""
         if self.is_running:
-            self.log.info('Stopping Network Crawler')
+            self.log.info('Stopping Monitor Crawler')
 
             # stop tasks
             self._nodes_contract_info_learning_task.stop()
@@ -225,7 +272,3 @@ class Crawler(Learner):
     def is_running(self):
         """Returns True if currently running, False otherwise"""
         return self._nodes_contract_info_learning_task.running
-
-    @staticmethod
-    def get_network_crawler_db_client():
-        return CrawlerDBClient(host='localhost', port=8086, database=Crawler.BLOCKCHAIN_DB_NAME)

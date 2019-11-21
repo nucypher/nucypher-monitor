@@ -1,12 +1,11 @@
-from parser import ParserError
-
+import dash_daq as daq
 import dash_html_components as html
 import nucypher
-from maya import MayaDT
-from nucypher.blockchain.eth.interfaces import BlockchainInterface
 from constant_sorrow.constants import UNKNOWN_FLEET_STATE
-import dash_daq as daq
-
+from maya import MayaDT
+from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
+from nucypher.blockchain.eth.interfaces import BlockchainInterface
+from pendulum.parsing import ParserError
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Timestamp', 'Last Seen', 'Fleet State']
 
@@ -67,7 +66,7 @@ def get_node_status(agent, staker_address, current_period, last_confirmed_period
     return status
 
 
-def generate_node_table_components(node_info: dict, staking_agent) -> dict:
+def generate_node_table_components(node_info: dict, registry) -> dict:
     identity = html.Td(children=html.Div([
         html.A(node_info['nickname'],
                href=f'https://{node_info["rest_url"]}/status',
@@ -85,6 +84,7 @@ def generate_node_table_components(node_info: dict, staking_agent) -> dict:
     staker_address = node_info['staker_address']
 
     # Blockchainy (TODO)
+    staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=registry)
     current_period = staking_agent.get_current_period()
     last_confirmed_period = staking_agent.get_last_active_period(staker_address)
     status = get_node_status(staking_agent, staker_address, current_period, last_confirmed_period)
@@ -109,12 +109,12 @@ def generate_node_table_components(node_info: dict, staking_agent) -> dict:
     return components
 
 
-def nodes_table(nodes, teacher_index, staking_agent) -> html.Table:
+def nodes_table(nodes, teacher_index, registry) -> html.Table:
         rows = []
         for index, node_info in enumerate(nodes):
             row = []
             # TODO: could return list (skip column for-loop); however, dict is good in case of re-ordering of columns
-            components = generate_node_table_components(node_info=node_info, staking_agent=staking_agent)
+            components = generate_node_table_components(node_info=node_info, registry=registry)
             for col in NODE_TABLE_COLUMNS:
                 cell = components[col]
                 if cell:

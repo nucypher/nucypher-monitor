@@ -16,8 +16,8 @@ from monitor.charts import (
     stakers_breakdown_pie_chart,
     historical_known_nodes_line_chart
 )
-from monitor.crawler import Crawler
-from monitor.db import CrawlerDBClient, CrawlerNodeStorage
+from monitor.crawler import Crawler, CrawlerNodeStorage
+from monitor.db import CrawlerBlockchainDBClient, CrawlerNodeMetadataDBClient
 
 
 class Dashboard:
@@ -29,24 +29,27 @@ class Dashboard:
                  registry,
                  flask_server: Flask,
                  route_url: str,
-                 db_host: str = 'localhost',
-                 db_port: int = 8086):
+                 domain: str,
+                 node_db_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH,
+                 blockchain_db_host: str = 'localhost',
+                 blockchain_db_port: int = 8086,
+                 ):
         self.log = Logger(self.__class__.__name__)
 
         # Database
-        self.node_metadata_db_client = CrawlerNodeStorage(federated_only=False)  # TODO
-        self.network_crawler_db_client = CrawlerDBClient(host=db_host,
-                                                         port=db_port,
-                                                         database=Crawler.BLOCKCHAIN_DB_NAME)
+        self.node_metadata_db_client = CrawlerNodeMetadataDBClient(db_filepath=node_db_filepath)
+        self.network_crawler_db_client = CrawlerBlockchainDBClient(host=blockchain_db_host,
+                                                                   port=blockchain_db_port,
+                                                                   database=Crawler.BLOCKCHAIN_DB_NAME)
 
         # Blockchain & Contracts
         self.registry = registry
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
 
         # Dash
-        self.make_dash_app(flask_server=flask_server, route_url=route_url)
+        self.make_dash_app(flask_server=flask_server, route_url=route_url, domain=domain)
 
-    def make_dash_app(monitor, flask_server: Flask, route_url: str):
+    def make_dash_app(monitor, flask_server: Flask, route_url: str, domain: str):
         dash_app = Dash(name=__name__,
                         server=flask_server,
                         assets_folder=settings.ASSETS_PATH,
@@ -97,7 +100,7 @@ class Dashboard:
 
         @dash_app.callback(Output('domains', 'children'), [Input('url', 'pathname')])  # on page-load
         def domains(pathname):
-            return html.Div([html.H4('Domain'), html.H5(components.network)])
+            return html.Div([html.H4('Domain'), html.H5(domain)])
 
         @dash_app.callback(Output('staked-tokens', 'children'), [Input('minute-interval', 'n_intervals')])
         def staked_tokens(n):
