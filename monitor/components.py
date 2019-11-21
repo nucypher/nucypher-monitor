@@ -7,7 +7,7 @@ from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
 from nucypher.blockchain.eth.interfaces import BlockchainInterface
 from pendulum.parsing import ParserError
 
-NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Timestamp', 'Last Seen', 'Fleet State']
+NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Launched', 'Last Seen', 'Fleet State']
 
 
 def header() -> html.Div:
@@ -101,7 +101,7 @@ def generate_node_table_components(node_info: dict, registry) -> dict:
                                    href=etherscan_url,
                                    target='_blank')),
         'Nickname': identity,
-        'Timestamp': html.Td(node_info['timestamp']),
+        'Launched': html.Td(node_info['timestamp']),
         'Last Seen': html.Td([slang_last_seen, f" | Period {last_confirmed_period}"]),
         'Fleet State': fleet_state
     }
@@ -154,6 +154,8 @@ def known_nodes(nodes_dict: dict, registry, teacher_checksum: str = None) -> htm
                      style={'backgroundColor': '#1E65F3', 'color': 'white'},
                      className='two columns'),
         ]),
+        html.Br(),
+        html.H6(f'Known Nodes: {len(nodes_dict)}'),
         html.Div([nodes_table(nodes, teacher_index, registry)])
     ])
 
