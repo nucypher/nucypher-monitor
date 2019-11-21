@@ -39,7 +39,7 @@ BODY = html.Div([
                     html.Div(id='prev-states'),
                 ], id='widgets'),
 
-                # States and Known Nodes Table
+                # Known Nodes Table
                 html.Div([
                     html.Div(id='known-nodes'),
                 ])
