@@ -35,8 +35,8 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
     TEACHER_ID = 'current_teacher'
     TEACHER_DB_SCHEMA = [('id', 'text primary key'), ('checksum_address', 'text')]
 
-    def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, federated_only: bool = False, *args, **kwargs):
-        super().__init__(db_filepath=db_filepath, federated_only=federated_only, *args, **kwargs)
+    def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, *args, **kwargs):
+        super().__init__(db_filepath=db_filepath, federated_only=False, *args, **kwargs)
 
     def init_db_tables(self):
         with self.db_conn:
@@ -118,13 +118,12 @@ class Crawler(Learner):
                  registry,
                  db_host: str = 'localhost',
                  db_port: int = 8086,
-                 federated_only: bool = False,
                  refresh_rate=DEFAULT_REFRESH_RATE,
                  restart_on_error=True,
                  *args, **kwargs):
 
         self.registry = registry
-        self.federated_only = federated_only
+        self.federated_only = False
         node_storage = CrawlerNodeStorage()
 
         class MonitoringTracker(FleetStateTracker):

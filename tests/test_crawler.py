@@ -36,9 +36,8 @@ def test_storage_default_values(sqlite_db_conn):
 
 def test_storage_non_default_values(sqlite_db_conn):
     temp_db_filepath = "/tmp/test.db"
-    node_storage = CrawlerNodeStorage(db_filepath=temp_db_filepath, federated_only=True)
+    node_storage = CrawlerNodeStorage(db_filepath=temp_db_filepath)
     assert node_storage.db_filepath == temp_db_filepath
-    assert node_storage.federated_only
 
 
 def test_storage_db_table_init(sqlite_db_conn):

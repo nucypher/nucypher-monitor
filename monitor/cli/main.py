@@ -75,7 +75,6 @@ def crawl(click_config,
                       network_middleware=RestMiddleware(),
                       known_nodes=teacher_nodes,
                       registry=registry,
-                      federated_only=False,
                       start_learning_now=True,
                       learn_on_same_thread=learn_on_launch,
                       )
