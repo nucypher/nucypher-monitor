@@ -28,8 +28,12 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
     DEFAULT_DB_FILEPATH = os.path.join(DEFAULT_CONFIG_ROOT, DB_FILE_NAME)
 
     STATE_DB_NAME = 'fleet_state'
+    STATE_DB_SCHEMA = [('nickname', 'text primary key'), ('symbol', 'text'),
+                       ('color_hex', 'text'), ('color_name', 'text'), ('updated', 'text')]
+
     TEACHER_DB_NAME = 'teacher'
     TEACHER_ID = 'current_teacher'
+    TEACHER_DB_SCHEMA = [('id', 'text primary key'), ('checksum_address', 'text')]
 
     def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, federated_only: bool = False, *args, **kwargs):
         super().__init__(db_filepath=db_filepath, federated_only=federated_only, *args, **kwargs)
@@ -41,11 +45,12 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
                 self.db_conn.execute(f"DROP TABLE IF EXISTS {table}")
 
             # create fresh new state table (same column names as FleetStateTracker.abridged_state_details)
-            self.db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} (nickname text primary key, symbol text, "
-                                 f"color_hex text, color_name text, updated text)")
+            state_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.STATE_DB_SCHEMA)
+            self.db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} ({state_schema})")
 
             # create new teacher table
-            self.db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} (id text primary key, checksum_address text)")
+            teacher_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.TEACHER_DB_SCHEMA)
+            self.db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} ({teacher_schema})")
         super().init_db_tables()
 
     def clear(self, metadata: bool = True, certificates: bool = True) -> None:
@@ -151,7 +156,9 @@ class Crawler(Learner):
         # initialize InfluxDB
         self._db_host = db_host
         self._db_port = db_port
-        self._blockchain_db_client = InfluxDBClient(host=self._db_host, port=self._db_port, database=self.BLOCKCHAIN_DB_NAME)
+        self._blockchain_db_client = InfluxDBClient(host=self._db_host,
+                                                    port=self._db_port,
+                                                    database=self.BLOCKCHAIN_DB_NAME)
         self._ensure_blockchain_db_exists()
 
     def _ensure_blockchain_db_exists(self):
