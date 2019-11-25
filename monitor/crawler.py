@@ -7,9 +7,6 @@ from nucypher.blockchain.economics import TokenEconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
     StakingEscrowAgent,
-    NucypherTokenAgent,
-    PolicyManagerAgent,
-    AdjudicatorAgent
 )
 from nucypher.blockchain.eth.token import NU, StakeList
 from nucypher.blockchain.eth.utils import datetime_at_period
@@ -116,15 +113,16 @@ class Crawler(Learner):
 
     def __init__(self,
                  registry,
-                 db_host: str = 'localhost',
-                 db_port: int = 8086,
+                 blockchain_db_host: str = 'localhost',
+                 blockchain_db_port: int = 8086,
+                 node_db_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH,
                  refresh_rate=DEFAULT_REFRESH_RATE,
                  restart_on_error=True,
                  *args, **kwargs):
 
         self.registry = registry
         self.federated_only = False
-        node_storage = CrawlerNodeStorage()
+        node_storage = CrawlerNodeStorage(db_filepath=node_db_filepath)
 
         class MonitoringTracker(FleetStateTracker):
             def record_fleet_state(self, *args, **kwargs):
@@ -138,23 +136,20 @@ class Crawler(Learner):
         super().__init__(save_metadata=True, node_storage=node_storage, *args, **kwargs)
         self.log = Logger(self.__class__.__name__)
         self.log.info(f"Storing node metadata in DB: {node_storage.db_filepath}")
-        self.log.info(f"Storing blockchain metadata in DB: {db_host}:{db_port}")
+        self.log.info(f"Storing blockchain metadata in DB: {blockchain_db_host}:{blockchain_db_port}")
 
         self._refresh_rate = refresh_rate
         self._restart_on_error = restart_on_error
 
         # Agency
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
-        self.token_agent = ContractAgency.get_agent(NucypherTokenAgent, registry=self.registry)
-        self.policy_agent = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
-        self.adjudicator_agent = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
 
         # Crawler Tasks
         self._nodes_contract_info_learning_task = task.LoopingCall(self._learn_about_nodes_contract_info)
 
         # initialize InfluxDB
-        self._db_host = db_host
-        self._db_port = db_port
+        self._db_host = blockchain_db_host
+        self._db_port = blockchain_db_port
         self._blockchain_db_client = InfluxDBClient(host=self._db_host,
                                                     port=self._db_port,
                                                     database=self.BLOCKCHAIN_DB_NAME)
