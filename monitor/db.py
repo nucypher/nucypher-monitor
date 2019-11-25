@@ -83,8 +83,8 @@ class CrawlerBlockchainDBClient:
     def get_historical_locked_tokens_over_range(self, days: int):
         today = datetime.utcnow()
         range_end = datetime(year=today.year, month=today.month, day=today.day,
-                             hour=0, minute=0, second=0, microsecond=0)
-        range_begin = range_end - timedelta(days=days-1)
+                             hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
+        range_begin = range_end - timedelta(days=days)
         results = list(self._client.query(f"SELECT SUM(locked_stake) "
                                           f"FROM ("
                                           f"SELECT staker_address, current_period, "
@@ -93,7 +93,7 @@ class CrawlerBlockchainDBClient:
                                           f"FROM moe_network_info "
                                           f"WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' "
                                           f"AND "
-                                          f"time < '{MayaDT.from_datetime(range_end + timedelta(days=1)).rfc3339()}' "
+                                          f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
                                           f"GROUP BY staker_address, time(1d)"
                                           f") "
                                           f"GROUP BY time(1d)").get_points())
@@ -112,14 +112,14 @@ class CrawlerBlockchainDBClient:
     def get_historical_num_stakers_over_range(self, days: int):
         today = datetime.utcnow()
         range_end = datetime(year=today.year, month=today.month, day=today.day,
-                             hour=0, minute=0, second=0, microsecond=0)
-        range_begin = range_end - timedelta(days=days - 1)
+                             hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
+        range_begin = range_end - timedelta(days=days)
         results = list(self._client.query(f"SELECT COUNT(staker_address) FROM "
                                           f"("
                                             f"SELECT staker_address, LAST(locked_stake)"
                                             f"FROM moe_network_info WHERE "
                                             f"time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
-                                            f"time < '{MayaDT.from_datetime(range_end + timedelta(days=1)).rfc3339()}' "
+                                            f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
                                             f"GROUP BY staker_address, time(1d)"
                                           f") "
                                           "GROUP BY time(1d)").get_points())   # 1 day measurements
