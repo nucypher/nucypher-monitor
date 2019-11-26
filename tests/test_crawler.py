@@ -343,6 +343,8 @@ def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH):
                       registry=registry,
                       start_learning_now=True,
                       learn_on_same_thread=False,
+                      blockchain_db_host='localhost',
+                      blockchain_db_port=8086,
                       node_db_filepath=node_db_filepath
                       )
     return crawler
