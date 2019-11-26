@@ -150,10 +150,7 @@ class Crawler(Learner):
         # initialize InfluxDB
         self._db_host = blockchain_db_host
         self._db_port = blockchain_db_port
-        self._blockchain_db_client = InfluxDBClient(host=self._db_host,
-                                                    port=self._db_port,
-                                                    database=self.BLOCKCHAIN_DB_NAME)
-        self._ensure_blockchain_db_exists()
+        self._blockchain_db_client = None
 
     def _ensure_blockchain_db_exists(self):
         try:
@@ -261,6 +258,7 @@ class Crawler(Learner):
                 self._blockchain_db_client = InfluxDBClient(host=self._db_host,
                                                             port=self._db_port,
                                                             database=self.BLOCKCHAIN_DB_NAME)
+                self._ensure_blockchain_db_exists()
 
             # start tasks
             node_learner_deferred = self._nodes_contract_info_learning_task.start(interval=self._refresh_rate,
@@ -279,9 +277,10 @@ class Crawler(Learner):
             # stop tasks
             self._nodes_contract_info_learning_task.stop()
 
-            # close connections
             self._blockchain_db_client.close()
             self._blockchain_db_client = None
+
+            # TODO: should I delete the NodeStorage to close the sqlite db connection here?
 
     @property
     def is_running(self):
