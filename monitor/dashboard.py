@@ -58,6 +58,10 @@ class Dashboard:
                         url_base_pathname=route_url,
                         suppress_callback_exceptions=False)  # TODO: Set to True by default or make configurable
 
+        with open(TEMPLATE_PATH, 'r') as file:
+            moe_template = file.read()
+            dash_app.index_string = Template(moe_template).substitute()
+
         # Initial State
         dash_app.title = settings.TITLE
         dash_app.layout = layout.BODY
