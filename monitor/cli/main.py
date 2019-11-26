@@ -41,6 +41,8 @@ def monitor():
 @click.option('--network', help="Network Domain Name", type=click.STRING, default=DEFAULT_NETWORK)
 @click.option('--learn-on-launch', help="Conduct first learning loop on main thread at launch.", is_flag=True)
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
+@click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
+@click.option('--influx-port', help="InfluxDB network port", type=click.INT, default=8086)
 @nucypher_click_config
 def crawl(click_config,
           teacher_uri,
@@ -49,6 +51,8 @@ def crawl(click_config,
           network,
           learn_on_launch,
           provider_uri,
+          influx_host,
+          influx_port
           ):
     """
     Gather NuCypher network information.
@@ -77,6 +81,8 @@ def crawl(click_config,
                       registry=registry,
                       start_learning_now=True,
                       learn_on_same_thread=learn_on_launch,
+                      blockchain_db_host=influx_host,
+                      blockchain_db_port=influx_port
                       )
 
     crawler.start()
@@ -91,6 +97,8 @@ def crawl(click_config,
 @click.option('--tls-key-filepath', help="TLS private key filepath")
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
 @click.option('--network', help="Network Domain Name", type=click.STRING, default=DEFAULT_NETWORK)
+@click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
+@click.option('--influx-port', help="InfluxDB network port", type=click.INT, default=8086)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the node", is_flag=True)
 @nucypher_click_config
 def dashboard(click_config,
@@ -101,6 +109,8 @@ def dashboard(click_config,
               tls_key_filepath,
               provider_uri,
               network,
+              influx_host,
+              influx_port,
               dry_run,
               ):
     """
@@ -118,7 +128,12 @@ def dashboard(click_config,
     # WSGI Service
     #
     rest_app = Flask("monitor-dashboard")
-    Dashboard(flask_server=rest_app, route_url='/', registry=registry, domain=network)
+    Dashboard(flask_server=rest_app,
+              route_url='/',
+              registry=registry,
+              domain=network,
+              blockchain_db_host=influx_host,
+              blockchain_db_port=influx_port)
 
     #
     # Server

@@ -1,12 +1,11 @@
 from datetime import datetime, timedelta
+from string import Template
 
 import dash_html_components as html
 from dash import Dash
 from dash.dependencies import Output, Input
 from flask import Flask
 from maya import MayaDT
-from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
-from nucypher.blockchain.eth.token import NU
 from twisted.logger import Logger
 
 from monitor import layout, components, settings
@@ -18,6 +17,9 @@ from monitor.charts import (
 )
 from monitor.crawler import Crawler, CrawlerNodeStorage
 from monitor.db import CrawlerBlockchainDBClient, CrawlerNodeMetadataDBClient
+from monitor.settings import TEMPLATE_PATH
+from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
+from nucypher.blockchain.eth.token import NU
 
 
 class Dashboard:
@@ -30,10 +32,10 @@ class Dashboard:
                  flask_server: Flask,
                  route_url: str,
                  domain: str,
-                 node_db_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH,
-                 blockchain_db_host: str = 'localhost',
-                 blockchain_db_port: int = 8086,
-                 ):
+                 blockchain_db_host: str,
+                 blockchain_db_port: int,
+                 node_db_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH):
+
         self.log = Logger(self.__class__.__name__)
 
         # Database

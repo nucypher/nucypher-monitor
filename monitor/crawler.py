@@ -113,8 +113,8 @@ class Crawler(Learner):
 
     def __init__(self,
                  registry,
-                 blockchain_db_host: str = 'localhost',
-                 blockchain_db_port: int = 8086,
+                 blockchain_db_host: str,
+                 blockchain_db_port: int,
                  node_db_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH,
                  refresh_rate=DEFAULT_REFRESH_RATE,
                  restart_on_error=True,
