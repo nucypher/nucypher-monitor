@@ -8,7 +8,7 @@ python_version = "3"
 
 [packages]
 # NuCypher
-nucypher = {editable = true,path = "./../nucypher"}
+nucypher = {git = "https://github.com/nucypher/nucypher.git",ref = "doubtfire"}
 hendrix = ">=3.2.5"
 # Web
 requests = "*"
@@ -19,7 +19,6 @@ influxdb = "*"
 sqlalchemy = "*"
 # CLI / Configuration
 maya = "*"
-appdirs = "*"
 click = ">=7.0"
 colorama = "*"
 # UI
@@ -34,11 +33,6 @@ dash = {extras = ["testing"],version = "*"}
 # Pytest
 pytest = "*"
 bumpversion = "*"
-# Documentation
-sphinx = "*"
-recommonmark = "*"
-sphinx_rtd_theme = "*"
-aafigure = "*"
 
 [scripts]
 nucypher-monitor = "python3 nucypher/cli/monitor.py"

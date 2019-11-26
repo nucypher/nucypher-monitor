@@ -70,10 +70,6 @@ class VerifyVersionCommand(install):
 #  Dependencies
 #
 
-with open(os.path.join(BASE_DIR, "requirements.txt")) as f:
-    _PIP_FLAGS, *INSTALL_REQUIRES = f.read().split('\n')
-
-
 TESTS_REQUIRE = [
     'pytest',
 ]
@@ -82,18 +78,9 @@ DEPLOY_REQUIRES = [
     'bumpversion',
 ]
 
-DOCS_REQUIRE = [
-    'sphinx',
-    'sphinx-autobuild',
-    'recommonmark',
-    'aafigure',
-    'sphinx_rtd_theme'
-]
-
 
 EXTRAS_REQUIRE = {'development': TESTS_REQUIRE,
-                  'deployment': DEPLOY_REQUIRES,
-                  'docs': DOCS_REQUIRE}
+                  'deployment': DEPLOY_REQUIRES}
 
 setup(name=ABOUT['__title__'],
       url=ABOUT['__url__'],
@@ -107,13 +94,9 @@ setup(name=ABOUT['__title__'],
 
       setup_requires=['pytest-runner'],  # required for `setup.py test`
       tests_require=TESTS_REQUIRE,
-      install_requires=INSTALL_REQUIRES,
       extras_require=EXTRAS_REQUIRE,
 
       packages=find_packages(exclude=["tests"]),
-      package_data={PACKAGE_NAME: [
-          'assets/templates',
-      ]},
       include_package_data=True,
 
       # Entry Points
@@ -132,7 +115,7 @@ setup(name=ABOUT['__title__'],
           "Programming Language :: Python :: 3 :: Only",
           "Programming Language :: Python :: 3.6",
           "Programming Language :: Python :: 3.7",
-          "Topic :: Security"
+          "Programming Language :: Python :: 3.8",
       ],
       python_requires='>=3'
       )
