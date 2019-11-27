@@ -28,7 +28,10 @@ plotly = "==3.10.0"
 dash = {extras = ["testing"],version = "*"}
 # Pytest
 pytest = "*"
+# Deployment
 bumpversion = "*"
+# Coverage
+coverage = "*"
 
 [scripts]
 nucypher-monitor = "python3 monitor/cli/main.py"
