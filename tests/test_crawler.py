@@ -9,6 +9,7 @@ from nucypher.config.storages import SQLiteForgetfulNodeStorage
 from nucypher.network.middleware import RestMiddleware
 
 from monitor.crawler import CrawlerNodeStorage, Crawler
+from monitor.db import CrawlerNodeMetadataDBClient
 from tests.utilities import (
     create_random_mock_node,
     create_specific_mock_node,
@@ -327,7 +328,46 @@ def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
     assert not crawler.is_running
 
 
-def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH):
+@patch.object(ContractAgency, 'get_agent')
+@patch.object(InfluxDBClient, '__new__')
+def test_crawler_start_learning(new_influx_db, get_agent, tempfile_path):
+    mock_influxdb_client = MagicMock()
+    new_influx_db.return_value = mock_influxdb_client
+
+    staking_agent = MagicMock()
+    get_agent.return_value = staking_agent
+
+    crawler = create_crawler(node_db_filepath=tempfile_path, refresh_rate=2)
+    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    try:
+        crawler.start()
+        assert crawler.is_running
+
+        crawler.learn_from_teacher_node()
+
+        current_teacher_checksum = node_db_client.get_current_teacher_checksum()
+        assert current_teacher_checksum is not None
+
+        known_nodes = node_db_client.get_known_nodes_metadata()
+        assert len(known_nodes) > 0
+        assert current_teacher_checksum in known_nodes
+
+        random_node = create_random_mock_node(generate_certificate=True)
+        crawler.remember_node(node=random_node, force_verification_check=False, record_fleet_state=True)
+        known_nodes = node_db_client.get_known_nodes_metadata()
+        assert len(known_nodes) > 0
+        assert random_node.checksum_address in known_nodes
+
+        previous_states = node_db_client.get_previous_states_metadata()
+        assert len(previous_states) > 0
+    finally:
+        crawler.stop()
+
+    mock_influxdb_client.close.assert_called_once()
+    assert not crawler.is_running
+
+
+def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, refresh_rate: int = Crawler.DEFAULT_REFRESH_RATE):
     registry = InMemoryContractRegistry()
     middleware = RestMiddleware()
     teacher_nodes = actions.load_seednodes(None,
@@ -345,6 +385,7 @@ def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH):
                       learn_on_same_thread=False,
                       blockchain_db_host='localhost',
                       blockchain_db_port=8086,
+                      refresh_rate=refresh_rate,
                       node_db_filepath=node_db_filepath
                       )
     return crawler

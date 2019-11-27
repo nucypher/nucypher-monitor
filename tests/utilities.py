@@ -1,39 +1,67 @@
+import os
 import random
 import string
 from unittest.mock import MagicMock
 
 import maya
 from constant_sorrow.constants import UNKNOWN_FLEET_STATE
-from uuid import uuid4
 from ipaddress import IPv4Address
+
+from eth_utils.address import to_checksum_address
+from nucypher.keystore.keypairs import HostingKeypair
 
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'black', 'brown', 'purple']
 
 
-def create_random_mock_node():
-    rest_url = str(IPv4Address(random.getrandbits(32)))
+def create_eth_address():
+    random_address = to_checksum_address(os.urandom(20))
+    return random_address
+
+
+def create_random_mock_node(generate_certificate: bool = False):
+    host = str(IPv4Address(random.getrandbits(32)))
     nickname = ''.join(random.choice(string.ascii_letters) for i in range(25))
-    checksum_address = f"0x{uuid4().hex}"
-    worker_address = f"0x{uuid4().hex}"
-    timestamp = maya.now()
-    last_seen = timestamp.subtract(hours=(random.randrange(0, 10)))
+    checksum_address = create_eth_address()
+    worker_address = create_eth_address()
+    timestamp = maya.now().subtract(hours=(random.randrange(0, 10)))
+    last_seen = maya.now()
 
-    return create_specific_mock_node(checksum_address=checksum_address, rest_url=rest_url, nickname=nickname,
-                                     worker_address=worker_address, timestamp=timestamp, last_seen=last_seen)
+    return create_specific_mock_node(generate_certificate=generate_certificate,
+                                     checksum_address=checksum_address,
+                                     host=host, nickname=nickname,
+                                     worker_address=worker_address,
+                                     timestamp=timestamp,
+                                     last_seen=last_seen)
 
 
-def create_specific_mock_node(checksum_address: str = '0x123456789',
-                              rest_url: str = '127.0.0.1:9151',
+def create_node_certificate(host: str, checksum_address: str):
+    tls_hosting_keypair = HostingKeypair(host=host,
+                                         checksum_address=checksum_address)
+
+    return tls_hosting_keypair.certificate
+
+
+def create_specific_mock_node(generate_certificate: bool = False,
+                              checksum_address: str = '0x123456789',
+                              host: str = '127.0.0.1',
                               nickname: str = 'Blue Knight Teal Club',
                               worker_address: str = '0x987654321',
-                              timestamp: maya.MayaDT = maya.now(),
-                              last_seen: maya.MayaDT = maya.now().subtract(days=4),
+                              timestamp: maya.MayaDT = maya.now().subtract(days=4),
+                              last_seen: maya.MayaDT = maya.now(),
                               fleet_state_nickname_metadata=UNKNOWN_FLEET_STATE):
-    node = MagicMock(checksum_address=checksum_address, nickname=nickname,
+    if generate_certificate:
+        # Generate certificate
+        certificate = create_node_certificate(host=host, checksum_address=checksum_address)
+    else:
+        certificate = MagicMock()
+
+    node = MagicMock(certificate=certificate, checksum_address=checksum_address, nickname=nickname,
                      worker_address=worker_address, timestamp=timestamp, last_seen=last_seen,
                      fleet_state_nickname_metadata=fleet_state_nickname_metadata)
-    node.rest_url.return_value = rest_url
+
+    node.rest_url.return_value = f"{host}:9151"
+
     return node
 
 

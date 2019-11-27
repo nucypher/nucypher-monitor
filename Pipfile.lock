@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "f7078482eedfe2af88b17c86b68d01712f7b359b67d4d9a3683af33034fa8c18"
+            "sha256": "cce9a06eca2447165e818853c98243028030cec0ccc38c610b89562aff1c205f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -514,6 +514,13 @@
             ],
             "version": "==2.8"
         },
+        "cytoolz": {
+            "hashes": [
+                "sha256:82f5bba81d73a5a6b06f2a3553ff9003d865952fcb32e1df192378dd944d8a5c"
+            ],
+            "markers": "implementation_name == 'cpython'",
+            "version": "==0.10.1"
+        },
         "dash": {
             "hashes": [
                 "sha256:84fcc770e7fba4ddc867570b6527249dbcda2e0cc3989ea00b34d97b036d8a98"
@@ -546,6 +553,28 @@
                 "sha256:f88623e478e2701a10aeee92a4b8adcc148ffb4943efab57143611c05a77f990"
             ],
             "version": "==4.5.1"
+        },
+        "eth-hash": {
+            "hashes": [
+                "sha256:1b9cb34dd3cd99c85c2bd6a1420ceae39a2eee8bf080efd264bcda8be3edecc8",
+                "sha256:499dc02d098f69856d1a6dd005529c16174157d4fb2a9fe20c41f69e39f8f176"
+            ],
+            "version": "==0.2.0"
+        },
+        "eth-typing": {
+            "hashes": [
+                "sha256:2f3e1f891226148898b219bd94674a9af06c2d75d8cdd8c6722227b472cbd4d4",
+                "sha256:cf9e5e9fb62cfeb1027823328569315166851c65c5774604d801b6b926ff65bc"
+            ],
+            "version": "==2.2.1"
+        },
+        "eth-utils": {
+            "hashes": [
+                "sha256:8f01c563fef5400c91465f33d584558e5384306d3b72b5a4fa2fcb2f6d7154e8",
+                "sha256:e874aa50ceeceb9e46d8a9cb566d2c010702b35eecde1c6b48c91c29e9d155d1"
+            ],
+            "index": "pypi",
+            "version": "==1.7.0"
         },
         "flask": {
             "hashes": [
@@ -793,6 +822,12 @@
                 "sha256:1d6d69ce66211143803fbc56652b41d73b4a400a2891d7bf7a1cdf4c02de613b"
             ],
             "version": "==1.1.0"
+        },
+        "toolz": {
+            "hashes": [
+                "sha256:08fdd5ef7c96480ad11c12d472de21acd32359996f69a5259299b540feba4560"
+            ],
+            "version": "==0.10.0"
         },
         "urllib3": {
             "hashes": [
