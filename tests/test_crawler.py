@@ -194,7 +194,7 @@ def test_storage_db_clear_only_metadata_not_certificates():
 
 
 def test_storage_db_clear_not_metadata():
-    node_storage = CrawlerNodeStorage()
+    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
 
     # store some data
     node = create_random_mock_node()
