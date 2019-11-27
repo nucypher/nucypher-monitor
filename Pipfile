@@ -28,6 +28,7 @@ plotly = "==3.10.0"
 dash = {extras = ["testing"],version = "*"}
 # Pytest
 pytest = "*"
+pytest-cov = "*"
 # Deployment
 bumpversion = "*"
 # Coverage
