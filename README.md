@@ -8,14 +8,13 @@ and displays this information in a UI via the `Dashboard`.
 
 ### Installation
 
-##### Development
-```bash
-$ pip install -e . -r dev-requirements.txt
-```
-
-##### Non-Development
 ```bash
 $ pip install -e . -r requirements.txt
+```
+
+##### Install additional development packages
+```bash
+$ pip install -e . -r dev-requirements.txt
 ```
 
 ### Minimum Requirements

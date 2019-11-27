@@ -5,10 +5,6 @@ workflows:
   version: 2
   test:
     jobs:
-      - python-36:
-          filters:
-            tags:
-              only: /.*/
       - python-37:
           filters:
             tags:
@@ -20,7 +16,10 @@ test_steps: &test_steps
       - checkout
       - pip_install
       - run:
-          name: Run Unit Tests
+          name: "Create directory for test reports"
+          command: mkdir reports
+      - run:
+          name: "Run Unit Tests"
           command: pytest $(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
       - capture_test_results
 
@@ -31,13 +30,15 @@ commands:
     description: "Install dependencies with pip"
     steps:
       - run:
-          name: Install monitor dependencies with pip
+          name: "Install monitor with pip"
           command: |
             python setup.py install_egg_info --install-dir=/home/circleci/.local/lib/python3.7/site-packages
             pip3 install --user -e .
       - run:
-          name: Install python development dependencies with pip
-          command: pip3 install -r dev-requirements.txt --user -e .
+          name: "Install python dependencies with pip"
+          command: |
+            pip3 install -r requirements.txt --user -e .
+            pip3 install -r dev-requirements.txt --user -e .
 
   codecov:
     description: "Upload Coverage Report To codecov.io"
@@ -54,12 +55,6 @@ commands:
 
 
 jobs:
-
-  python-36:
-    docker:
-      - image: circleci/python:3.6
-    working_directory: ~/nucypher-monitor
-    <<: *test_steps
 
   python-37:
     docker:

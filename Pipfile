@@ -9,18 +9,14 @@ python_version = "3"
 [packages]
 # NuCypher
 nucypher = {git = "https://github.com/nucypher/nucypher.git",ref = "doubtfire"}
-hendrix = ">=3.2.5"
 # Web
 requests = "*"
 flask = "*"
-flask_sqlalchemy = "*"
 # Database
 influxdb = "*"
-sqlalchemy = "*"
 # CLI / Configuration
 maya = "*"
 click = ">=7.0"
-colorama = "*"
 # UI
 dash = "*"
 dash-core-components = "*"
@@ -35,7 +31,7 @@ pytest = "*"
 bumpversion = "*"
 
 [scripts]
-nucypher-monitor = "python3 nucypher/cli/monitor.py"
+nucypher-monitor = "python3 monitor/cli/main.py"
 
 [pipenv]
 allow_prereleases = true
