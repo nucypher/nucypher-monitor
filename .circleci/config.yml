@@ -1,0 +1,68 @@
+version: 2.1
+orbs:
+  codecov: codecov/codecov@1.0.5
+workflows:
+  version: 2
+  test:
+    jobs:
+      - python-36:
+          filters:
+            tags:
+              only: /.*/
+      - python-37:
+          filters:
+            tags:
+              only: /.*/
+
+
+test_steps: &test_steps
+    steps:
+      - checkout
+      - pip_install
+      - run:
+          name: Run Unit Tests
+          command: pytest $(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
+      - capture_test_results
+
+
+commands:
+
+  pip_install:
+    description: "Install dependencies with pip"
+    steps:
+      - run:
+          name: Install monitor dependencies with pip
+          command: |
+            python setup.py install_egg_info --install-dir=/home/circleci/.local/lib/python3.7/site-packages
+            pip3 install --user -e .
+      - run:
+          name: Install python development dependencies with pip
+          command: pip3 install -r dev-requirements.txt --user -e .
+
+  codecov:
+    description: "Upload Coverage Report To codecov.io"
+    steps:
+      - codecov/upload:
+          file: reports/coverage.xml
+
+  capture_test_results:
+    description: "Store and Upload test results; Follow-up step for tests"
+    steps:
+      - codecov
+      - store_test_results:
+          path: reports
+
+
+jobs:
+
+  python-36:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/nucypher-monitor
+    <<: *test_steps
+
+  python-37:
+    docker:
+      - image: circleci/python:3.7
+    working_directory: ~/nucypher-monitor
+    <<: *test_steps
