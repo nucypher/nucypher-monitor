@@ -277,8 +277,9 @@ class Crawler(Learner):
             # stop tasks
             self._nodes_contract_info_learning_task.stop()
 
-            self._blockchain_db_client.close()
-            self._blockchain_db_client = None
+            if self._blockchain_db_client is not None:
+                self._blockchain_db_client.close()
+                self._blockchain_db_client = None
 
             # TODO: should I delete the NodeStorage to close the sqlite db connection here?
 

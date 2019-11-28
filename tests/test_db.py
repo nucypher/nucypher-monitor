@@ -2,9 +2,10 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import maya
-from influxdb import InfluxDBClient
+from influxdb.resultset import ResultSet
 from maya import MayaDT
 
+import monitor
 from monitor.crawler import CrawlerNodeStorage
 from monitor.db import CrawlerNodeMetadataDBClient, CrawlerBlockchainDBClient
 from tests.utilities import (
@@ -102,9 +103,9 @@ def test_node_client_get_current_teacher_checksum(tempfile_path):
 #
 # CrawlerBlockchainDBClient tests
 #
-@patch.object(InfluxDBClient, '__new__')
+@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
 def test_blockchain_client_close(new_influx_db):
-    mock_influxdb_client = MagicMock()
+    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
     new_influx_db.return_value = mock_influxdb_client
 
     blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
@@ -113,12 +114,12 @@ def test_blockchain_client_close(new_influx_db):
     mock_influxdb_client.close.assert_called_once()
 
 
-@patch.object(InfluxDBClient, '__new__')
+@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
 def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
-    mock_influxdb_client = MagicMock()
+    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
     new_influx_db.return_value = mock_influxdb_client
 
-    mock_query_object = MagicMock()
+    mock_query_object = MagicMock(spec=ResultSet, autospec=True)
     mock_influxdb_client.query.return_value = mock_query_object
 
     # fake results for 5 days
@@ -177,12 +178,12 @@ def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
     mock_influxdb_client.close.assert_not_called()
 
 
-@patch.object(InfluxDBClient, '__new__')
+@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
 def test_blockchain_client_get_historical_num_stakers(new_influx_db):
-    mock_influxdb_client = MagicMock()
+    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
     new_influx_db.return_value = mock_influxdb_client
 
-    mock_query_object = MagicMock()
+    mock_query_object = MagicMock(spec=ResultSet, autospec=True)
     mock_influxdb_client.query.return_value = mock_query_object
 
     # fake results for 10 days
