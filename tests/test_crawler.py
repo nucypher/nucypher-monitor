@@ -465,9 +465,13 @@ def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, temp
             # expected db row added
             write_points_call_args_list = mock_influxdb_client.write_points.call_args_list
             influx_db_line_protocol_statement = str(write_points_call_args_list[0][0])
-            expected_arguments = [random_node.checksum_address, random_node.worker_address,
-                                  str(float(NU.from_nunits(tokens).to_tokens())), str(current_period),
-                                  str(last_active_period)]
+
+            expected_arguments = [f'staker_address={random_node.checksum_address}',
+                                  f'worker_address="{random_node.worker_address}"',
+                                  f'stake={float(NU.from_nunits(tokens).to_tokens())}',
+                                  f'locked_stake={float(NU.from_nunits(tokens).to_tokens())}',
+                                  f'current_period={current_period}i',
+                                  f'last_confirmed_period={last_active_period}i']
             for arg in expected_arguments:
                 assert arg in influx_db_line_protocol_statement, \
                     f"{arg} in {influx_db_line_protocol_statement} for iteration {i}"
