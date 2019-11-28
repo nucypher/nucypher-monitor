@@ -8,6 +8,9 @@ from constant_sorrow.constants import UNKNOWN_FLEET_STATE
 from ipaddress import IPv4Address
 
 from eth_utils.address import to_checksum_address
+from nucypher.blockchain.eth.agents import StakingEscrowAgent
+from nucypher.blockchain.eth.interfaces import BlockchainInterface
+from nucypher.blockchain.eth.registry import BaseContractRegistry
 from nucypher.keystore.keypairs import HostingKeypair
 
 
@@ -23,7 +26,12 @@ def create_random_mock_node(generate_certificate: bool = False):
     host = str(IPv4Address(random.getrandbits(32)))
     nickname = ''.join(random.choice(string.ascii_letters) for i in range(25))
     checksum_address = create_eth_address()
-    worker_address = create_eth_address()
+
+    # some percentage of the time produce a NULL_ADDRESS
+    if random.random() > 0.9:
+        worker_address = BlockchainInterface.NULL_ADDRESS
+    else:
+        worker_address = create_eth_address()
     timestamp = maya.now().subtract(hours=(random.randrange(0, 10)))
     last_seen = maya.now()
 
@@ -111,3 +119,29 @@ def verify_mock_state_matches(state, row):
 def convert_state_to_db_row(state):
     return (state.nickname, state.metadata[0][1], state.metadata[0][0]['hex'],
             state.metadata[0][0]['color'], state.updated.rfc2822())
+
+
+def get_expected_status_text(current_period: int, last_confirmed_period: int, worker_address: str):
+    if worker_address == BlockchainInterface.NULL_ADDRESS:
+        return 'Headless'
+
+    missing_confirmations = current_period - last_confirmed_period
+    if missing_confirmations < 0:
+        return 'OK'
+    elif missing_confirmations == 0:
+        return 'Pending'
+    elif missing_confirmations == current_period:
+        return 'Idle'
+    else:
+        return 'Unconfirmed'
+
+
+class MockContractAgency:
+    def __init__(self, staking_agent=MagicMock(spec=StakingEscrowAgent)):
+        self.staking_agent = staking_agent
+
+    def get_agent(self, agent_class, registry: BaseContractRegistry, provider_uri: str = None):
+        if agent_class == StakingEscrowAgent:
+            return self.staking_agent
+        else:
+            return MagicMock(spec=agent_class)

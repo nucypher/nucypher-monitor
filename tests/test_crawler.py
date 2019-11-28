@@ -5,8 +5,8 @@ import maya
 import pytest
 
 from nucypher.blockchain.economics import StandardTokenEconomics
-from nucypher.blockchain.eth.agents import StakingEscrowAgent, EthereumContractAgent
-from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
+from nucypher.blockchain.eth.agents import StakingEscrowAgent
+from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
 from nucypher.blockchain.eth.utils import datetime_to_period
 from nucypher.cli import actions
@@ -21,8 +21,8 @@ from tests.utilities import (
     create_specific_mock_node,
     create_specific_mock_state,
     verify_mock_node_matches,
-    verify_mock_state_matches
-)
+    verify_mock_state_matches,
+    MockContractAgency)
 
 IN_MEMORY_FILEPATH = ':memory:'
 DB_TABLES = [CrawlerNodeStorage.NODE_DB_NAME, CrawlerNodeStorage.STATE_DB_NAME, CrawlerNodeStorage.TEACHER_DB_NAME]
@@ -226,17 +226,6 @@ def test_storage_db_clear_not_metadata():
 # Crawler tests.
 #
 
-class MockContractAgency:
-    def __init__(self, staking_agent=MagicMock(spec=StakingEscrowAgent)):
-        self.staking_agent = staking_agent
-
-    def get_agent(self, agent_class, registry: BaseContractRegistry, provider_uri: str = None):
-        if agent_class == StakingEscrowAgent:
-            return self.staking_agent
-        else:
-            return MagicMock(spec=agent_class)
-
-
 def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, dont_set_teacher: bool = False):
     registry = InMemoryContractRegistry()
     middleware = RestMiddleware()
@@ -284,27 +273,10 @@ def test_crawler_init(get_agent):
     assert not crawler.is_running
 
 
-# TODO: weird patching issue where a TypeError is returned if this test isn't before any patching of InfluxDBClient
-#  since it uses the actual InfluxDBClient class
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-def test_crawler_start_no_influx_db_connection(get_agent):
-    staking_agent = MagicMock(spec=StakingEscrowAgent)
-    contract_agency = MockContractAgency(staking_agent=staking_agent)
-    get_agent.side_effect = contract_agency.get_agent
-
-    crawler = create_crawler()
-    try:
-        with pytest.raises(ConnectionError):
-            crawler.start()
-    finally:
-        crawler.stop()
-
-
-@patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_stop_before_start(new_influx_db, get_agent):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
-    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client = new_influx_db.return_value
 
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
@@ -320,10 +292,9 @@ def test_crawler_stop_before_start(new_influx_db, get_agent):
 
 
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_start_then_stop(new_influx_db, get_agent):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
-    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client = new_influx_db.return_value
 
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
@@ -342,13 +313,26 @@ def test_crawler_start_then_stop(new_influx_db, get_agent):
 
 
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+def test_crawler_start_no_influx_db_connection(get_agent):
+    staking_agent = MagicMock(spec=StakingEscrowAgent, autospec=True)
+    contract_agency = MockContractAgency(staking_agent=staking_agent)
+    get_agent.side_effect = contract_agency.get_agent
+
+    crawler = create_crawler()
+    try:
+        with pytest.raises(ConnectionError):
+            crawler.start()
+    finally:
+        crawler.stop()
+
+
+@patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
+@patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
+    mock_influxdb_client = new_influx_db.return_value
     mock_influxdb_client.get_list_database.return_value = [{'name': 'db1'},
                                                            {'name': 'db2'},
                                                            {'name': 'db3'}]
-    new_influx_db.return_value = mock_influxdb_client
 
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
@@ -373,13 +357,12 @@ def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
 
 
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
+    mock_influxdb_client = new_influx_db.return_value
     mock_influxdb_client.get_list_database.return_value = [{'name': 'db1'},
                                                            {'name': f'{Crawler.BLOCKCHAIN_DB_NAME}'},
                                                            {'name': 'db3'}]
-    new_influx_db.return_value = mock_influxdb_client
 
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
@@ -404,10 +387,9 @@ def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
 
 
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_learn_no_teacher(new_influx_db, get_agent, tempfile_path):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
-    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client = new_influx_db.return_value
 
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
@@ -435,10 +417,9 @@ def test_crawler_learn_no_teacher(new_influx_db, get_agent, tempfile_path):
 
 
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_learn_about_teacher(new_influx_db, get_agent, tempfile_path):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
-    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client = new_influx_db.return_value
 
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
@@ -468,10 +449,9 @@ def test_crawler_learn_about_teacher(new_influx_db, get_agent, tempfile_path):
 
 @patch.object(monitor.crawler.TokenEconomicsFactory, 'get_economics', autospec=True)
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, tempfile_path):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
-    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client = new_influx_db.return_value
     mock_influxdb_client.write_points.return_value = True
 
     # TODO: issue with use of `agent.blockchain` causes spec=StakingEscrowAgent not to be specified in MagicMock
@@ -500,7 +480,7 @@ def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, temp
             assert len(previous_states) > i
 
             # configure staking agent for blockchain calls
-            tokens = 15000 + i*5
+            tokens = NU(int(15000 + i*2500), 'NU').to_nunits()
             current_period = datetime_to_period(maya.now(), token_economics.seconds_per_period)
             initial_period = current_period - i
             terminal_period = current_period + (i+50)

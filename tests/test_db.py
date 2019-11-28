@@ -5,7 +5,6 @@ import maya
 from influxdb.resultset import ResultSet
 from maya import MayaDT
 
-import monitor
 from monitor.crawler import CrawlerNodeStorage
 from monitor.db import CrawlerNodeMetadataDBClient, CrawlerBlockchainDBClient
 from tests.utilities import (
@@ -20,12 +19,8 @@ from tests.utilities import (
 # CrawlerNodeMetadataDBClient tests
 #
 
-def test_node_client_defaults():
-    node_db_client = CrawlerNodeMetadataDBClient()
-    assert node_db_client._db_filepath == CrawlerNodeStorage.DEFAULT_DB_FILEPATH
 
-
-def test_node_client_non_defaults():
+def test_node_client_init_values():
     temp_db_filepath = "/tmp/test.db"
     node_db_client = CrawlerNodeMetadataDBClient(temp_db_filepath)
     assert node_db_client._db_filepath == temp_db_filepath
@@ -103,10 +98,9 @@ def test_node_client_get_current_teacher_checksum(tempfile_path):
 #
 # CrawlerBlockchainDBClient tests
 #
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.db.InfluxDBClient', autospec=True)
 def test_blockchain_client_close(new_influx_db):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
-    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client = new_influx_db.return_value
 
     blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
 
@@ -114,10 +108,9 @@ def test_blockchain_client_close(new_influx_db):
     mock_influxdb_client.close.assert_called_once()
 
 
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.db.InfluxDBClient', autospec=True)
 def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
-    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client = new_influx_db.return_value
 
     mock_query_object = MagicMock(spec=ResultSet, autospec=True)
     mock_influxdb_client.query.return_value = mock_query_object
@@ -178,10 +171,9 @@ def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
     mock_influxdb_client.close.assert_not_called()
 
 
-@patch.object(monitor.crawler.InfluxDBClient, '__new__', autospec=True)
+@patch('monitor.db.InfluxDBClient', autospec=True)
 def test_blockchain_client_get_historical_num_stakers(new_influx_db):
-    mock_influxdb_client = MagicMock(spec=monitor.crawler.InfluxDBClient, autospec=True)
-    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client = new_influx_db.return_value
 
     mock_query_object = MagicMock(spec=ResultSet, autospec=True)
     mock_influxdb_client.query.return_value = mock_query_object

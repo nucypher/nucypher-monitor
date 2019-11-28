@@ -58,6 +58,6 @@ jobs:
 
   python-37:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.7-browsers
     working_directory: ~/nucypher-monitor
     <<: *test_steps

@@ -1,0 +1,195 @@
+import random
+from collections import OrderedDict
+from datetime import datetime, timedelta
+from typing import List, Dict
+from unittest.mock import MagicMock, patch
+
+import nucypher
+from flask import Flask
+from nucypher.blockchain.eth.agents import StakingEscrowAgent
+from nucypher.blockchain.eth.token import NU
+
+import monitor.dashboard
+from monitor.crawler import CrawlerNodeStorage
+from monitor.db import CrawlerNodeMetadataDBClient
+from tests.markers import circleci_only
+from tests.utilities import MockContractAgency, create_random_mock_node, create_random_mock_state, \
+    get_expected_status_text
+
+
+def store_node_db_data(storage: CrawlerNodeStorage, nodes: List, states: List):
+    for idx, node in enumerate(nodes):
+        storage.store_node_metadata(node=node)
+        if idx == 0:
+            # first item in list is teacher
+            storage.store_current_teacher(teacher_checksum=node.checksum_address)
+
+    for state in states:
+        storage.store_state_metadata(state=state)
+
+
+def configure_mocked_blockchain_db_client(mocked_db_client, historical_tokens: List[int], historical_stakers: List[int]):
+    today = datetime.utcnow()
+    range_end = datetime(year=today.year, month=today.month, day=today.day,
+                         hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
+    range_begin = range_end - timedelta(days=len(historical_tokens))
+
+    # mock get_historical_locked_tokens_over_range tokens
+    locked_tokens_dict = OrderedDict()
+    for idx, tokens in enumerate(historical_tokens):
+        locked_tokens_dict[range_begin + timedelta(days=idx)] = tokens
+
+    mocked_db_client.get_historical_locked_tokens_over_range.return_value = locked_tokens_dict
+
+    # mock get_historical_num_stakers_over_range
+    num_stakers_dict = OrderedDict()
+    for idx, stakers in enumerate(historical_stakers):
+        num_stakers_dict[range_begin + timedelta(days=idx)] = stakers
+
+    mocked_db_client.get_historical_num_stakers_over_range.return_value = num_stakers_dict
+
+
+def create_mocked_staker_agent(partitioned_stakers: tuple,
+                               current_period: int,
+                               global_locked_tokens: int,
+                               last_active_period_dict: Dict,
+                               nodes: List):
+    staking_agent = MagicMock(spec=StakingEscrowAgent, autospec=True)
+
+    confirmed = MagicMock(spec=list)
+    confirmed.__len__.return_value = partitioned_stakers[0]
+    pending = MagicMock(spec=list)
+    pending.__len__.return_value = partitioned_stakers[1]
+    inactive = MagicMock(spec=list)
+    inactive.__len__.return_value = partitioned_stakers[2]
+
+    staking_agent.partition_stakers_by_activity.return_value = (confirmed, pending, inactive)
+
+    staking_agent.get_current_period.return_value = current_period
+
+    staking_agent.get_global_locked_tokens.return_value = global_locked_tokens
+
+    staking_agent.get_worker_from_staker.side_effect = \
+        lambda staker_address: list(filter(lambda x: x.checksum_address == staker_address, nodes))[0].worker_address
+
+    base_locked_tokens = NU(int(1000000), 'NU').to_nunits()
+    staking_agent.get_all_locked_tokens.side_effect = \
+        lambda periods, pagination_size=None: base_locked_tokens - (NU(int(periods*2500), 'NU').to_nunits())
+
+    staking_agent.get_last_active_period.side_effect = \
+        lambda staker_address: last_active_period_dict[staker_address]
+
+    return staking_agent
+
+
+@circleci_only(reason="Additional complexity using local machine's chromedriver")
+@patch.object(monitor.dashboard.ContractAgency, 'get_agent', autospec=True)
+@patch('monitor.dashboard.CrawlerBlockchainDBClient', autospec=True)
+def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, dash_duo):
+    ############## SETUP ################
+    current_period = 18622
+
+    # Setup node metadata
+    nodes_list = []
+    base_active_period = current_period + 1
+    last_active_period_dict = dict()
+    for i in range(0, 5):
+        node = create_random_mock_node(generate_certificate=False)
+        nodes_list.append(node)
+
+        last_confirmed_period = base_active_period - random.randrange(0, 3)
+        # some percentage of the time flag the node as never confirmed
+        if random.random() > 0.9:
+            last_confirmed_period = 0
+        last_active_period_dict[node.checksum_address] = last_confirmed_period
+
+    states_list = []
+    for i in range(0, 3):
+        states_list.append(create_random_mock_state())
+
+    # write data to file
+    node_storage = CrawlerNodeStorage(db_filepath=tempfile_path)
+    store_node_db_data(node_storage, nodes=nodes_list, states=states_list)
+
+    db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    db_client.get_known_nodes_metadata()
+    db_client.get_current_teacher_checksum()
+    db_client.get_previous_states_metadata(limit=5)
+
+    # Setup StakingEscrowAgent and ContractAgency
+    partitioned_stakers = (25, 5, 10)  # confirmed, pending, inactive
+    global_locked_tokens = NU(int(1000000), 'NU').to_nunits()
+    staking_agent = create_mocked_staker_agent(partitioned_stakers=partitioned_stakers,
+                                               current_period=current_period,
+                                               global_locked_tokens=global_locked_tokens,
+                                               last_active_period_dict=last_active_period_dict,
+                                               nodes=nodes_list)
+    contract_agency = MockContractAgency(staking_agent=staking_agent)
+    get_agent.side_effect = contract_agency.get_agent
+
+    # Setup Blockchain Client
+    days = 5
+    historical_tokens = []
+    historical_stakers = []
+    for i in range(1, (days+1)):
+        historical_tokens.append(NU(int(500000 + i*100000), 'NU').to_nunits())
+        historical_stakers.append(10 + i*10)
+
+    mocked_blockchain_db_client = new_blockchain_db_client.return_value
+    configure_mocked_blockchain_db_client(mocked_db_client=mocked_blockchain_db_client,
+                                          historical_tokens=historical_tokens,
+                                          historical_stakers=historical_stakers)
+
+    ############## RUN ################
+    server = Flask("monitor-dashboard")
+
+    dashboard = monitor.dashboard.Dashboard(flask_server=server,
+                                            route_url='/',
+                                            registry=None,
+                                            domain='goerli',
+                                            blockchain_db_host='localhost',
+                                            blockchain_db_port=8086,
+                                            node_db_filepath=tempfile_path)
+
+    dash_duo.start_server(dashboard.dash_app)
+
+    # check version
+    assert dash_duo.wait_for_element_by_id('version').text == f'v{nucypher.__version__}'
+
+    # check current period
+    assert dash_duo.wait_for_element_by_id('current-period-value').text == str(current_period)
+
+    # check domain
+    assert dash_duo.wait_for_element_by_id('domain-value').text == 'goerli'
+
+    # active ursulas
+    confirmed, pending, inactive = partitioned_stakers
+    assert dash_duo.wait_for_element_by_id('active-ursulas-value').text == \
+           f"{confirmed}/{confirmed + pending + inactive}"
+
+    # staked tokens
+    assert dash_duo.wait_for_element_by_id('staked-tokens-value').text == str(NU.from_nunits(global_locked_tokens))
+
+    # previous states
+    state_table_text = dash_duo.wait_for_element_by_id('state-table').text
+    for state in states_list:
+        assert state.nickname in state_table_text, 'nickname displayed'
+        assert state.metadata[0][1] in state_table_text, 'symbol displayed'
+
+    # nodes
+    node_table_text = dash_duo.wait_for_element_by_id('node-table').text
+    for node in nodes_list:
+        assert f'{node.checksum_address[:10]}...' in node_table_text, "checksum displayed"
+        assert node.nickname in node_table_text, 'nickname displayed'
+        assert node.timestamp.iso8601() in node_table_text, 'launch time displayed'
+        assert node.last_seen.slang_time() in node_table_text, 'last seen displayed'
+
+        last_confirmed_period = last_active_period_dict[node.checksum_address]
+        assert str(last_confirmed_period) in node_table_text, 'last confirmed period displayed'
+
+        # check status
+        # TODO probably a better way to do this
+        expected_status = get_expected_status_text(current_period=current_period,
+                                                   last_confirmed_period=last_confirmed_period,
+                                                   worker_address=node.worker_address)
+        assert expected_status in node_table_text, 'status text displayed'

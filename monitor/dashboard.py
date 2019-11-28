@@ -49,7 +49,7 @@ class Dashboard:
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
 
         # Dash
-        self.make_dash_app(flask_server=flask_server, route_url=route_url, domain=domain)
+        self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url, domain=domain)
 
     def make_dash_app(monitor, flask_server: Flask, route_url: str, domain: str):
         dash_app = Dash(name=__name__,
@@ -89,7 +89,8 @@ class Dashboard:
         def active_stakers(n):
             confirmed, pending, inactive = monitor.staking_agent.partition_stakers_by_activity()
             total_stakers = len(confirmed) + len(pending) + len(inactive)
-            return html.Div([html.H4("Active Ursulas"), html.H5(f"{len(confirmed)}/{total_stakers}")])
+            return html.Div([html.H4("Active Ursulas"), html.H5(f"{len(confirmed)}/{total_stakers}",
+                                                                id='active-ursulas-value')])
 
         @dash_app.callback(Output('staker-breakdown', 'children'), [Input('minute-interval', 'n_intervals')])
         def stakers_breakdown(n):
@@ -97,7 +98,8 @@ class Dashboard:
 
         @dash_app.callback(Output('current-period', 'children'), [Input('minute-interval', 'n_intervals')])
         def current_period(pathname):
-            return html.Div([html.H4("Current Period"), html.H5(monitor.staking_agent.get_current_period())])
+            return html.Div([html.H4("Current Period"), html.H5(monitor.staking_agent.get_current_period(),
+                                                                id='current-period-value')])
 
         @dash_app.callback(Output('time-remaining', 'children'), [Input('minute-interval', 'n_intervals')])
         def time_remaining(n):
@@ -109,12 +111,12 @@ class Dashboard:
 
         @dash_app.callback(Output('domains', 'children'), [Input('url', 'pathname')])  # on page-load
         def domains(pathname):
-            return html.Div([html.H4('Domain'), html.H5(domain)])
+            return html.Div([html.H4('Domain'), html.H5(domain, id="domain-value")])
 
         @dash_app.callback(Output('staked-tokens', 'children'), [Input('minute-interval', 'n_intervals')])
         def staked_tokens(n):
             nu = NU.from_nunits(monitor.staking_agent.get_global_locked_tokens())
-            return html.Div([html.H4('Staked Tokens'), html.H5(f"{nu}")])
+            return html.Div([html.H4('Staked Tokens'), html.H5(f"{nu}", id='staked-tokens-value')])
 
         @dash_app.callback(Output('prev-locked-stake-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         def prev_locked_tokens(n):
@@ -131,3 +133,5 @@ class Dashboard:
         @dash_app.callback(Output('locked-stake-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         def future_locked_tokens(n):
             return future_locked_tokens_bar_chart(staking_agent=monitor.staking_agent)
+
+        return dash_app
