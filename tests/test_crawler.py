@@ -1,9 +1,13 @@
 import os
 from unittest.mock import MagicMock, patch
 
+import maya
 from influxdb import InfluxDBClient
-from nucypher.blockchain.eth.agents import ContractAgency
-from nucypher.blockchain.eth.registry import InMemoryContractRegistry
+from nucypher.blockchain.economics import StandardTokenEconomics, TokenEconomicsFactory
+from nucypher.blockchain.eth.agents import ContractAgency, StakingEscrowAgent
+from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
+from nucypher.blockchain.eth.token import NU
+from nucypher.blockchain.eth.utils import datetime_to_period
 from nucypher.cli import actions
 from nucypher.config.storages import SQLiteForgetfulNodeStorage
 from nucypher.network.middleware import RestMiddleware
@@ -219,6 +223,51 @@ def test_storage_db_clear_not_metadata():
 #
 # Crawler tests.
 #
+
+class MockContractAgency:
+    def __init__(self, staking_agent=MagicMock()):
+        self.staking_agent = staking_agent
+
+    def get_agent(self, agent_class, registry: BaseContractRegistry, provider_uri: str = None):
+        if agent_class == StakingEscrowAgent:
+            return self.staking_agent
+        else:
+            return MagicMock()
+
+
+def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH):
+    registry = InMemoryContractRegistry()
+    middleware = RestMiddleware()
+    teacher_nodes = actions.load_seednodes(None,
+                                           teacher_uris=['https://discover.nucypher.network:9151'],
+                                           min_stake=0,
+                                           federated_only=False,
+                                           network_domains={'goerli'},
+                                           network_middleware=middleware)
+
+    crawler = Crawler(domains={'goerli'},
+                      network_middleware=middleware,
+                      known_nodes=teacher_nodes,
+                      registry=registry,
+                      start_learning_now=True,
+                      learn_on_same_thread=False,
+                      blockchain_db_host='localhost',
+                      blockchain_db_port=8086,
+                      node_db_filepath=node_db_filepath
+                      )
+    return crawler
+
+
+def configure_mock_staking_agent(staking_agent, tokens, current_period, initial_period,
+                                 terminal_period, last_active_period):
+    staking_agent.owned_tokens.return_value = tokens
+    staking_agent.get_locked_tokens.return_value = tokens
+
+    staking_agent.get_current_period.return_value = current_period
+    staking_agent.get_all_stakes.return_value = [(initial_period, terminal_period, tokens)]
+    staking_agent.get_last_active_period.return_value = last_active_period
+
+
 @patch.object(ContractAgency, 'get_agent')
 def test_crawler_init(get_agent):
     staking_agent = MagicMock()
@@ -330,19 +379,20 @@ def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
 
 @patch.object(ContractAgency, 'get_agent')
 @patch.object(InfluxDBClient, '__new__')
-def test_crawler_start_learning(new_influx_db, get_agent, tempfile_path):
+def test_crawler_learn_about_teacher(new_influx_db, get_agent, tempfile_path):
     mock_influxdb_client = MagicMock()
     new_influx_db.return_value = mock_influxdb_client
 
     staking_agent = MagicMock()
     get_agent.return_value = staking_agent
 
-    crawler = create_crawler(node_db_filepath=tempfile_path, refresh_rate=2)
+    crawler = create_crawler(node_db_filepath=tempfile_path)
     node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
     try:
         crawler.start()
         assert crawler.is_running
 
+        # learn about teacher
         crawler.learn_from_teacher_node()
 
         current_teacher_checksum = node_db_client.get_current_teacher_checksum()
@@ -351,15 +401,6 @@ def test_crawler_start_learning(new_influx_db, get_agent, tempfile_path):
         known_nodes = node_db_client.get_known_nodes_metadata()
         assert len(known_nodes) > 0
         assert current_teacher_checksum in known_nodes
-
-        random_node = create_random_mock_node(generate_certificate=True)
-        crawler.remember_node(node=random_node, force_verification_check=False, record_fleet_state=True)
-        known_nodes = node_db_client.get_known_nodes_metadata()
-        assert len(known_nodes) > 0
-        assert random_node.checksum_address in known_nodes
-
-        previous_states = node_db_client.get_previous_states_metadata()
-        assert len(previous_states) > 0
     finally:
         crawler.stop()
 
@@ -367,25 +408,73 @@ def test_crawler_start_learning(new_influx_db, get_agent, tempfile_path):
     assert not crawler.is_running
 
 
-def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, refresh_rate: int = Crawler.DEFAULT_REFRESH_RATE):
-    registry = InMemoryContractRegistry()
-    middleware = RestMiddleware()
-    teacher_nodes = actions.load_seednodes(None,
-                                           teacher_uris=['https://discover.nucypher.network:9151'],
-                                           min_stake=0,
-                                           federated_only=False,
-                                           network_domains={'goerli'},
-                                           network_middleware=middleware)
+@patch.object(TokenEconomicsFactory, 'get_economics')
+@patch.object(ContractAgency, 'get_agent')
+@patch.object(InfluxDBClient, '__new__')
+def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, tempfile_path):
+    mock_influxdb_client = MagicMock()
+    new_influx_db.return_value = mock_influxdb_client
+    mock_influxdb_client.write_points.return_value = True
 
-    crawler = Crawler(domains={'goerli'},
-                      network_middleware=middleware,
-                      known_nodes=teacher_nodes,
-                      registry=registry,
-                      start_learning_now=True,
-                      learn_on_same_thread=False,
-                      blockchain_db_host='localhost',
-                      blockchain_db_port=8086,
-                      refresh_rate=refresh_rate,
-                      node_db_filepath=node_db_filepath
-                      )
-    return crawler
+    staking_agent = MagicMock()
+    contract_agency = MockContractAgency(staking_agent=staking_agent)
+    get_agent.side_effect = contract_agency.get_agent
+
+    token_economics = StandardTokenEconomics()
+    get_economics.return_value = token_economics
+
+    crawler = create_crawler(node_db_filepath=tempfile_path)
+    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    try:
+        crawler.start()
+        assert crawler.is_running
+
+        for i in range(0, 5):
+            random_node = create_random_mock_node(generate_certificate=True)
+            crawler.remember_node(node=random_node, force_verification_check=False, record_fleet_state=True)
+            known_nodes = node_db_client.get_known_nodes_metadata()
+            assert len(known_nodes) > i
+            assert random_node.checksum_address in known_nodes
+
+            previous_states = node_db_client.get_previous_states_metadata()
+            assert len(previous_states) > i
+
+            # configure staking agent for blockchain calls
+            tokens = 15000 + i*5
+            current_period = datetime_to_period(maya.now(), token_economics.seconds_per_period)
+            initial_period = current_period - i
+            terminal_period = current_period + (i+50)
+            last_active_period = current_period - i
+            staking_agent.get_worker_from_staker.side_effect = \
+                lambda staker_address: crawler.node_storage.get(federated_only=False,
+                                                                checksum_address=staker_address).worker_address
+
+            configure_mock_staking_agent(staking_agent=staking_agent,
+                                         tokens=tokens,
+                                         current_period=current_period,
+                                         initial_period=initial_period,
+                                         terminal_period=terminal_period,
+                                         last_active_period=last_active_period)
+
+            # run crawler callable
+            crawler._learn_about_nodes_contract_info()
+
+            # ensure data written to influx table
+            mock_influxdb_client.write_points.assert_called_once()
+
+            # expected db row added
+            write_points_call_args_list = mock_influxdb_client.write_points.call_args_list
+            influx_db_line_protocol_statement = str(write_points_call_args_list[0][0])
+            expected_arguments = [random_node.checksum_address, random_node.worker_address,
+                                  str(float(NU.from_nunits(tokens).to_tokens())), str(current_period),
+                                  str(last_active_period)]
+            for arg in expected_arguments:
+                assert arg in influx_db_line_protocol_statement, \
+                    f"{arg} in {influx_db_line_protocol_statement} for iteration {i}"
+
+            mock_influxdb_client.reset_mock()
+    finally:
+        crawler.stop()
+
+    mock_influxdb_client.close.assert_called_once()
+    assert not crawler.is_running
