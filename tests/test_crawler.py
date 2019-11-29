@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 
 import maya
 import pytest
-
 from nucypher.blockchain.economics import StandardTokenEconomics
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
@@ -20,8 +19,6 @@ from tests.utilities import (
     create_random_mock_node,
     create_specific_mock_node,
     create_specific_mock_state,
-    verify_mock_node_matches,
-    verify_mock_state_matches,
     MockContractAgency)
 
 IN_MEMORY_FILEPATH = ':memory:'
@@ -31,31 +28,6 @@ DB_TABLES = [CrawlerNodeStorage.NODE_DB_NAME, CrawlerNodeStorage.STATE_DB_NAME, 
 #
 # CrawlerNodeStorage tests.
 #
-def verify_all_db_tables_exist(db_conn, expect_present=True):
-    # check tables created
-    result = db_conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
-    if not expect_present:
-        assert len(result) == 0
-    else:
-        for row in result:
-            assert row[0] in DB_TABLES
-
-
-def verify_all_db_tables(db_conn, expect_empty=True):
-    for table in DB_TABLES:
-        result = db_conn.execute(f"SELECT * FROM {table}").fetchall()
-        if expect_empty:
-            assert len(result) == 0
-        else:
-            assert len(result) > 0
-
-
-def verify_current_teacher(db_conn, expected_teacher_checksum):
-    result = db_conn.execute(f"SELECT checksum_address from {CrawlerNodeStorage.TEACHER_DB_NAME}").fetchall()
-    assert len(result) == 1
-    for row in result:
-        assert expected_teacher_checksum == row[0]
-
 
 def test_storage_init():
     node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
@@ -114,7 +86,7 @@ def test_storage_store_state_metadata_store():
     result = node_storage.db_conn.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME}").fetchall()
     assert len(result) == 1
     for row in result:
-        verify_mock_state_matches(state, row)
+        verify_mock_state_matches_row(state, row)
 
     # update state
     new_now = state.updated.add(minutes=5)
@@ -128,7 +100,7 @@ def test_storage_store_state_metadata_store():
     result = node_storage.db_conn.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME}").fetchall()
     assert len(result) == 1  # state data is updated not added
     for row in result:
-        verify_mock_state_matches(updated_state, row)
+        verify_mock_state_matches_row(updated_state, row)
 
 
 def test_storage_store_current_retrieval():
@@ -522,3 +494,46 @@ def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, temp
 
     mock_influxdb_client.close.assert_called_once()
     assert not crawler.is_running
+
+
+def verify_all_db_tables_exist(db_conn, expect_present=True):
+    # check tables created
+    result = db_conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    if not expect_present:
+        assert len(result) == 0
+    else:
+        for row in result:
+            assert row[0] in DB_TABLES
+
+
+def verify_all_db_tables(db_conn, expect_empty=True):
+    for table in DB_TABLES:
+        result = db_conn.execute(f"SELECT * FROM {table}").fetchall()
+        if expect_empty:
+            assert len(result) == 0
+        else:
+            assert len(result) > 0
+
+
+def verify_current_teacher(db_conn, expected_teacher_checksum):
+    result = db_conn.execute(f"SELECT checksum_address from {CrawlerNodeStorage.TEACHER_DB_NAME}").fetchall()
+    assert len(result) == 1
+    for row in result:
+        assert expected_teacher_checksum == row[0]
+
+
+def verify_mock_node_matches(node, row):
+    assert node.checksum_address == row[0], 'staker address matches'
+    assert node.rest_url() == row[1], 'rest url matches'
+    assert node.nickname == row[2], 'nickname matches'
+    assert node.timestamp.iso8601() == row[3], 'new now timestamp matches'
+    assert node.last_seen.iso8601() == row[4], 'last seen matches'
+    assert "?" == row[5], 'fleet state icon matches'
+
+
+def verify_mock_state_matches_row(state, row):
+    assert state.nickname == row[0], 'nickname matches'
+    assert state.metadata[0][1] == row[1], 'symbol matches'
+    assert state.metadata[0][0]['hex'] == row[2], 'color hex matches'
+    assert state.metadata[0][0]['color'] == row[3], 'color matches'
+    assert state.updated.rfc3339() == row[4], 'updated timestamp matches'  # ensure timestamp in rfc3339

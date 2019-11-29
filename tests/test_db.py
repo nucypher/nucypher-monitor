@@ -10,8 +10,6 @@ from monitor.db import CrawlerNodeMetadataDBClient, CrawlerBlockchainDBClient
 from tests.utilities import (
     create_random_mock_node,
     create_random_mock_state,
-    convert_node_to_db_row,
-    convert_state_to_db_row,
 )
 
 
@@ -231,3 +229,13 @@ def test_blockchain_client_get_historical_num_stakers(new_influx_db):
 
     # close must be explicitly called on CrawlerBlockchainDBClient
     mock_influxdb_client.close.assert_not_called()
+
+
+def convert_node_to_db_row(node):
+    return (node.checksum_address, node.rest_url(), node.nickname,
+            node.timestamp.iso8601(), node.last_seen.iso8601(), "?")
+
+
+def convert_state_to_db_row(state):
+    return (state.nickname, state.metadata[0][1], state.metadata[0][0]['hex'],
+            state.metadata[0][0]['color'], state.updated.rfc2822())
