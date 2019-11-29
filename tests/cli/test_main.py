@@ -40,9 +40,10 @@ def test_monitor_sub_command_help_messages(click_runner, command_name, command):
         f"Sub command {command_name} has valid help text."
 
 
+@patch('monitor.crawler.CrawlerNodeStorage')
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 @patch.object(monitor.cli._utils.BlockchainInterfaceFactory, 'initialize_interface', autospec=True)
-def test_monitor_crawl_run(init_interface, get_agent, click_runner):
+def test_monitor_crawl_run(init_interface, get_agent, new_crawler_node_storage, click_runner):
     # mock BlockchainInterfaceFactory
     init_interface.return_value = MagicMock()
 
@@ -59,7 +60,7 @@ def test_monitor_crawl_run(init_interface, get_agent, click_runner):
 
 
 @patch('monitor.dashboard.CrawlerBlockchainDBClient', autospec=True)
-@patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
+@patch.object(monitor.dashboard.ContractAgency, 'get_agent', autospec=True)
 @patch.object(monitor.cli._utils.BlockchainInterfaceFactory, 'initialize_interface', autospec=True)
 def test_monitor_dashboard_run(init_interface, get_agent, new_blockchain_db_client, click_runner):
     # mock BlockchainInterfaceFactory
