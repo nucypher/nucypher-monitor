@@ -26,7 +26,7 @@ def test_node_client_init_values():
 
 def test_node_client_get_node_metadata(tempfile_path):
     # Add some node data
-    node_storage = CrawlerNodeStorage(db_filepath=tempfile_path)
+    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
     node_1 = create_random_mock_node()
     node_2 = create_random_mock_node()
     node_3 = create_random_mock_node()
@@ -54,7 +54,7 @@ def test_node_client_get_node_metadata(tempfile_path):
 
 def test_node_client_get_state_metadata(tempfile_path):
     # Add some node data
-    node_storage = CrawlerNodeStorage(db_filepath=tempfile_path)
+    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
     state_1 = create_random_mock_state()
     state_2 = create_random_mock_state()
     state_3 = create_random_mock_state()
@@ -78,7 +78,7 @@ def test_node_client_get_state_metadata(tempfile_path):
 
 
 def test_node_client_get_current_teacher_checksum(tempfile_path):
-    node_storage = CrawlerNodeStorage(db_filepath=tempfile_path)
+    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
     teacher_checksum = '0x123456789'
     node_storage.store_current_teacher(teacher_checksum=teacher_checksum)
 

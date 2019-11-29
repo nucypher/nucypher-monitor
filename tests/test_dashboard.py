@@ -30,7 +30,7 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
     states_list = create_states(num_states=3)
 
     # write node, teacher (first item in node list), and state data to storage
-    node_storage = CrawlerNodeStorage(db_filepath=tempfile_path)
+    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
     store_node_db_data(node_storage, nodes=nodes_list, states=states_list)
 
     # Setup StakingEscrowAgent and ContractAgency
@@ -53,15 +53,13 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
 
     ############## RUN ################
     server = Flask("monitor-dashboard")
-
     dashboard = monitor.dashboard.Dashboard(flask_server=server,
                                             route_url='/',
                                             registry=None,
                                             domain='goerli',
                                             blockchain_db_host='localhost',
                                             blockchain_db_port=8086,
-                                            node_db_filepath=tempfile_path)
-
+                                            node_storage_filepath=tempfile_path)
     dash_duo.start_server(dashboard.dash_app)
 
     # check version

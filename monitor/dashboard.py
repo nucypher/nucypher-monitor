@@ -34,12 +34,12 @@ class Dashboard:
                  domain: str,
                  blockchain_db_host: str,
                  blockchain_db_port: int,
-                 node_db_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH):
+                 node_storage_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH):
 
         self.log = Logger(self.__class__.__name__)
 
         # Database
-        self.node_metadata_db_client = CrawlerNodeMetadataDBClient(db_filepath=node_db_filepath)
+        self.node_metadata_db_client = CrawlerNodeMetadataDBClient(db_filepath=node_storage_filepath)
         self.network_crawler_db_client = CrawlerBlockchainDBClient(host=blockchain_db_host,
                                                                    port=blockchain_db_port,
                                                                    database=Crawler.BLOCKCHAIN_DB_NAME)

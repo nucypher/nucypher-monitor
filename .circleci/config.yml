@@ -20,7 +20,7 @@ test_steps: &test_steps
           command: mkdir reports
       - run:
           name: "Run Unit Tests"
-          command: pytest $(circleci tests glob "tests/test_*.py" | circleci tests split --split-by=timings)
+          command: pytest $(circleci tests glob "tests" | circleci tests split --split-by=timings)
       - capture_test_results
 
 

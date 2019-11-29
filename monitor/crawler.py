@@ -32,8 +32,8 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
     TEACHER_ID = 'current_teacher'
     TEACHER_DB_SCHEMA = [('id', 'text primary key'), ('checksum_address', 'text')]
 
-    def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, *args, **kwargs):
-        super().__init__(db_filepath=db_filepath, federated_only=False, *args, **kwargs)
+    def __init__(self, storage_filepath: str = DEFAULT_DB_FILEPATH, *args, **kwargs):
+        super().__init__(db_filepath=storage_filepath, federated_only=False, *args, **kwargs)
 
     def init_db_tables(self):
         with self.db_conn:
@@ -115,14 +115,14 @@ class Crawler(Learner):
                  registry,
                  blockchain_db_host: str,
                  blockchain_db_port: int,
-                 node_db_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH,
+                 node_storage_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH,
                  refresh_rate=DEFAULT_REFRESH_RATE,
                  restart_on_error=True,
                  *args, **kwargs):
 
         self.registry = registry
         self.federated_only = False
-        node_storage = CrawlerNodeStorage(db_filepath=node_db_filepath)
+        node_storage = CrawlerNodeStorage(storage_filepath=node_storage_filepath)
 
         class MonitoringTracker(FleetStateTracker):
             def record_fleet_state(self, *args, **kwargs):

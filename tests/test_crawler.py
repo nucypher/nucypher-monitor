@@ -30,27 +30,27 @@ DB_TABLES = [CrawlerNodeStorage.NODE_DB_NAME, CrawlerNodeStorage.STATE_DB_NAME, 
 #
 
 def test_storage_init():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
     assert node_storage.db_filepath == IN_MEMORY_FILEPATH
     assert not node_storage.federated_only
     assert CrawlerNodeStorage._name != SQLiteForgetfulNodeStorage._name
 
 
 def test_storage_db_table_init():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     verify_all_db_tables_exist(node_storage.db_conn)
 
 
 def test_storage_initialize():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     node_storage.initialize()  # re-initialize
     verify_all_db_tables_exist(node_storage.db_conn)
 
 
 def test_storage_store_node_metadata_store():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     node = create_specific_mock_node()
 
@@ -76,7 +76,7 @@ def test_storage_store_node_metadata_store():
 
 
 def test_storage_store_state_metadata_store():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     state = create_specific_mock_state()
 
@@ -104,7 +104,7 @@ def test_storage_store_state_metadata_store():
 
 
 def test_storage_store_current_retrieval():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     teacher_checksum = '0x123456789'
     node_storage.store_current_teacher(teacher_checksum=teacher_checksum)
@@ -121,14 +121,14 @@ def test_storage_store_current_retrieval():
 def test_storage_deletion(tempfile_path):
     assert os.path.exists(tempfile_path)
 
-    node_storage = CrawlerNodeStorage(db_filepath=tempfile_path)
+    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
     del node_storage
 
     assert not os.path.exists(tempfile_path)  # db file deleted
 
 
 def test_storage_db_clear():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
     verify_all_db_tables_exist(node_storage.db_conn)
 
     # store some data
@@ -151,7 +151,7 @@ def test_storage_db_clear():
 
 
 def test_storage_db_clear_only_metadata_not_certificates():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     # store some data
     node = create_random_mock_node()
@@ -173,7 +173,7 @@ def test_storage_db_clear_only_metadata_not_certificates():
 
 
 def test_storage_db_clear_not_metadata():
-    node_storage = CrawlerNodeStorage(db_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     # store some data
     node = create_random_mock_node()
@@ -218,7 +218,7 @@ def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, dont_set_teacher:
                       learn_on_same_thread=False,
                       blockchain_db_host='localhost',
                       blockchain_db_port=8086,
-                      node_db_filepath=node_db_filepath
+                      node_storage_filepath=node_db_filepath
                       )
     return crawler
 

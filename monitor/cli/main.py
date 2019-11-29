@@ -13,6 +13,9 @@ from monitor.cli._utils import _get_registry, _get_tls_hosting_power
 from monitor.crawler import Crawler
 from monitor.dashboard import Dashboard
 
+CRAWLER = "Crawler"
+DASHBOARD = "Dashboard"
+
 MONITOR_BANNER = r"""
  _____         _ _           
 |     |___ ___|_| |_ ___ ___ 
@@ -43,6 +46,7 @@ def monitor():
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
 @click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
 @click.option('--influx-port', help="InfluxDB network port", type=click.INT, default=8086)
+@click.option('--dry-run', '-x', help="Execute normally without actually starting the crawler", is_flag=True)
 @nucypher_click_config
 def crawl(click_config,
           teacher_uri,
@@ -52,7 +56,8 @@ def crawl(click_config,
           learn_on_launch,
           provider_uri,
           influx_host,
-          influx_port
+          influx_port,
+          dry_run
           ):
     """
     Gather NuCypher network information.
@@ -61,7 +66,7 @@ def crawl(click_config,
     # Banner
     emitter = click_config.emitter
     emitter.clear()
-    emitter.banner(MONITOR_BANNER.format("Crawler"))
+    emitter.banner(MONITOR_BANNER.format(CRAWLER))
 
     registry = _get_registry(provider_uri, registry_filepath)
 
@@ -84,9 +89,9 @@ def crawl(click_config,
                       blockchain_db_host=influx_host,
                       blockchain_db_port=influx_port
                       )
-
-    crawler.start()
-    reactor.run()
+    if not dry_run:
+        crawler.start()
+        reactor.run()
 
 
 @monitor.command()
@@ -99,7 +104,7 @@ def crawl(click_config,
 @click.option('--network', help="Network Domain Name", type=click.STRING, default=DEFAULT_NETWORK)
 @click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
 @click.option('--influx-port', help="InfluxDB network port", type=click.INT, default=8086)
-@click.option('--dry-run', '-x', help="Execute normally without actually starting the node", is_flag=True)
+@click.option('--dry-run', '-x', help="Execute normally without actually starting the dashboard", is_flag=True)
 @nucypher_click_config
 def dashboard(click_config,
               host,
@@ -120,7 +125,7 @@ def dashboard(click_config,
     # Banner
     emitter = click_config.emitter
     emitter.clear()
-    emitter.banner(MONITOR_BANNER.format("Dashboard"))
+    emitter.banner(MONITOR_BANNER.format(DASHBOARD))
 
     registry = _get_registry(provider_uri, registry_filepath)
 
