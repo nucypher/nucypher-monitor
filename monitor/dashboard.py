@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from string import Template
 
 import dash_html_components as html
 from dash import Dash
@@ -17,7 +16,6 @@ from monitor.charts import (
 )
 from monitor.crawler import Crawler, CrawlerNodeStorage
 from monitor.db import CrawlerBlockchainDBClient, CrawlerNodeMetadataDBClient
-from monitor.settings import TEMPLATE_PATH
 from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
 from nucypher.blockchain.eth.token import NU
 
@@ -57,10 +55,6 @@ class Dashboard:
                         assets_folder=settings.ASSETS_PATH,
                         url_base_pathname=route_url,
                         suppress_callback_exceptions=False)  # TODO: Set to True by default or make configurable
-
-        with open(TEMPLATE_PATH, 'r') as file:
-            moe_template = file.read()
-            dash_app.index_string = Template(moe_template).substitute()
 
         # Initial State
         dash_app.title = settings.TITLE
