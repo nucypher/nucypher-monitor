@@ -10,7 +10,7 @@ from monitor.crawler import CrawlerNodeStorage
 
 
 class CrawlerNodeMetadataDBClient:
-    def __init__(self, db_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH):
+    def __init__(self, db_filepath: str):
         self._db_filepath = db_filepath
 
     def get_known_nodes_metadata(self) -> Dict:

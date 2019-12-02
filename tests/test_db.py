@@ -2,151 +2,115 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import maya
-from influxdb import InfluxDBClient
+from influxdb.resultset import ResultSet
 from maya import MayaDT
 
 from monitor.crawler import CrawlerNodeStorage
 from monitor.db import CrawlerNodeMetadataDBClient, CrawlerBlockchainDBClient
+from tests.utilities import (
+    create_random_mock_node,
+    create_random_mock_state,
+)
 
 
 #
 # CrawlerNodeMetadataDBClient tests
 #
 
-def test_node_client_defaults():
-    node_db_client = CrawlerNodeMetadataDBClient()
-    assert node_db_client._db_filepath == CrawlerNodeStorage.DEFAULT_DB_FILEPATH
 
-
-def test_node_client_non_defaults():
+def test_node_client_init_values():
     temp_db_filepath = "/tmp/test.db"
     node_db_client = CrawlerNodeMetadataDBClient(temp_db_filepath)
     assert node_db_client._db_filepath == temp_db_filepath
 
 
-def test_node_client_get_node_metadata(sqlite_db_conn):
-    node_db_client = CrawlerNodeMetadataDBClient()
+def test_node_client_get_node_metadata(tempfile_path):
+    # Add some node data
+    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
+    node_1 = create_random_mock_node()
+    node_2 = create_random_mock_node()
+    node_3 = create_random_mock_node()
+    node_4 = create_random_mock_node()
+    node_5 = create_random_mock_node()
 
-    # mock result
-    execute_result = MagicMock()
+    node_list = [node_1, node_2, node_3, node_4, node_5]
+    for node in node_list:
+        node_storage.store_node_metadata(node=node)
 
-    description = [(column[0], ) for column in CrawlerNodeStorage.NODE_DB_SCHEMA]
-    execute_result.description = description
-
-    fake_rows = [('0xfCD3367aDab428823b075297e957a97e3fa9692d', '12.370.46.67:9151', 'LightSlateGray Rain HotPink Swords', '2019-11-10T11:53:50Z', 'No Connection to Node', '?'),
-                 ('0x4e004bCEc66bBF7b4EDa060D4D552770A9e63e23', '674.232.83.642:9151', 'Snow Juno DarkSlateGray Earth', '2019-11-11T20:45:57Z', 'No Connection to Node', '?'),
-                 ('0xF63838F8FbD63c352DeefC3657111550d129d710', '61.234.3.9:9151', 'DarkRed Shamrock Crimson Fleur-de-lis', '2019-11-12T16:14:18Z', 'No Connection to Node', '?'),
-                 ('0x4FDf08D2B5E8CcaBe32d9C439521DB26bE992Ad8', '143.109.142.84:9151', 'GoldenRod Ferry MediumBlue Gemini', '2019-11-13T07:38:17Z', 'No Connection to Node', '?'),
-                 ('0xF7f04b6c817A16E8F3D4508969F1f6741a02457b', '15.547.15.106:9151', 'Thistle Swords DarkBlue Libra', '2019-11-14T13:26:38Z', 'No Connection to Node', '?'),
-                 ('0x0f4Fbe8a28a8fF33bEcD6A8982D74308FC35D021', '222.22.22.22:9151', 'Brown Ground MintCream Helm', '2019-11-15T17:44:41Z', 'No Connection to Node', '?')]
-    execute_result.__iter__.return_value = fake_rows
-    sqlite_db_conn.execute.return_value = execute_result
-
+    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
     result = node_db_client.get_known_nodes_metadata()
-    sqlite_db_conn.execute.assert_called_once_with(
-        f"SELECT * FROM {CrawlerNodeStorage.NODE_DB_NAME} ORDER BY staker_address"
-    )
 
-    # verify result
+    node_list.sort(key=lambda x: x.checksum_address)  # result is sorted by staker address
+    assert len(result) == len(node_list)
+
     # "result" of form {staker_address -> {column_name -> column_value}}
-    assert len(result) == len(fake_rows)
-
     for idx, key in enumerate(result):
-        # ensure order remains
-        assert key == fake_rows[idx][0]  # check staker_address
-
         node_info = result[key]
-        # check node info dict values
+
+        expected_row = convert_node_to_db_row(node_list[idx])
         for info_idx, column in enumerate(CrawlerNodeStorage.NODE_DB_SCHEMA):
-            assert node_info[column[0]] == fake_rows[idx][info_idx]
-
-    sqlite_db_conn.close.assert_called_once()
+            assert node_info[column[0]] == expected_row[info_idx], f"{column[0]} matches"
 
 
-def test_node_client_get_state_metadata(sqlite_db_conn):
-    node_db_client = CrawlerNodeMetadataDBClient()
+def test_node_client_get_state_metadata(tempfile_path):
+    # Add some node data
+    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
+    state_1 = create_random_mock_state()
+    state_2 = create_random_mock_state()
+    state_3 = create_random_mock_state()
 
-    # mock result
-    execute_result = MagicMock()
+    state_list = [state_1, state_2, state_3]
+    for state in state_list:
+        node_storage.store_state_metadata(state=state)
 
-    description = [(column[0], ) for column in CrawlerNodeStorage.STATE_DB_SCHEMA]
-    execute_result.description = description
+    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    result = node_db_client.get_previous_states_metadata(limit=len(state_list))
 
-    fake_rows = [('PowderBlue Club', '♣', '#B0E0E6', 'PowderBlue', '2019-11-19T18:07:48.0Z'),
-                 ('MintCream Juno', '⚵', '#F5FFFA', 'MintCream', '2019-11-19T18:07:06.6Z'),
-                 ('RoyalBlue Earth', '♁', '#4169E1', 'RoyalBlue', '2019-11-19T18:05:33.3Z')]
-
-    execute_result.__iter__.return_value = fake_rows
-    sqlite_db_conn.execute.return_value = execute_result
-    limit = 10
-    result = node_db_client.get_previous_states_metadata(limit=limit)
-
-    sqlite_db_conn.execute.assert_called_once_with(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME} "
-                                                   f"ORDER BY datetime(updated) DESC LIMIT {limit}")
+    state_list.sort(key=lambda x: x.updated.epoch, reverse=True)  # sorted by timestamp in descending order
+    assert len(result) == len(state_list)
 
     # verify result
     # "result" of form of a list of state_info dictionaries
-    assert len(result) == len(fake_rows)
-
     for idx, value in enumerate(result):
-        # ensure order remains and check node info dict values
+        expected_row = convert_state_to_db_row(state_list[idx])
         for info_idx, column in enumerate(CrawlerNodeStorage.STATE_DB_SCHEMA):
-            column_name = column[0]
-            expected_value = fake_rows[idx][info_idx]
-            if column_name == 'updated':
-                # timestamp is converted from rfc3339 to rfc2822 format
-                expected_value = MayaDT.from_rfc3339(expected_value).rfc2822()
-
-            assert value[column[0]] == expected_value
-
-    sqlite_db_conn.close.assert_called_once()
+            assert value[column[0]] == expected_row[info_idx], f"{column[0]} matches"
 
 
-def test_node_client_get_current_teacher_checksum(sqlite_db_conn):
-    node_db_client = CrawlerNodeMetadataDBClient()
+def test_node_client_get_current_teacher_checksum(tempfile_path):
+    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
+    teacher_checksum = '0x123456789'
+    node_storage.store_current_teacher(teacher_checksum=teacher_checksum)
 
-    # mock result
-    execute_result = MagicMock()
+    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
 
-    # set result column names
-    description = [(column[0], ) for column in CrawlerNodeStorage.TEACHER_DB_SCHEMA]
-    execute_result.description = description
-
-    # checksum is specifically queried for, not entire row
-    teacher_checksum = '0x4FDf08D2B5E8CcaBe32d9C439521DB26bE992Ad8'
-    fake_rows = [(teacher_checksum, )]
-
-    execute_result.__iter__.return_value = fake_rows
-    sqlite_db_conn.execute.return_value = execute_result
     result = node_db_client.get_current_teacher_checksum()
-
-    sqlite_db_conn.execute.assert_called_once_with(f"SELECT checksum_address from "
-                                                   f"{CrawlerNodeStorage.TEACHER_DB_NAME} LIMIT 1")
-
-    # verify result
     assert result == teacher_checksum
 
-    sqlite_db_conn.close.assert_called_once()
+    new_teacher_checksum = '0x9876543221'
+    node_storage.store_current_teacher(teacher_checksum=new_teacher_checksum)
+    result = node_db_client.get_current_teacher_checksum()
+    assert result == new_teacher_checksum
 
 
 #
 # CrawlerBlockchainDBClient tests
 #
+@patch('monitor.db.InfluxDBClient', autospec=True)
+def test_blockchain_client_close(new_influx_db):
+    mock_influxdb_client = new_influx_db.return_value
 
-def test_blockchain_client_close():
-    mock_influxdb_client = MagicMock()
-    with patch.object(InfluxDBClient, "__init__", lambda *args, **kwargs: None):
-        blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
-        blockchain_db_client._client = mock_influxdb_client
+    blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
 
-        blockchain_db_client.close()
-        mock_influxdb_client.close.assert_called_once()
+    blockchain_db_client.close()
+    mock_influxdb_client.close.assert_called_once()
 
 
-def test_blockchain_client_get_historical_locked_tokens():
-    mock_influxdb_client = MagicMock()
+@patch('monitor.db.InfluxDBClient', autospec=True)
+def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
+    mock_influxdb_client = new_influx_db.return_value
 
-    mock_query_object = MagicMock()
+    mock_query_object = MagicMock(spec=ResultSet, autospec=True)
     mock_influxdb_client.query.return_value = mock_query_object
 
     # fake results for 5 days
@@ -160,57 +124,56 @@ def test_blockchain_client_get_historical_locked_tokens():
         results.append(dict(time=start_date.add(days=day).rfc3339(), sum=base_amount + (day * amount_increment)))
     mock_query_object.get_points.return_value = results
 
-    with patch.object(InfluxDBClient, "__init__", lambda *args, **kwargs: None):
-        blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
-        blockchain_db_client._client = mock_influxdb_client
+    blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
 
-        locked_tokens_dict = blockchain_db_client.get_historical_locked_tokens_over_range(days)
+    locked_tokens_dict = blockchain_db_client.get_historical_locked_tokens_over_range(days)
 
-        # check query
-        today = datetime.utcnow()
-        range_end = datetime(year=today.year, month=today.month, day=today.day,
-                             hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today in range
-        range_begin = range_end - timedelta(days=days)
+    # check query
+    today = datetime.utcnow()
+    range_end = datetime(year=today.year, month=today.month, day=today.day,
+                         hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today in range
+    range_begin = range_end - timedelta(days=days)
 
-        expected_in_query = [
-            "SELECT SUM(locked_stake)",
-            "AS locked_stake",
+    expected_in_query = [
+        "SELECT SUM(locked_stake)",
+        "AS locked_stake",
 
-            f"FROM moe_network_info WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
-            f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
+        f"FROM moe_network_info WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+        f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
 
-            "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
-        ]
+        "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
+    ]
 
-        mock_influxdb_client.query.assert_called_once()
-        mock_query_object.get_points.assert_called_once()
+    mock_influxdb_client.query.assert_called_once()
+    mock_query_object.get_points.assert_called_once()
 
-        call_args_list = mock_influxdb_client.query.call_args_list
-        assert len(call_args_list) == 1
-        for idx, execute_call in enumerate(call_args_list):
-            query = execute_call[0][0]
-            for statement in expected_in_query:
-                assert statement in query
+    call_args_list = mock_influxdb_client.query.call_args_list
+    assert len(call_args_list) == 1
+    for idx, execute_call in enumerate(call_args_list):
+        query = execute_call[0][0]
+        for statement in expected_in_query:
+            assert statement in query
 
-        # check results
-        assert len(locked_tokens_dict) == days
+    # check results
+    assert len(locked_tokens_dict) == days
 
-        for idx, key in enumerate(locked_tokens_dict):
-            # use of rfc3339 loses milliseconds precision
-            date = MayaDT.from_rfc3339(start_date.add(days=idx).rfc3339()).datetime()
-            assert key == date
+    for idx, key in enumerate(locked_tokens_dict):
+        # use of rfc3339 loses milliseconds precision
+        date = MayaDT.from_rfc3339(start_date.add(days=idx).rfc3339()).datetime()
+        assert key == date
 
-            locked_tokens = locked_tokens_dict[key]
-            assert locked_tokens == base_amount + (idx * amount_increment)
+        locked_tokens = locked_tokens_dict[key]
+        assert locked_tokens == base_amount + (idx * amount_increment)
 
-        # close must be explicitly called on CrawlerBlockchainDBClient
-        mock_influxdb_client.close.assert_not_called()
+    # close must be explicitly called on CrawlerBlockchainDBClient
+    mock_influxdb_client.close.assert_not_called()
 
 
-def test_blockchain_client_get_historical_num_stakers():
-    mock_influxdb_client = MagicMock()
+@patch('monitor.db.InfluxDBClient', autospec=True)
+def test_blockchain_client_get_historical_num_stakers(new_influx_db):
+    mock_influxdb_client = new_influx_db.return_value
 
-    mock_query_object = MagicMock()
+    mock_query_object = MagicMock(spec=ResultSet, autospec=True)
     mock_influxdb_client.query.return_value = mock_query_object
 
     # fake results for 10 days
@@ -224,47 +187,55 @@ def test_blockchain_client_get_historical_num_stakers():
         results.append(dict(time=start_date.add(days=day).rfc3339(), count=base_count + (day * count_increment)))
     mock_query_object.get_points.return_value = results
 
-    with patch.object(InfluxDBClient, "__init__", lambda *args, **kwargs: None):
-        blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
-        blockchain_db_client._client = mock_influxdb_client
+    blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
 
-        num_stakers_dict = blockchain_db_client.get_historical_num_stakers_over_range(days)
+    num_stakers_dict = blockchain_db_client.get_historical_num_stakers_over_range(days)
 
-        # check query
-        today = datetime.utcnow()
-        range_end = datetime(year=today.year, month=today.month, day=today.day,
-                             hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today in range
-        range_begin = range_end - timedelta(days=days)
+    # check query
+    today = datetime.utcnow()
+    range_end = datetime(year=today.year, month=today.month, day=today.day,
+                         hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today in range
+    range_begin = range_end - timedelta(days=days)
 
-        expected_in_query = [
-            "SELECT COUNT(staker_address)",
+    expected_in_query = [
+        "SELECT COUNT(staker_address)",
 
-            f"FROM moe_network_info WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
-            f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
+        f"FROM moe_network_info WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+        f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
 
-            "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
-        ]
+        "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
+    ]
 
-        mock_influxdb_client.query.assert_called_once()
-        mock_query_object.get_points.assert_called_once()
+    mock_influxdb_client.query.assert_called_once()
+    mock_query_object.get_points.assert_called_once()
 
-        call_args_list = mock_influxdb_client.query.call_args_list
-        assert len(call_args_list) == 1
-        for idx, execute_call in enumerate(call_args_list):
-            query = execute_call[0][0]
-            for statement in expected_in_query:
-                assert statement in query
+    call_args_list = mock_influxdb_client.query.call_args_list
+    assert len(call_args_list) == 1
+    for idx, execute_call in enumerate(call_args_list):
+        query = execute_call[0][0]
+        for statement in expected_in_query:
+            assert statement in query
 
-        # check results
-        assert len(num_stakers_dict) == days
+    # check results
+    assert len(num_stakers_dict) == days
 
-        for idx, key in enumerate(num_stakers_dict):
-            # use of rfc3339 loses milliseconds precision
-            date = MayaDT.from_rfc3339(start_date.add(days=idx).rfc3339()).datetime()
-            assert key == date
+    for idx, key in enumerate(num_stakers_dict):
+        # use of rfc3339 loses milliseconds precision
+        date = MayaDT.from_rfc3339(start_date.add(days=idx).rfc3339()).datetime()
+        assert key == date
 
-            num_stakers = num_stakers_dict[key]
-            assert num_stakers == base_count + (idx * count_increment)
+        num_stakers = num_stakers_dict[key]
+        assert num_stakers == base_count + (idx * count_increment)
 
-        # close must be explicitly called on CrawlerBlockchainDBClient
-        mock_influxdb_client.close.assert_not_called()
+    # close must be explicitly called on CrawlerBlockchainDBClient
+    mock_influxdb_client.close.assert_not_called()
+
+
+def convert_node_to_db_row(node):
+    return (node.checksum_address, node.rest_url(), node.nickname,
+            node.timestamp.iso8601(), node.last_seen.iso8601(), "?")
+
+
+def convert_state_to_db_row(state):
+    return (state.nickname, state.metadata[0][1], state.metadata[0][0]['hex'],
+            state.metadata[0][0]['color'], state.updated.rfc2822())

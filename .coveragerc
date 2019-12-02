@@ -1,0 +1,10 @@
+[run]
+omit =
+    # omit setup python file
+    setup.py,
+
+    # omit all package files
+    */__init__.py,
+
+    # omit about file
+    */__about__.py,
