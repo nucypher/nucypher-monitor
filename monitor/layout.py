@@ -9,7 +9,7 @@ BODY = html.Div([
 
         # Update buttons also used for WS topic notifications
         html.Div([
-            html.Img(src='/assets/nucypher_logo.png', className='banner'),  # TODO: Configure assets path
+            html.Img(src='/assets/nucypher_logo.svg', className='banner'),  # TODO: Configure assets path
             html.Div(id='header'),
             html.Button("Refresh States", id='state-update-button', type='submit'),
             html.Button("Refresh Known Nodes", id='node-update-button', type='submit'),
