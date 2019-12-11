@@ -24,7 +24,7 @@ services:
       dockerfile: ./deploy/Dockerfile
     command: ["crawl",
               "--influx-host", "172.28.1.2",
-              "--provider", "http://52.53.253.85:8545",
+              "--provider", "${WEB3_PROVIDER_URI}",
               "--teacher", "https://discover.nucypher.network:9151"]
     networks:
       monitor:
@@ -41,7 +41,7 @@ services:
     command: ["dashboard",
               "--debug",
               "--influx-host", "172.28.1.2",
-              "--provider", "http://52.53.253.85:8545"]
+              "--provider", "${WEB3_PROVIDER_URI}"]
     networks:
       monitor:
         ipv4_address: 172.28.1.4

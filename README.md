@@ -42,7 +42,7 @@ Commands:
   dashboard  Run UI dashboard of NuCypher network.
 ```
 
-### Running the Monitor
+### Running the Monitor via CLI
 
 1. Run InfluxDB
 ```bash
