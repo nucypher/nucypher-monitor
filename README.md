@@ -85,3 +85,5 @@ export WEB3_PROVIDER_URI=<YOUR WEB3 PROVIDER URI>
 ```bash
 docker-compose -f deploy/docker-compose.yml up
 ```
+
+3. The `Dashboard` UI is available at https://127.0.0.1:12500.
