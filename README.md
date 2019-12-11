@@ -42,7 +42,9 @@ Commands:
   dashboard  Run UI dashboard of NuCypher network.
 ```
 
-### Running the Monitor via CLI
+### Running the Monitor
+
+#### via CLI
 
 1. Run InfluxDB
 ```bash
@@ -65,3 +67,21 @@ $ nucypher-monitor dashboard --provider <YOUR WEB3 PROVIDER URI>
 ```
 
 5. The `Dashboard` UI is available at https://127.0.0.1:12500.
+
+
+#### via Docker Compose
+
+Docker Compose will start InfluxDB, Crawler, and Dashboard containers, and no installation of the monitor is required.
+
+1. Set Web3 Provider URI environment variable
+
+    **NOTE: local ipc is not supported when running via Docker**
+
+```bash
+export WEB3_PROVIDER_URI=<YOUR WEB3 PROVIDER URI>
+```
+
+2. Run Docker Compose
+```bash
+docker-compose -f deploy/docker-compose.yml up
+```
