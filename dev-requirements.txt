@@ -2,31 +2,31 @@
 attrs==19.3.0
 beautifulsoup4==4.8.1
 bumpversion==0.5.3
-certifi==2019.9.11
+certifi==2019.11.28
 cffi==1.13.2
 chardet==3.0.4
 click==7.0
-coverage==5.0b1
+coverage==5.0b2
 cryptography==2.8
-cytoolz==0.10.1 ; implementation_name == 'cpython'
-dash-core-components==1.5.1
+cytoolz==0.10.1
+dash-core-components==1.6.0
 dash-html-components==1.0.2
-dash-renderer==1.2.1
+dash-renderer==1.2.2
 dash-table==4.5.1
-dash==1.6.1
-eth-hash==0.2.0
+dash==1.7.0
+eth-hash[pycryptodome]==0.2.0
 eth-typing==2.2.1
-eth-utils==1.7.0
+eth-utils==1.8.1
 flask-compress==1.4.0
 flask==1.1.1
 future==0.18.2
 idna==2.8
-importlib-metadata==0.23 ; python_version < '3.8'
+importlib-metadata==1.2.0 ; python_version < '3.8'
 itsdangerous==1.1.0
 jinja2==2.10.3
 lxml==4.4.2
 markupsafe==1.1.1
-more-itertools==7.2.0
+more-itertools==8.0.2
 packaging==19.2
 percy==2.0.2
 plotly==3.10.0
@@ -36,7 +36,7 @@ pycparser==2.19
 pyopenssl==19.1.0
 pyparsing==2.4.5
 pytest-cov==2.8.1
-pytest-mock==1.12.1
+pytest-mock==1.13.0
 pytest-sugar==0.9.2
 pytest==5.3.1
 requests==2.22.0
