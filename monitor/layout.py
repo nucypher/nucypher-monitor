@@ -11,8 +11,12 @@ BODY = html.Div([
         html.Div([
             html.Img(src='/assets/nucypher_logo.svg', className='banner'),  # TODO: Configure assets path
             html.Div(id='header'),
-            html.Button("Refresh States", id='state-update-button', type='submit'),
-            html.Button("Refresh Known Nodes", id='node-update-button', type='submit'),
+            html.Div([
+                html.Button("Refresh States", id='state-update-button', type='submit',
+                            className='nucypher-button button-primary'),
+                html.Button("Refresh Known Nodes", id='node-update-button', type='submit',
+                            className='nucypher-button button-primary'),
+            ])
         ], id="controls"),
 
         ###############################################################
