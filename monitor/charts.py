@@ -8,16 +8,17 @@ GRAPH_CONFIG = {'displaylogo': False,
                 'fillFrame': False,
                 'displayModeBar': False}
 
+LINE_CHART_MARKER_COLOR = 'rgb(0, 163, 239)'
+
 
 def historical_known_nodes_line_chart(data: dict):
-    marker_color = 'rgb(0, 163, 239)'
     fig = go.Figure(data=[
         go.Scatter(
             mode='lines+markers',
             x=list(data.keys()),
             y=list(data.values()),
             name='Num Stakers',
-            marker={'color': marker_color}
+            marker={'color': LINE_CHART_MARKER_COLOR}
         )
     ],
         layout=go.Layout(
@@ -92,27 +93,40 @@ def future_locked_tokens_bar_chart(staking_agent):
     def _snapshot_future_locked_tokens():
         # TODO: Consider adopting this method here, or moving it to the crawler with database storage
         period_range = range(1, 365 + 1)
-        token_counter = {day: NU.from_nunits(staking_agent.get_all_locked_tokens(day)).to_tokens()
-                         for day in period_range}
+        token_counter = dict()
+        for day in period_range:
+            tokens, stakers = staking_agent.get_all_active_stakers(periods=day)
+            token_counter[day] = (NU.from_nunits(tokens).to_tokens(),
+                                  len(stakers))
         return token_counter
 
     token_counter = _snapshot_future_locked_tokens()
     periods = len(token_counter)
     period_range = list(range(1, periods + 1))
-    token_counter_values = list(token_counter.values())
+    future_locked_tokens, future_num_stakers = map(list, zip(*token_counter.values()))
     fig = go.Figure(data=[
-        go.Bar(
-            textposition='auto',
-            x=period_range,
-            y=token_counter_values,
-            name='Stake',
-            marker=go.bar.Marker(color=token_counter_values, colorscale='Viridis')
-        )
-    ],
+            go.Bar(
+                textposition='auto',
+                x=period_range,
+                y=future_locked_tokens,
+                name='Stake (NU)',
+                marker=go.bar.Marker(color=future_locked_tokens, colorscale='Viridis')
+            ),
+            go.Scatter(
+                mode='lines+markers',
+                x=period_range,
+                y=future_num_stakers,
+                name='Stakers',
+                yaxis='y2',
+                xaxis='x',
+                marker={'color': LINE_CHART_MARKER_COLOR}
+            )
+        ],
         layout=go.Layout(
-            title=f'Staked NU over the next {periods} days.',
+            title=f'Staked NU and Stakers over the next {periods} days.',
             xaxis={'title': 'Days'},
-            yaxis={'title': 'NU Tokens', 'rangemode': 'tozero'},
+            yaxis={'title': 'NU Tokens', 'rangemode': 'tozero', 'showgrid': False},
+            yaxis2={'title': f'Stakers', 'overlaying': 'y', 'side': 'right', 'rangemode': 'tozero', 'showgrid': False},
             showlegend=False,
             legend=go.layout.Legend(x=0, y=1.0),
             paper_bgcolor='rgba(0,0,0,0)',
