@@ -272,3 +272,14 @@ label, legend {
     align-items: center;
     max-width: 6em;
 }
+
+.nucypher-button {
+  background-color: #1E65F3 !important;
+  border: none !important;
+  color: white;
+  margin: 4px 2px !important;
+}
+
+.nucypher-button:hover {
+  background-color: #0022FF !important;
+}
