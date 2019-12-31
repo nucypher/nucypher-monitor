@@ -5,7 +5,7 @@ import maya
 from influxdb.resultset import ResultSet
 from maya import MayaDT
 
-from monitor.crawler import CrawlerNodeStorage
+from monitor.crawler import CrawlerNodeStorage, Crawler
 from monitor.db import CrawlerNodeMetadataDBClient, CrawlerBlockchainDBClient
 from tests.utilities import (
     create_random_mock_node,
@@ -138,7 +138,7 @@ def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
         "SELECT SUM(locked_stake)",
         "AS locked_stake",
 
-        f"FROM moe_network_info WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+        f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
         f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
 
         "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
@@ -200,7 +200,7 @@ def test_blockchain_client_get_historical_num_stakers(new_influx_db):
     expected_in_query = [
         "SELECT COUNT(staker_address)",
 
-        f"FROM moe_network_info WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+        f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
         f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
 
         "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",

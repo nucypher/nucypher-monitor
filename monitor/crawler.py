@@ -95,7 +95,7 @@ class Crawler(Learner):
     # +-----------+--------+-+---------+-+---------+
     # |measurement|,tag_set| |field_set| |timestamp|
     # +-----------+--------+-+---------+-+---------+
-    BLOCKCHAIN_DB_MEASUREMENT = 'moe_network_info'   # TODO: should change name but then our historical data is gone
+    BLOCKCHAIN_DB_MEASUREMENT = 'crawler_node_info'
     BLOCKCHAIN_DB_LINE_PROTOCOL = '{measurement},staker_address={staker_address} ' \
                                       'worker_address="{worker_address}",' \
                                       'start_date={start_date},' \

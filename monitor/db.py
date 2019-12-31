@@ -6,7 +6,7 @@ from typing import Dict, List
 from influxdb import InfluxDBClient
 from maya import MayaDT
 
-from monitor.crawler import CrawlerNodeStorage
+from monitor.crawler import CrawlerNodeStorage, Crawler
 
 
 class CrawlerNodeMetadataDBClient:
@@ -90,7 +90,7 @@ class CrawlerBlockchainDBClient:
                                           f"SELECT staker_address, current_period, "
                                           f"LAST(locked_stake) "
                                           f"AS locked_stake "
-                                          f"FROM moe_network_info "
+                                          f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} "
                                           f"WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' "
                                           f"AND "
                                           f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
@@ -117,7 +117,7 @@ class CrawlerBlockchainDBClient:
         results = list(self._client.query(f"SELECT COUNT(staker_address) FROM "
                                           f"("
                                             f"SELECT staker_address, LAST(locked_stake)"
-                                            f"FROM moe_network_info WHERE "
+                                            f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} WHERE "
                                             f"time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
                                             f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
                                             f"GROUP BY staker_address, time(1d)"
