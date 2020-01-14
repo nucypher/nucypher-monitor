@@ -11,27 +11,40 @@ GRAPH_CONFIG = {'displaylogo': False,
 LINE_CHART_MARKER_COLOR = 'rgb(0, 163, 239)'
 
 
-def historical_known_nodes_line_chart(data: dict):
+def _historical_line_chart(chart_id: str, chart_title: str, y_title: str, data: dict):
     fig = go.Figure(data=[
-        go.Scatter(
-            mode='lines+markers',
-            x=list(data.keys()),
-            y=list(data.values()),
-            name='Num Stakers',
-            marker={'color': LINE_CHART_MARKER_COLOR}
-        )
-    ],
+            go.Scatter(
+                mode='lines+markers',
+                x=list(data.keys()),
+                y=list(data.values()),
+                marker={'color': LINE_CHART_MARKER_COLOR}
+            )
+        ],
         layout=go.Layout(
-            title=f'Num Stakers over the previous {len(data)} days.',
+            title=chart_title,
             xaxis={'title': 'Date', 'nticks': len(data) + 1, 'showgrid': False},
-            yaxis={'title': 'Stakers', 'zeroline': False, 'showgrid': False, 'rangemode': 'tozero'},
+            yaxis={'title': y_title, 'zeroline': False, 'showgrid': False, 'rangemode': 'tozero'},
             showlegend=False,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
         ))
 
     fig['layout'].update(autosize=True, width=None, height=None)
-    return dcc.Graph(figure=fig, id='prev-stakers-graph', config=GRAPH_CONFIG)
+    return dcc.Graph(figure=fig, id=chart_id, config=GRAPH_CONFIG)
+
+
+def historical_known_nodes_line_chart(data: dict):
+    return _historical_line_chart(chart_id='prev-stakers-graph',
+                                  chart_title=f'Num Stakers over the previous {len(data)} days',
+                                  y_title='Stakers',
+                                  data=data)
+
+
+def historical_work_orders_line_chart(data: dict):
+    return _historical_line_chart(chart_id='prev-orders-graph',
+                                  chart_title=f'Num Work Orders over the previous {len(data)} days',
+                                  y_title='Work Orders',
+                                  data=data)
 
 
 def historical_locked_tokens_bar_chart(locked_tokens: dict):
@@ -47,7 +60,7 @@ def historical_locked_tokens_bar_chart(locked_tokens: dict):
         )
     ],
         layout=go.Layout(
-            title=f'Staked NU over the previous {prior_periods} days.',
+            title=f'Staked NU over the previous {prior_periods} days',
             xaxis={'title': 'Date', 'nticks': len(locked_tokens) + 1},
             yaxis={'title': 'NU Tokens', 'zeroline': False, 'rangemode': 'tozero'},
             showlegend=False,

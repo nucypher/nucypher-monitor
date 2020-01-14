@@ -110,31 +110,31 @@ def generate_node_table_components(node_info: dict, registry) -> dict:
 
 
 def nodes_table(nodes, teacher_index, registry) -> html.Table:
-        rows = []
-        for index, node_info in enumerate(nodes):
-            row = []
-            # TODO: could return list (skip column for-loop); however, dict is good in case of re-ordering of columns
-            components = generate_node_table_components(node_info=node_info, registry=registry)
-            for col in NODE_TABLE_COLUMNS:
-                cell = components[col]
-                if cell:
-                    row.append(cell)
+    rows = []
+    for index, node_info in enumerate(nodes):
+        row = []
+        # TODO: could return list (skip column for-loop); however, dict is good in case of re-ordering of columns
+        components = generate_node_table_components(node_info=node_info, registry=registry)
+        for col in NODE_TABLE_COLUMNS:
+            cell = components[col]
+            if cell:
+                row.append(cell)
 
-            style_dict = {'overflowY': 'scroll'}
-            # highlight teacher
-            if index == teacher_index:
-                style_dict['backgroundColor'] = '#1E65F3'
-                style_dict['color'] = 'white'
+        style_dict = {'overflowY': 'scroll'}
+        # highlight teacher
+        if index == teacher_index:
+            style_dict['backgroundColor'] = '#1E65F3'
+            style_dict['color'] = 'white'
 
-            rows.append(html.Tr(row, style=style_dict, className='node-row'))
+        rows.append(html.Tr(row, style=style_dict, className='node-row'))
 
-        table = html.Table(
-            # header
-            [html.Tr([html.Th(col) for col in NODE_TABLE_COLUMNS], className='table-header')] +
-            rows,
-            id='node-table'
-        )
-        return table
+    table = html.Table(
+        # header
+        [html.Tr([html.Th(col) for col in NODE_TABLE_COLUMNS], className='table-header')] +
+        rows,
+        id='node-table'
+    )
+    return table
 
 
 def known_nodes(nodes_dict: dict, registry, teacher_checksum: str = None) -> html.Div:

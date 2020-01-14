@@ -12,8 +12,8 @@ from monitor.charts import (
     future_locked_tokens_bar_chart,
     historical_locked_tokens_bar_chart,
     stakers_breakdown_pie_chart,
-    historical_known_nodes_line_chart
-)
+    historical_known_nodes_line_chart,
+    historical_work_orders_line_chart)
 from monitor.crawler import Crawler, CrawlerNodeStorage
 from monitor.db import CrawlerBlockchainDBClient, CrawlerNodeMetadataDBClient
 from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
@@ -123,6 +123,13 @@ class Dashboard:
             prior_periods = 30
             num_stakers_data = monitor.network_crawler_db_client.get_historical_num_stakers_over_range(prior_periods)
             return historical_known_nodes_line_chart(data=num_stakers_data)
+
+        @dash_app.callback(Output('prev-work-orders-graph', 'children'), [Input('daily-interval', 'n_intervals')])
+        def historical_work_orders(n):
+            prior_periods = 30
+            num_work_orders_data = \
+                monitor.network_crawler_db_client.get_historical_work_orders_over_range(prior_periods)
+            return historical_work_orders_line_chart(data=num_work_orders_data)
 
         @dash_app.callback(Output('locked-stake-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         def future_locked_tokens(n):

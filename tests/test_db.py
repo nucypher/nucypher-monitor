@@ -231,6 +231,68 @@ def test_blockchain_client_get_historical_num_stakers(new_influx_db):
     mock_influxdb_client.close.assert_not_called()
 
 
+@patch('monitor.db.InfluxDBClient', autospec=True)
+def test_blockchain_client_get_historical_work_orders(new_influx_db):
+    mock_influxdb_client = new_influx_db.return_value
+
+    mock_query_object = MagicMock(spec=ResultSet, autospec=True)
+    mock_influxdb_client.query.return_value = mock_query_object
+
+    # fake results for 10 days
+    days = 10
+    start_date = maya.now().subtract(days=days)
+    base_count = 2
+    count_increment = 4
+
+    results = []
+    for day in range(0, days):
+        results.append(dict(time=start_date.add(days=day).rfc3339(), sum=base_count + (day * count_increment)))
+    mock_query_object.get_points.return_value = results
+
+    blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
+
+    work_orders_dict = blockchain_db_client.get_historical_work_orders_over_range(days)
+
+    # check query
+    today = datetime.utcnow()
+    range_end = datetime(year=today.year, month=today.month, day=today.day,
+                         hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today in range
+    range_begin = range_end - timedelta(days=days)
+
+    expected_in_query = [
+        "SELECT SUM(work_orders)",
+
+        f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+        f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
+
+        "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
+    ]
+
+    mock_influxdb_client.query.assert_called_once()
+    mock_query_object.get_points.assert_called_once()
+
+    call_args_list = mock_influxdb_client.query.call_args_list
+    assert len(call_args_list) == 1
+    for idx, execute_call in enumerate(call_args_list):
+        query = execute_call[0][0]
+        for statement in expected_in_query:
+            assert statement in query
+
+    # check results
+    assert len(work_orders_dict) == days
+
+    for idx, key in enumerate(work_orders_dict):
+        # use of rfc3339 loses milliseconds precision
+        date = MayaDT.from_rfc3339(start_date.add(days=idx).rfc3339()).datetime()
+        assert key == date
+
+        num_work_orders = work_orders_dict[key]
+        assert num_work_orders == base_count + (idx * count_increment)
+
+    # close must be explicitly called on CrawlerBlockchainDBClient
+    mock_influxdb_client.close.assert_not_called()
+
+
 def convert_node_to_db_row(node):
     return (node.checksum_address, node.rest_url(), node.nickname,
             node.timestamp.iso8601(), node.last_seen.iso8601(), "?")

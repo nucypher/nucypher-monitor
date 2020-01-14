@@ -33,12 +33,16 @@ def create_random_mock_node(generate_certificate: bool = False):
     timestamp = maya.now().subtract(hours=(random.randrange(0, 10)))
     last_seen = maya.now()
 
+    work_orders = random.randrange(0, 5)
+
     return create_specific_mock_node(generate_certificate=generate_certificate,
                                      checksum_address=checksum_address,
-                                     host=host, nickname=nickname,
+                                     host=host,
+                                     nickname=nickname,
                                      worker_address=worker_address,
                                      timestamp=timestamp,
-                                     last_seen=last_seen)
+                                     last_seen=last_seen,
+                                     num_work_orders=work_orders)
 
 
 def create_node_certificate(host: str, checksum_address: str):
@@ -55,7 +59,8 @@ def create_specific_mock_node(generate_certificate: bool = False,
                               worker_address: str = '0x987654321',
                               timestamp: maya.MayaDT = maya.now().subtract(days=4),
                               last_seen: maya.MayaDT = maya.now(),
-                              fleet_state_nickname_metadata=UNKNOWN_FLEET_STATE):
+                              fleet_state_nickname_metadata=UNKNOWN_FLEET_STATE,
+                              num_work_orders=2):
     if generate_certificate:
         # Generate certificate
         certificate = create_node_certificate(host=host, checksum_address=checksum_address)
@@ -67,6 +72,10 @@ def create_specific_mock_node(generate_certificate: bool = False,
                      fleet_state_nickname_metadata=fleet_state_nickname_metadata)
 
     node.rest_url.return_value = f"{host}:9151"
+
+    work_orders_list = MagicMock(spec=list)
+    work_orders_list.__len__.return_value = num_work_orders
+    node.work_orders.return_value = work_orders_list
 
     return node
 

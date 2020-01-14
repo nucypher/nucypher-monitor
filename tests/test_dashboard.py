@@ -45,11 +45,13 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
     get_agent.side_effect = contract_agency.get_agent
 
     # Setup Blockchain DB Client
-    historical_staked_tokens, historical_stakers = create_blockchain_db_historical_data(days_in_past=5)
+    historical_staked_tokens, historical_stakers, historical_work_orders = \
+        create_blockchain_db_historical_data(days_in_past=5)
     mocked_blockchain_db_client = new_blockchain_db_client.return_value
     configure_mocked_blockchain_db_client(mocked_db_client=mocked_blockchain_db_client,
                                           historical_tokens=historical_staked_tokens,
-                                          historical_stakers=historical_stakers)
+                                          historical_stakers=historical_stakers,
+                                          historical_work_orders=historical_work_orders)
 
     ############## RUN ################
     server = Flask("monitor-dashboard")
@@ -89,12 +91,13 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
     for num in partitioned_stakers:
         assert str(num) in pie_chart_text
 
-    # historical stakers
-    historical_stakers_text = dash_duo.wait_for_element_by_id('prev-stakers-graph').text
-    for num_stakers in historical_stakers:
-        assert str(num_stakers) in historical_stakers_text
-
-    # NOTE: historical staked NU and future staked NU bar charts are difficult to test due to auto-scaling of values
+    # historical and future graphs are difficult to test - values aren't available through selenium WebElement
+    # The revious tests (below) were incorrect - the `text` property only included the y-axis labels (not values)
+    # - just so happened the test had the values as the same
+    # -> Simply ensure that these graphs are loaded for now
+    historical_stakers = dash_duo.wait_for_element_by_id('prev-stakers-graph').text
+    historical_work_orders = dash_duo.wait_for_element_by_id('prev-orders-graph').text
+    future_locked_stake = dash_duo.wait_for_element_by_id('locked-graph').text
 
     # check previous states
     state_table = dash_duo.wait_for_element_by_id('state-table')
@@ -182,16 +185,19 @@ def store_node_db_data(storage: CrawlerNodeStorage, nodes: List, states: List):
 def create_blockchain_db_historical_data(days_in_past: int):
     historical_staked_tokens = []
     historical_stakers = []
+    historical_work_orders = []
     for i in range(1, (days_in_past+1)):
         historical_staked_tokens.append(NU(500000 + i*100000, 'NU').to_nunits())
-        historical_stakers.append(10 + i*10)
+        historical_stakers.append(10 + i*9)
+        historical_work_orders.append(random.randrange(0, 20))
 
-    return historical_staked_tokens, historical_stakers
+    return historical_staked_tokens, historical_stakers, historical_work_orders
 
 
 def configure_mocked_blockchain_db_client(mocked_db_client,
                                           historical_tokens: List[int],
-                                          historical_stakers: List[int]):
+                                          historical_stakers: List[int],
+                                          historical_work_orders: List[int]):
     today = datetime.utcnow()
     range_end = datetime(year=today.year, month=today.month, day=today.day,
                          hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
@@ -208,8 +214,13 @@ def configure_mocked_blockchain_db_client(mocked_db_client,
     num_stakers_dict = OrderedDict()
     for idx, stakers in enumerate(historical_stakers):
         num_stakers_dict[range_begin + timedelta(days=idx)] = stakers
-
     mocked_db_client.get_historical_num_stakers_over_range.return_value = num_stakers_dict
+
+    # mock get_historical_work_orders_over_range
+    work_orders_dict = OrderedDict()
+    for idx, num_work_orders in enumerate(historical_work_orders):
+        work_orders_dict[range_begin + timedelta(days=idx)] = num_work_orders
+    mocked_db_client.get_historical_work_orders_over_range.return_value = work_orders_dict
 
 
 def create_mocked_staker_agent(partitioned_stakers: tuple,
@@ -237,8 +248,17 @@ def create_mocked_staker_agent(partitioned_stakers: tuple,
             lambda x: x.checksum_address == staker_address, nodes_list))[0].worker_address
 
     base_locked_tokens = NU(1000000, 'NU').to_nunits()
-    staking_agent.get_all_locked_tokens.side_effect = \
-        lambda periods, pagination_size=None: base_locked_tokens - (NU(periods*2500, 'NU').to_nunits())
+
+    def _get_mock_all_active_stakers(periods: int, pagination_size: int = None):
+        tokens = base_locked_tokens - NU(periods*2500, 'NU').to_nunits()
+        # linearly decrease over 1 year
+        num_stakers_for_period = round(partitioned_stakers[0] - (periods * partitioned_stakers[0] / 366))
+        stakers_list = MagicMock(spec=list)
+        stakers_list.__len__.return_value = num_stakers_for_period
+
+        return tokens, stakers_list
+
+    staking_agent.get_all_active_stakers.side_effect = _get_mock_all_active_stakers
 
     staking_agent.get_last_active_period.side_effect = \
         lambda staker_address: last_confirmed_period_dict[staker_address]

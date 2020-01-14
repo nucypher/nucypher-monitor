@@ -93,7 +93,7 @@ label, legend {
 }
 
 #widgets > div {
-    width: 20%;
+    width: 40%;
 }
 
 
@@ -204,6 +204,10 @@ label, legend {
 }
 
 #prev-stakers-graph {
+    width: 100%;
+}
+
+#prev-orders-graph {
     width: 100%;
 }
 

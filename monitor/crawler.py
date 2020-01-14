@@ -103,7 +103,8 @@ class Crawler(Learner):
                                       'stake={stake},' \
                                       'locked_stake={locked_stake},' \
                                       'current_period={current_period}i,' \
-                                      'last_confirmed_period={last_confirmed_period}i ' \
+                                      'last_confirmed_period={last_confirmed_period}i,' \
+                                      'work_orders={work_orders}i ' \
                                   '{timestamp}'
     BLOCKCHAIN_DB_NAME = 'network'
 
@@ -145,7 +146,7 @@ class Crawler(Learner):
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
 
         # Crawler Tasks
-        self._nodes_contract_info_learning_task = task.LoopingCall(self._learn_about_nodes_contract_info)
+        self._nodes_contract_info_learning_task = task.LoopingCall(self._learn_about_nodes)
 
         # initialize InfluxDB
         self._db_host = blockchain_db_host
@@ -186,17 +187,17 @@ class Crawler(Learner):
 
         return new_nodes
 
-    def _learn_about_nodes_contract_info(self):
+    def _learn_about_nodes(self):
         agent = self.staking_agent
 
         block_time = agent.blockchain.client.w3.eth.getBlock('latest').timestamp  # precision in seconds
         current_period = agent.get_current_period()
 
-        nodes_dict = self.known_nodes.abridged_nodes_dict()
-        self.log.info(f'Processing {len(nodes_dict)} nodes at '
+        self.log.info(f'Processing {len(self.known_nodes)} nodes at '
                       f'{MayaDT(epoch=block_time)} | Period {current_period}')
         data = []
-        for staker_address in nodes_dict:
+        for node in self.known_nodes:
+            staker_address = node.checksum_address
             worker = agent.get_worker_from_staker(staker_address)
 
             stake = agent.owned_tokens(staker_address)
@@ -216,6 +217,8 @@ class Crawler(Learner):
 
             last_confirmed_period = agent.get_last_active_period(staker_address)
 
+            num_work_orders = len(node.work_orders())
+
             # TODO: do we need to worry about how much information is in memory if number of nodes is
             #  large i.e. should I check for size of data and write within loop if too big
             data.append(self.BLOCKCHAIN_DB_LINE_PROTOCOL.format(
@@ -228,7 +231,8 @@ class Crawler(Learner):
                 locked_stake=locked_nu_tokens,
                 current_period=current_period,
                 last_confirmed_period=last_confirmed_period,
-                timestamp=block_time
+                timestamp=block_time,
+                work_orders=num_work_orders
             ))
 
         if not self._blockchain_db_client.write_points(data,

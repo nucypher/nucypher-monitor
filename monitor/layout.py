@@ -39,6 +39,7 @@ BODY = html.Div([
                     html.Div(id='staker-breakdown'),
                     html.Div(id='prev-num-stakers-graph'),
                     html.Div(id='prev-locked-stake-graph'),
+                    html.Div(id='prev-work-orders-graph'),
                     html.Div(id='locked-stake-graph'),
                     html.Div(id='prev-states'),
                 ], id='widgets'),

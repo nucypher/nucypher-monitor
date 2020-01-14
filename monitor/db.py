@@ -81,10 +81,7 @@ class CrawlerBlockchainDBClient:
         self._client = InfluxDBClient(host=host, port=port, database=database)
 
     def get_historical_locked_tokens_over_range(self, days: int):
-        today = datetime.utcnow()
-        range_end = datetime(year=today.year, month=today.month, day=today.day,
-                             hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
-        range_begin = range_end - timedelta(days=days)
+        range_begin, range_end = self._get_range_bookends(days)
         results = list(self._client.query(f"SELECT SUM(locked_stake) "
                                           f"FROM ("
                                           f"SELECT staker_address, current_period, "
@@ -110,10 +107,7 @@ class CrawlerBlockchainDBClient:
         return locked_tokens_dict
 
     def get_historical_num_stakers_over_range(self, days: int):
-        today = datetime.utcnow()
-        range_end = datetime(year=today.year, month=today.month, day=today.day,
-                             hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
-        range_begin = range_end - timedelta(days=days)
+        range_begin, range_end = self._get_range_bookends(days)
         results = list(self._client.query(f"SELECT COUNT(staker_address) FROM "
                                           f"("
                                             f"SELECT staker_address, LAST(locked_stake)"
@@ -135,5 +129,33 @@ class CrawlerBlockchainDBClient:
 
         return num_stakers_dict
 
+    def get_historical_work_orders_over_range(self, days: int):
+        range_begin, range_end = self._get_range_bookends(days)
+        results = list(self._client.query(f"SELECT SUM(work_orders) FROM "
+                                          f"("
+                                            f"SELECT staker_address, LAST(work_orders)"
+                                            f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} WHERE "
+                                            f"time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+                                            f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
+                                            f"GROUP BY staker_address, time(1d)"
+                                          f") "
+                                          "GROUP BY time(1d)").get_points())   # 1 day measurements
+        work_orders_dict = OrderedDict()
+        for r in results:
+            num_work_orders = r['sum']
+            if num_work_orders:
+                work_orders_dict[MayaDT.from_rfc3339(r['time']).datetime()] = num_work_orders
+
+        return work_orders_dict
+
     def close(self):
         self._client.close()
+
+    @staticmethod
+    def _get_range_bookends(days: int):
+        today = datetime.utcnow()
+        range_end = datetime(year=today.year, month=today.month, day=today.day,
+                             hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
+        range_begin = range_end - timedelta(days=days)
+
+        return range_begin, range_end

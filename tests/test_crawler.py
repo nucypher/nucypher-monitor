@@ -469,7 +469,7 @@ def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, temp
                                          last_active_period=last_active_period)
 
             # run crawler callable
-            crawler._learn_about_nodes_contract_info()
+            crawler._learn_about_nodes()
 
             # ensure data written to influx table
             mock_influxdb_client.write_points.assert_called_once()
@@ -483,7 +483,8 @@ def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, temp
                                   f'stake={float(NU.from_nunits(tokens).to_tokens())}',
                                   f'locked_stake={float(NU.from_nunits(tokens).to_tokens())}',
                                   f'current_period={current_period}i',
-                                  f'last_confirmed_period={last_active_period}i']
+                                  f'last_confirmed_period={last_active_period}i',
+                                  f'work_orders={len(random_node.work_orders())}i']
             for arg in expected_arguments:
                 assert arg in influx_db_line_protocol_statement, \
                     f"{arg} in {influx_db_line_protocol_statement} for iteration {i}"
@@ -523,6 +524,8 @@ def verify_current_teacher(db_conn, expected_teacher_checksum):
 
 
 def verify_mock_node_matches(node, row):
+    assert len(row) == 6
+
     assert node.checksum_address == row[0], 'staker address matches'
     assert node.rest_url() == row[1], 'rest url matches'
     assert node.nickname == row[2], 'nickname matches'
@@ -532,6 +535,8 @@ def verify_mock_node_matches(node, row):
 
 
 def verify_mock_state_matches_row(state, row):
+    assert len(row) == 5
+
     assert state.nickname == row[0], 'nickname matches'
     assert state.metadata[0][1] == row[1], 'symbol matches'
     assert state.metadata[0][0]['hex'] == row[2], 'color hex matches'
