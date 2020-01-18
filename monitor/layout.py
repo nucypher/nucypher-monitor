@@ -28,7 +28,8 @@ BODY = html.Div([
 
                 # Stats
                 html.Div([
-                    html.Div(id='current-period'),
+                    html.Div(id='blocktime-value'),
+                    html.Div([html.I(className='far fa-clock'), html.Div(id='current-period')]),
                     html.Div(id='time-remaining'),
                     html.Div(id='domains'),
                     html.Div(id='active-stakers'),
@@ -39,8 +40,8 @@ BODY = html.Div([
                 html.Div([
                     html.Div(id='staker-breakdown'),
                     html.Div(id='prev-num-stakers-graph'),
+                    # html.Div(id='prev-work-orders-graph'),  # TODO
                     html.Div(id='prev-locked-stake-graph'),
-                    html.Div(id='prev-work-orders-graph'),
                     html.Div(id='locked-stake-graph'),
                     html.Div(id='prev-states'),
                 ], id='widgets'),

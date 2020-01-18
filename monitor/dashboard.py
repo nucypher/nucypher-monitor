@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta
-
 import dash_html_components as html
+import requests
 from dash import Dash
 from dash.dependencies import Output, Input
 from flask import Flask
@@ -13,10 +12,12 @@ from monitor.charts import (
     historical_locked_tokens_bar_chart,
     stakers_breakdown_pie_chart,
     historical_known_nodes_line_chart,
-    historical_work_orders_line_chart)
-from monitor.crawler import Crawler, CrawlerNodeStorage
-from monitor.db import CrawlerBlockchainDBClient, CrawlerNodeMetadataDBClient
+    historical_work_orders_line_chart
+)
+from monitor.crawler import Crawler
+from monitor.db import CrawlerInfluxClient, CrawlerStorageClient
 from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
+from nucypher.blockchain.eth.token import NU
 
 
 class Dashboard:
@@ -29,17 +30,16 @@ class Dashboard:
                  flask_server: Flask,
                  route_url: str,
                  domain: str,
-                 blockchain_db_host: str,
-                 blockchain_db_port: int,
-                 node_storage_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH):
+                 crawler_host: str,
+                 crawler_port: int):
 
         self.log = Logger(self.__class__.__name__)
 
-        # Database
-        self.node_metadata_db_client = CrawlerNodeMetadataDBClient(db_filepath=node_storage_filepath)
-        self.network_crawler_db_client = CrawlerBlockchainDBClient(host=blockchain_db_host,
-                                                                   port=blockchain_db_port,
-                                                                   database=Crawler.BLOCKCHAIN_DB_NAME)
+        # Crawler
+        self.crawler_host = crawler_host
+        self.crawler_port = crawler_port
+        self.influx_client = CrawlerInfluxClient(host=crawler_host, port=8086, database=Crawler.INFLUX_DB_NAME)
+        self.storage_client = CrawlerStorageClient()
 
         # Blockchain & Contracts
         self.registry = registry
@@ -48,12 +48,19 @@ class Dashboard:
         # Dash
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url, domain=domain)
 
-    def make_dash_app(monitor, flask_server: Flask, route_url: str, domain: str):
+    def make_request(self):
+        endpoint = 'stats'  # TODO: Needs cleanup
+        url = f'http://{self.crawler_host}:{self.crawler_port}/{endpoint}'
+        response = requests.get(url=url)
+        payload = response.json()
+        return payload
+
+    def make_dash_app(self, flask_server: Flask, route_url: str, domain: str, debug: bool = False):
         dash_app = Dash(name=__name__,
                         server=flask_server,
                         assets_folder=settings.ASSETS_PATH,
                         url_base_pathname=route_url,
-                        suppress_callback_exceptions=False)  # TODO: Set to True by default or make configurable
+                        suppress_callback_exceptions=debug)
 
         # Initial State
         dash_app.title = settings.TITLE
@@ -63,44 +70,47 @@ class Dashboard:
         def header(pathname):
             return components.header()
 
-        @dash_app.callback(Output('prev-states', 'children'),
-                           [Input('state-update-button', 'n_clicks'), Input('minute-interval', 'n_intervals')])
+        @dash_app.callback(Output('prev-states', 'children'), [Input('minute-interval', 'n_intervals')])
         def state(n_clicks, n_intervals):
-            states_dict_list = monitor.node_metadata_db_client.get_previous_states_metadata()
-            return components.previous_states(states_dict_list=states_dict_list)
+            states = self.storage_client.get_previous_states_metadata()
+            return components.previous_states(states=states)
 
-        @dash_app.callback(Output('known-nodes', 'children'),
-                           [Input('node-update-button', 'n_clicks'), Input('half-minute-interval', 'n_intervals')])
+        @dash_app.callback(Output('known-nodes', 'children'), [Input('url', 'pathname'), Input('half-minute-interval', 'n_intervals')])
         def known_nodes(n_clicks, n_intervals):
-            known_nodes_dict = monitor.node_metadata_db_client.get_known_nodes_metadata()
-            teacher_checksum = monitor.node_metadata_db_client.get_current_teacher_checksum()
-            return components.known_nodes(nodes_dict=known_nodes_dict,
-                                          registry=monitor.registry,
-                                          teacher_checksum=teacher_checksum)
+            data = self.make_request()
+            teacher_checksum = data['current_teacher']
+            nodes = self.storage_client.get_known_nodes_metadata()
+            table = components.known_nodes(nodes_dict=nodes, teacher_checksum=teacher_checksum, registry=self.registry)
+            return table
 
         @dash_app.callback(Output('active-stakers', 'children'), [Input('minute-interval', 'n_intervals')])
         def active_stakers(n):
-            confirmed, pending, inactive = monitor.staking_agent.partition_stakers_by_activity()
-            total_stakers = len(confirmed) + len(pending) + len(inactive)
-            return html.Div([html.H4("Active Ursulas"), html.H5(f"{len(confirmed)}/{total_stakers}",
-                                                                id='active-ursulas-value')])
+            data = self.make_request()
+            data = data['activity']
+            confirmed, pending, inactive = data['active'], data['pending'], data['inactive']
+            total_stakers = confirmed + pending + inactive
+            return html.Div([html.H4("Active Ursulas"), html.H5(f"{confirmed}/{total_stakers}", id='active-ursulas-value')])
 
         @dash_app.callback(Output('staker-breakdown', 'children'), [Input('minute-interval', 'n_intervals')])
         def stakers_breakdown(n):
-            return stakers_breakdown_pie_chart(staking_agent=monitor.staking_agent)
+            data = self.make_request()
+            return stakers_breakdown_pie_chart(data=data['activity'])
 
         @dash_app.callback(Output('current-period', 'children'), [Input('minute-interval', 'n_intervals')])
         def current_period(pathname):
-            return html.Div([html.H4("Current Period"), html.H5(monitor.staking_agent.get_current_period(),
-                                                                id='current-period-value')])
+            data = self.make_request()
+            return html.Div([html.H4("Current Period"), html.H5(data['current_period'], id='current-period-value')])
+
+        @dash_app.callback(Output('blocktime-value', 'children'), [Input('minute-interval', 'n_intervals')])
+        def blocktime(pathname):
+            data = self.make_request()
+            blocktime = MayaDT(data['blocktime']).iso8601()
+            return html.Div([html.H4("Blocktime"), html.H5(blocktime, id='blocktime')])
 
         @dash_app.callback(Output('time-remaining', 'children'), [Input('minute-interval', 'n_intervals')])
         def time_remaining(n):
-            tomorrow = datetime.utcnow() + timedelta(days=1)
-            midnight = datetime(year=tomorrow.year, month=tomorrow.month,
-                                day=tomorrow.day, hour=0, minute=0, second=0, microsecond=0)
-            seconds_remaining = MayaDT.from_datetime(midnight).slang_time()
-            return html.Div([html.H4("Next Period"), html.H5(seconds_remaining)])
+            data = self.make_request()
+            return html.Div([html.H4("Next Period"), html.H5(data['next_period'])])
 
         @dash_app.callback(Output('domains', 'children'), [Input('url', 'pathname')])  # on page-load
         def domains(pathname):
@@ -108,30 +118,31 @@ class Dashboard:
 
         @dash_app.callback(Output('staked-tokens', 'children'), [Input('minute-interval', 'n_intervals')])
         def staked_tokens(n):
-            nu = NU.from_nunits(monitor.staking_agent.get_global_locked_tokens())
-            return html.Div([html.H4('Staked Tokens'), html.H5(f"{nu}", id='staked-tokens-value')])
+            data = self.make_request()
+            staked = NU.from_nunits(data['global_locked_tokens'])
+            return html.Div([html.H4('Staked Tokens'), html.H5(f"{staked}", id='staked-tokens-value')])
 
         @dash_app.callback(Output('prev-locked-stake-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         def prev_locked_tokens(n):
             prior_periods = 30
-            locked_tokens_data = monitor.network_crawler_db_client.get_historical_locked_tokens_over_range(prior_periods)
+            locked_tokens_data = self.influx_client.get_historical_locked_tokens_over_range(prior_periods)
             return historical_locked_tokens_bar_chart(locked_tokens=locked_tokens_data)
 
         @dash_app.callback(Output('prev-num-stakers-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         def historical_known_nodes(n):
             prior_periods = 30
-            num_stakers_data = monitor.network_crawler_db_client.get_historical_num_stakers_over_range(prior_periods)
+            num_stakers_data = self.influx_client.get_historical_num_stakers_over_range(prior_periods)
             return historical_known_nodes_line_chart(data=num_stakers_data)
-
-        @dash_app.callback(Output('prev-work-orders-graph', 'children'), [Input('daily-interval', 'n_intervals')])
-        def historical_work_orders(n):
-            prior_periods = 30
-            num_work_orders_data = \
-                monitor.network_crawler_db_client.get_historical_work_orders_over_range(prior_periods)
-            return historical_work_orders_line_chart(data=num_work_orders_data)
+        #
+        # @dash_app.callback(Output('prev-work-orders-graph', 'children'), [Input('daily-interval', 'n_intervals')])
+        # def historical_work_orders(n):
+        #     prior_periods = 30
+        #     num_work_orders_data = self.influx_client.get_historical_work_orders_over_range(prior_periods)
+        #     return historical_work_orders_line_chart(data=num_work_orders_data)
 
         @dash_app.callback(Output('locked-stake-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         def future_locked_tokens(n):
-            return future_locked_tokens_bar_chart(staking_agent=monitor.staking_agent)
+            data = self.make_request()
+            return future_locked_tokens_bar_chart(data=data['future_locked_tokens'])
 
         return dash_app

@@ -1,6 +1,8 @@
 import dash_core_components as dcc
 import plotly.graph_objs as go
 
+from nucypher.blockchain.eth.token import NU
+
 GRAPH_CONFIG = {'displaylogo': False,
                 'autosizable': True,
                 'responsive': True,
@@ -71,18 +73,13 @@ def historical_locked_tokens_bar_chart(locked_tokens: dict):
     return dcc.Graph(figure=fig, id='prev-locked-graph', config=GRAPH_CONFIG)
 
 
-def stakers_breakdown_pie_chart(staking_agent):
-    confirmed, pending, inactive = staking_agent.partition_stakers_by_activity()
-    stakers = dict()
-    stakers['Active'] = len(confirmed)
-    stakers['Pending'] = len(pending)
-    stakers['Inactive'] = len(inactive)
-    staker_breakdown = list(stakers.values())
+def stakers_breakdown_pie_chart(data):
+    staker_breakdown = list(data.values())
     colors = ['#FAE755', '#74C371', '#3E0751']  # colors from Viridis colorscale
     fig = go.Figure(
         data=[
             go.Pie(
-                labels=list(stakers.keys()),
+                labels=list(data.keys()),
                 values=staker_breakdown,
                 textinfo='value',
                 name='Stakers',
@@ -101,21 +98,10 @@ def stakers_breakdown_pie_chart(staking_agent):
     return dcc.Graph(figure=fig, id='staker-breakdown-graph', config=GRAPH_CONFIG)
 
 
-def future_locked_tokens_bar_chart(staking_agent):
-    def _snapshot_future_locked_tokens():
-        # TODO: Consider adopting this method here, or moving it to the crawler with database storage
-        period_range = range(1, 365 + 1)
-        token_counter = dict()
-        for day in period_range:
-            tokens, stakers = staking_agent.get_all_active_stakers(periods=day)
-            token_counter[day] = (NU.from_nunits(tokens).to_tokens(),
-                                  len(stakers))
-        return token_counter
-
-    token_counter = _snapshot_future_locked_tokens()
-    periods = len(token_counter)
+def future_locked_tokens_bar_chart(data):
+    periods = len(data)
     period_range = list(range(1, periods + 1))
-    future_locked_tokens, future_num_stakers = map(list, zip(*token_counter.values()))
+    future_locked_tokens, future_num_stakers = map(list, zip(*data.values()))
     fig = go.Figure(data=[
             go.Bar(
                 textposition='auto',

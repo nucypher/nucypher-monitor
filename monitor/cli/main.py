@@ -86,8 +86,8 @@ def crawl(general_config,
                       registry=registry,
                       start_learning_now=True,
                       learn_on_same_thread=learn_on_launch,
-                      blockchain_db_host=influx_host,
-                      blockchain_db_port=influx_port)
+                      influx_host=influx_host,
+                      influx_port=influx_port)
     if not dry_run:
         crawler.start()
         reactor.run()
@@ -102,7 +102,7 @@ def crawl(general_config,
 @click.option('--tls-key-filepath', help="TLS private key filepath")
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
 @click.option('--network', help="Network Domain Name", type=click.STRING, default=DEFAULT_NETWORK)
-@click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
+@click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='localhost')
 @click.option('--influx-port', help="InfluxDB network port", type=click.INT, default=8086)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the dashboard", is_flag=True)
 def dashboard(general_config,
@@ -136,8 +136,8 @@ def dashboard(general_config,
               route_url='/',
               registry=registry,
               domain=network,
-              blockchain_db_host=influx_host,
-              blockchain_db_port=influx_port)
+              crawler_host=influx_host,
+              crawler_port=9555)  # TODO : Move me
 
     #
     # Server

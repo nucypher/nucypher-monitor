@@ -1,3 +1,5 @@
+from typing import List
+
 import dash_daq as daq
 import dash_html_components as html
 import nucypher
@@ -32,11 +34,11 @@ def _states_table(states_dict_list) -> html.Table:
     return html.Table([html.Tr(row, id='state-table')])
 
 
-def previous_states(states_dict_list) -> html.Div:
+def previous_states(states: List[dict]) -> html.Div:
     return html.Div([
         html.H4('Previous States'),
         html.Div([
-            _states_table(states_dict_list)
+            _states_table(states)
         ]),
     ], className='row')
 
