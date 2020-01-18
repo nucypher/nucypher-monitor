@@ -71,7 +71,7 @@ def create_specific_mock_node(generate_certificate: bool = False,
                      worker_address=worker_address, timestamp=timestamp, last_seen=last_seen,
                      fleet_state_nickname_metadata=fleet_state_nickname_metadata)
 
-    node.rest_url.return_value = f"{host}:9151"
+    node.rest_url.return_value = f"{host}:9151"  # TODO: Needs cleanup
 
     work_orders_list = MagicMock(spec=list)
     work_orders_list.__len__.return_value = num_work_orders

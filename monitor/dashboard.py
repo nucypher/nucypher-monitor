@@ -17,7 +17,6 @@ from monitor.charts import (
 from monitor.crawler import Crawler, CrawlerNodeStorage
 from monitor.db import CrawlerBlockchainDBClient, CrawlerNodeMetadataDBClient
 from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
-from nucypher.blockchain.eth.token import NU
 
 
 class Dashboard:

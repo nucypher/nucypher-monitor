@@ -1,6 +1,5 @@
 import dash_core_components as dcc
 import plotly.graph_objs as go
-from nucypher.blockchain.eth.token import NU
 
 GRAPH_CONFIG = {'displaylogo': False,
                 'autosizable': True,

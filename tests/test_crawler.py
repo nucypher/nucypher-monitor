@@ -6,7 +6,6 @@ import pytest
 from nucypher.blockchain.economics import StandardTokenEconomics
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
-from nucypher.blockchain.eth.token import NU
 from nucypher.blockchain.eth.utils import datetime_to_period
 from nucypher.cli import actions
 from nucypher.config.storages import SQLiteForgetfulNodeStorage
@@ -203,21 +202,21 @@ def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, dont_set_teacher:
     middleware = RestMiddleware()
     teacher_nodes = None
     if not dont_set_teacher:
-        teacher_nodes = actions.load_seednodes(None,
-                                               teacher_uris=['https://discover.nucypher.network:9151'],
+        teacher_nodes = actions.load_seednodes(None,  # TODO: Needs emitter
+                                               teacher_uris=['https://discover.nucypher.network:9151'],  # TODO: Needs Cleanup
                                                min_stake=0,
                                                federated_only=False,
-                                               network_domains={'goerli'},
+                                               network_domains={'goerli'},  # TODO: Needs Cleanup
                                                network_middleware=middleware)
 
-    crawler = Crawler(domains={'goerli'},
+    crawler = Crawler(domains={'goerli'},  # TODO: Needs Cleanup
                       network_middleware=middleware,
                       known_nodes=teacher_nodes,
                       registry=registry,
                       start_learning_now=True,
                       learn_on_same_thread=False,
-                      blockchain_db_host='localhost',
-                      blockchain_db_port=8086,
+                      blockchain_db_host='localhost',  # TODO: Needs Cleanup
+                      blockchain_db_port=8086,  # TODO: Needs Cleanup
                       node_storage_filepath=node_db_filepath
                       )
     return crawler

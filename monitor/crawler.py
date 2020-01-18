@@ -8,7 +8,6 @@ from nucypher.blockchain.eth.agents import (
     ContractAgency,
     StakingEscrowAgent,
 )
-from nucypher.blockchain.eth.token import NU, StakeList
 from nucypher.blockchain.eth.utils import datetime_at_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import SQLiteForgetfulNodeStorage
@@ -25,8 +24,11 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
     DEFAULT_DB_FILEPATH = os.path.join(DEFAULT_CONFIG_ROOT, DB_FILE_NAME)
 
     STATE_DB_NAME = 'fleet_state'
-    STATE_DB_SCHEMA = [('nickname', 'text primary key'), ('symbol', 'text'),
-                       ('color_hex', 'text'), ('color_name', 'text'), ('updated', 'text')]
+    STATE_DB_SCHEMA = [('nickname', 'text primary key'),
+                       ('symbol', 'text'),
+                       ('color_hex', 'text'),
+                       ('color_name', 'text'),
+                       ('updated', 'text')]
 
     TEACHER_DB_NAME = 'teacher'
     TEACHER_ID = 'current_teacher'
@@ -59,16 +61,17 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
 
         super().clear(metadata=metadata, certificates=certificates)
 
-    def store_state_metadata(self, state):
-        self.__write_state_metadata(state)
-
-    def __write_state_metadata(self, state):
-        from nucypher.network.nodes import FleetStateTracker
-        state_dict = FleetStateTracker.abridged_state_details(state)
+    def store_state_metadata(self, state_dict):
+        # TODO
         # convert updated timestamp format for supported sqlite3 sorting
-        state_dict['updated'] = state.updated.rfc3339()
-        db_row = (state_dict['nickname'], state_dict['symbol'], state_dict['color_hex'],
-                  state_dict['color_name'], state_dict['updated'])
+        # state_dict['updated'] = state.updated.rfc3339()
+
+        db_row = (state_dict['nickname'],
+                  state_dict['symbol'],
+                  state_dict['color_hex'],
+                  state_dict['color_name'],
+                  state_dict['updated'])
+
         with self.db_conn:
             self.db_conn.execute(f'REPLACE INTO {self.STATE_DB_NAME} VALUES(?,?,?,?,?)', db_row)
             # TODO we should limit the size of this table - no reason to store really old state values
@@ -130,7 +133,8 @@ class Crawler(Learner):
                 new_state_or_none = super().record_fleet_state(*args, **kwargs)
                 if new_state_or_none:
                     _, new_state = new_state_or_none
-                    node_storage.store_state_metadata(new_state)
+                    state = self.abridged_state_details(new_state)
+                    node_storage.store_state_metadata(state)
 
         self.tracker_class = MonitoringTracker
 

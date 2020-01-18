@@ -5,6 +5,7 @@ MINUTE_REFRESH_RATE = 60 * 1000
 DAILY_REFRESH_RATE = MINUTE_REFRESH_RATE * 60 * 24
 
 BODY = html.Div([
+
         dcc.Location(id='url', refresh=False),
 
         # Update buttons also used for WS topic notifications

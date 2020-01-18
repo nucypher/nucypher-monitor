@@ -8,7 +8,7 @@ import nucypher
 from flask import Flask
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.interfaces import BlockchainInterface
-from nucypher.blockchain.eth.token import NU
+from nucypher.blockchain.token import NU
 
 import monitor.dashboard
 from monitor.crawler import CrawlerNodeStorage
