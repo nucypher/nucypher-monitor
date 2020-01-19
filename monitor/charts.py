@@ -1,4 +1,5 @@
 import dash_core_components as dcc
+import maya
 import plotly.graph_objs as go
 
 from nucypher.blockchain.eth.token import NU
@@ -100,7 +101,8 @@ def stakers_breakdown_pie_chart(data):
 
 def future_locked_tokens_bar_chart(data):
     periods = len(data)
-    period_range = list(range(1, periods + 1))
+    now = maya.now()
+    period_range = list((now+maya.timedelta(days=p)).slang_date() for p in range(1, periods + 1))
     future_locked_tokens, future_num_stakers = map(list, zip(*data.values()))
     fig = go.Figure(data=[
             go.Bar(
