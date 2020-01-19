@@ -99,6 +99,27 @@ def stakers_breakdown_pie_chart(data):
     return dcc.Graph(figure=fig, id='staker-breakdown-graph', config=GRAPH_CONFIG)
 
 
+def top_stakers_pie_chart(data):  # TODO: Resuse above function?
+    fig = go.Figure(
+        data=[
+            go.Pie(
+                labels=list(data.keys()),
+                values=list(data.values()),
+                hole=.3,
+                name='Stakers',
+                textinfo='none')
+        ],
+        layout=go.Layout(
+            title=f'Top Stakers',
+            showlegend=False,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        ))
+
+    fig['layout'].update(autosize=True, width=None, height=None, showlegend=False)
+    return dcc.Graph(figure=fig, id='top-stakers-graph', config=GRAPH_CONFIG)
+
+
 def future_locked_tokens_bar_chart(data):
     periods = len(data)
     now = maya.now()

@@ -1,4 +1,6 @@
 import os
+
+import maya
 import time
 from datetime import datetime, timedelta
 
@@ -99,7 +101,7 @@ class Crawler(Learner):
     _ROUNDS_WITHOUT_NODES_AFTER_WHICH_TO_SLOW_DOWN = 25
 
     LEARNING_TIMEOUT = 10
-    DEFAULT_REFRESH_RATE = 60  # seconds
+    DEFAULT_REFRESH_RATE = 2  # seconds
 
     # InfluxDB Line Protocol Format (note the spaces, commas):
     # +-----------+--------+-+---------+-+---------+
@@ -232,6 +234,15 @@ class Crawler(Learner):
             token_counter[day] = (float(NU.from_nunits(tokens).to_tokens()), len(stakers))
         return dict(token_counter)
 
+    def _measure_top_stakers(self):
+        confirmed, pending, inactive = self.staking_agent.partition_stakers_by_activity()
+        data = dict()
+        for staker_address in confirmed:
+            locked = self.staking_agent.get_locked_tokens(staker_address=staker_address, periods=1)
+            data[staker_address] = float(NU.from_nunits(locked).to_tokens())
+        data = dict(sorted(data.items(), key=lambda s: s[1], reverse=True))
+        return data
+
     def _measure_staker_activity(self) -> dict:
         confirmed, pending, inactive = self.staking_agent.partition_stakers_by_activity()
         stakers = dict()
@@ -259,9 +270,11 @@ class Crawler(Learner):
             return response
 
     def _collect_stats(self, threaded: bool = True) -> None:
+        # TODO: Handle faulty connection to provider (requests.exceptions.ReadTimeout)
         if threaded:
             return reactor.callInThread(self._collect_stats, threaded=False)
 
+        start = maya.now()
         self.log.info("Collecting Statistics...")
 
         #
@@ -284,6 +297,7 @@ class Crawler(Learner):
         # past_locked_tokens = self._influx_client.get_historical_locked_tokens_over_range()
         future_locked_tokens = self._measure_future_locked_tokens()
         global_locked_tokens = self.staking_agent.get_global_locked_tokens()
+        top_stakers = self._measure_top_stakers()
 
         #
         # Write
@@ -302,8 +316,12 @@ class Crawler(Learner):
 
                        'global_locked_tokens': global_locked_tokens,
                        # 'past_locked_tokens': past_locked_tokens,
-                       'future_locked_tokens': future_locked_tokens
+                       'future_locked_tokens': future_locked_tokens,
+                       'top_stakers': top_stakers
                        }
+        done = maya.now()
+        delta = done - start
+        self.log.debug(f"Collected new metrics ({delta.seconds})")
 
     def _learn_about_nodes(self, threaded: bool = True):
         if threaded:

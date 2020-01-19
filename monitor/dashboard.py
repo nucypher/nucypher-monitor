@@ -12,8 +12,8 @@ from monitor.charts import (
     historical_locked_tokens_bar_chart,
     stakers_breakdown_pie_chart,
     historical_known_nodes_line_chart,
-    historical_work_orders_line_chart
-)
+    historical_work_orders_line_chart,
+    top_stakers_pie_chart)
 from monitor.crawler import Crawler
 from monitor.db import CrawlerInfluxClient, CrawlerStorageClient
 from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
@@ -72,7 +72,8 @@ class Dashboard:
 
         @dash_app.callback(Output('prev-states', 'children'), [Input('minute-interval', 'n_intervals')])
         def state(n_clicks, n_intervals):
-            states = self.storage_client.get_previous_states_metadata()
+            data = self.make_request()
+            states = data['prev_states']
             return components.previous_states(states=states)
 
         @dash_app.callback(Output('known-nodes', 'children'), [Input('url', 'pathname'), Input('half-minute-interval', 'n_intervals')])
@@ -95,6 +96,11 @@ class Dashboard:
         def stakers_breakdown(n):
             data = self.make_request()
             return stakers_breakdown_pie_chart(data=data['activity'])
+
+        @dash_app.callback(Output('top-stakers-graph', 'children'), [Input('minute-interval', 'n_intervals')])
+        def top_stakers(n):
+            data = self.make_request()
+            return top_stakers_pie_chart(data=data['top_stakers'])
 
         @dash_app.callback(Output('current-period', 'children'), [Input('minute-interval', 'n_intervals')])
         def current_period(pathname):
