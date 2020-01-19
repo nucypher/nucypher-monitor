@@ -2,9 +2,9 @@ body{
     font-size: 2em;
     line-height: 1.6;
     font-weight: 400;
-    color: rgb(230, 234, 232);
+    color: #d8d9da;
     font-family: monospace;
-    background-color: rgb(17, 17, 17);
+    background-color: #161719;
 }
 
 
@@ -64,6 +64,9 @@ label, legend {
     display: flex;
     border-bottom: 1px solid #e5e6ec;
     padding: 1em;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 #stats, #widgets {
@@ -72,7 +75,7 @@ label, legend {
     flex-wrap: wrap;
     justify-content: space-around;
     width: 100%;
-    margin-top: 5em;
+    margin-top: 0.5em;
 }
 
 #stats>div, #widgets>div {
@@ -93,12 +96,14 @@ label, legend {
 }
 
 #widgets > div {
-    width: 40%;
+    width: 30%;
+    background-color: #212124;
+    margin: 3px;
 }
 
 
 .banner {
-    height: 3em;
+    width: 3em;
     margin-right: 1em;
 }
 
@@ -190,7 +195,7 @@ label, legend {
 }
 
 #prev-locked-graph {
-    width: 100%;
+    width: 98%;
 }
 
 #prev-locked-stake-graph[data-dash-is-loading] {}
@@ -208,7 +213,7 @@ label, legend {
 }
 
 #prev-orders-graph {
-    width: 100%;
+    width: 50%;
 }
 
 #staker-breakdown-graph {
@@ -278,12 +283,5 @@ label, legend {
 }
 
 .nucypher-button {
-  background-color: #1E65F3 !important;
-  border: none !important;
-  color: white;
-  margin: 4px 2px !important;
-}
-
-.nucypher-button:hover {
-  background-color: #0022FF !important;
+    display: none;
 }
