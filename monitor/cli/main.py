@@ -89,6 +89,7 @@ def crawl(general_config,
                       influx_host=influx_host,
                       influx_port=influx_port)
     if not dry_run:
+        emitter.message(f"Running Nucypher Crawler", color='blue')
         crawler.start()
         reactor.run()
 
@@ -126,11 +127,13 @@ def dashboard(general_config,
     emitter.clear()
     emitter.banner(MONITOR_BANNER.format(DASHBOARD))
 
+    # Setup
     registry = _get_registry(provider_uri, registry_filepath)
 
     #
     # WSGI Service
     #
+
     rest_app = Flask("monitor-dashboard")
     Dashboard(flask_server=rest_app,
               route_url='/',
@@ -142,10 +145,12 @@ def dashboard(general_config,
     #
     # Server
     #
+
     tls_hosting_power = _get_tls_hosting_power(host=host,
                                                tls_certificate_filepath=certificate_filepath,
                                                tls_private_key_filepath=tls_key_filepath)
-    emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}")
     deployer = tls_hosting_power.get_deployer(rest_app=rest_app, port=http_port)
+
     if not dry_run:
+        emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}", color='blue')
         deployer.run()

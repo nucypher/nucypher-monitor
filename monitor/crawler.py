@@ -3,6 +3,7 @@ import time
 from datetime import datetime, timedelta
 
 import requests
+from eth_utils import to_checksum_address
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
@@ -181,7 +182,7 @@ class Crawler(Learner):
 
         # Crawler Tasks
         self._node_details_task = task.LoopingCall(self._learn_about_nodes)
-        self._stats_collection_task = task.LoopingCall(self._collect_stats)
+        self._stats_collection_task = task.LoopingCall(self._collect_stats, threaded=True)
 
         # JSON Endpoint
         self._flask = None
@@ -239,13 +240,12 @@ class Crawler(Learner):
         stakers['inactive'] = len(inactive)
         return stakers
 
-    def _measure_time_remaining(self):
-        # TODO: Measure against period time with datetime to period utils
-        tomorrow = datetime.utcnow() + timedelta(days=1)
-        midnight = datetime(year=tomorrow.year, month=tomorrow.month,
-                            day=tomorrow.day, hour=0, minute=0, second=0, microsecond=0)
-        seconds_remaining = MayaDT.from_datetime(midnight).slang_time()
-        return seconds_remaining
+    def _measure_time_remaining(self) -> str:
+        current_period = self.staking_agent.get_current_period()
+        economics = TokenEconomicsFactory.get_economics(registry=self.registry)
+        next_period = datetime_at_period(period=current_period+1, seconds_per_period=economics.seconds_per_period)
+        remaining = next_period.slang_time()
+        return remaining
 
     def make_flask_server(self):
         """JSON Endpoint"""
