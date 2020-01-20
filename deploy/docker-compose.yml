@@ -25,7 +25,7 @@ services:
     command: ["crawl",
               "--influx-host", "172.28.1.2",
               "--provider", "${WEB3_PROVIDER_URI}",
-              "--teacher", "https://discover.nucypher.network:9151"]
+              "--network", "${NUCYPHER_NETWORK}"]
     networks:
       monitor:
         ipv4_address: 172.28.1.3
@@ -41,7 +41,8 @@ services:
     command: ["dashboard",
               "--debug",
               "--influx-host", "172.28.1.2",
-              "--provider", "${WEB3_PROVIDER_URI}"]
+              "--provider", "${WEB3_PROVIDER_URI}",
+              "--network", "${NUCYPHER_NETWORK}"]
     networks:
       monitor:
         ipv4_address: 172.28.1.4
