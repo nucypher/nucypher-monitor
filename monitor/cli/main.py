@@ -46,7 +46,8 @@ def monitor():
 @click.option('--learn-on-launch', help="Conduct first learning loop on main thread at launch.", is_flag=True)
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
 @click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
-@click.option('--influx-port', help="InfluxDB network port", type=click.INT, default=8086)
+@click.option('--influx-port', help="InfluxDB network port", type=NETWORK_PORT, default=8086)
+@click.option('--http-port', help="Crawler HTTP port for JSON endpoint", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the crawler", is_flag=True)
 def crawl(general_config,
           teacher_uri,
@@ -57,6 +58,7 @@ def crawl(general_config,
           provider_uri,
           influx_host,
           influx_port,
+          http_port,
           dry_run):
     """
     Gather NuCypher network information.
@@ -87,7 +89,8 @@ def crawl(general_config,
                       influx_host=influx_host,
                       influx_port=influx_port)
     if not dry_run:
-        emitter.message(f"Running Nucypher Crawler", color='blue')
+        message = f"Running Nucypher Crawler JSON endpoint at http://localhost:{http_port}/stats"
+        emitter.message(message, color='blue', bold=True)
         crawler.start()
         reactor.run()
 
@@ -100,9 +103,9 @@ def crawl(general_config,
 @click.option('--certificate-filepath', help="Pre-signed TLS certificate filepath")
 @click.option('--tls-key-filepath', help="TLS private key filepath")
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
-@click.option('--network', help="Network Domain Name", type=click.STRING, default=DEFAULT_NETWORK)
-@click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='localhost')
-@click.option('--influx-port', help="InfluxDB network port", type=click.INT, default=8086)
+@click.option('--network', help="Network Domain Name", type=NETWORK_DOMAIN, required=True)
+@click.option('--crawler-host', help="Crawler's host address", type=click.STRING, default='localhost')
+@click.option('--crawler-port', help="Crawler's HTTP port serving JSON", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the dashboard", is_flag=True)
 def dashboard(general_config,
               host,
@@ -112,8 +115,8 @@ def dashboard(general_config,
               tls_key_filepath,
               provider_uri,
               network,
-              influx_host,
-              influx_port,
+              crawler_host,
+              crawler_port,
               dry_run,
               ):
     """
@@ -137,8 +140,8 @@ def dashboard(general_config,
               route_url='/',
               registry=registry,
               domain=network,
-              crawler_host=influx_host,
-              crawler_port=9555)  # TODO : Move me
+              crawler_host=crawler_host,
+              crawler_port=crawler_port)
 
     #
     # Server
@@ -150,5 +153,5 @@ def dashboard(general_config,
     deployer = tls_hosting_power.get_deployer(rest_app=rest_app, port=http_port)
 
     if not dry_run:
-        emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}", color='blue')
+        emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}", color='blue', bold=True)
         deployer.run()

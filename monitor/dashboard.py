@@ -141,9 +141,10 @@ class Dashboard:
             prior_periods = 30
             num_stakers_data = self.influx_client.get_historical_num_stakers_over_range(prior_periods)
             return historical_known_nodes_line_chart(data=num_stakers_data)
-        #
+
         # @dash_app.callback(Output('prev-work-orders-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         # def historical_work_orders(n):
+        #     TODO: only works for is_me characters
         #     prior_periods = 30
         #     num_work_orders_data = self.influx_client.get_historical_work_orders_over_range(prior_periods)
         #     return historical_work_orders_line_chart(data=num_work_orders_data)

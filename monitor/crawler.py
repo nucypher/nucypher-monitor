@@ -21,7 +21,7 @@ from nucypher.blockchain.eth.token import StakeList, NU
 from nucypher.blockchain.eth.utils import datetime_at_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import SQLiteForgetfulNodeStorage
-from nucypher.network.nodes import FleetStateTracker
+from nucypher.network.nodes import FleetStateTracker, Teacher
 from nucypher.network.nodes import Learner
 from twisted.internet import task, reactor
 from twisted.logger import Logger
@@ -101,26 +101,13 @@ class Crawler(Learner):
     _ROUNDS_WITHOUT_NODES_AFTER_WHICH_TO_SLOW_DOWN = 25
 
     LEARNING_TIMEOUT = 10
-    DEFAULT_REFRESH_RATE = 2  # seconds
+    DEFAULT_REFRESH_RATE = 60  # seconds
 
     # InfluxDB Line Protocol Format (note the spaces, commas):
     # +-----------+--------+-+---------+-+---------+
     # |measurement|,tag_set| |field_set| |timestamp|
     # +-----------+--------+-+---------+-+---------+
     NODE_MEASUREMENT = 'crawler_node_info'
-
-    # TODO: Needs Cleanup
-    # _NODE_FIELD_SET = ('staker_address={staker_address}',
-    #                    'worker_address="{worker_address}"',
-    #                    'start_date={start_date}',
-    #                    'end_date={end_date}',
-    #                    'stake={stake}',
-    #                    'locked_stake={locked_stake}',
-    #                    'current_period={current_period}i',
-    #                    'last_confirmed_period={last_confirmed_period}i',
-    #                    'work_orders={work_orders}i')
-    # NODE_LINE_PROTOCOL = '{measurement},' + ','.join(_NODE_FIELD_SET) + ',{timestamp}'
-
     NODE_LINE_PROTOCOL = '{measurement},staker_address={staker_address} ' \
                                       'worker_address="{worker_address}",' \
                                       'start_date={start_date},' \
@@ -138,9 +125,12 @@ class Crawler(Learner):
     RETENTION = '5w'  # Weeks
     REPLICATION = '1'
 
+    DEFAULT_CRAWLER_HTTP_PORT = 9555
+
     def __init__(self,
                  influx_host: str,
                  influx_port: int,
+                 crawler_http_port: int = DEFAULT_CRAWLER_HTTP_PORT,
                  registry: BaseContractRegistry = None,
                  node_storage_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH,
                  refresh_rate=DEFAULT_REFRESH_RATE,
@@ -149,6 +139,8 @@ class Crawler(Learner):
 
         # Settings
         self.federated_only = False  # Nope - for compatibility with Leaner TODO # nucypher/466
+        Teacher.set_federated_mode(False)
+
         self.registry = registry or InMemoryContractRegistry.from_latest_publication()
         self._refresh_rate = refresh_rate
         self._restart_on_error = restart_on_error
@@ -187,6 +179,7 @@ class Crawler(Learner):
         self._stats_collection_task = task.LoopingCall(self._collect_stats, threaded=True)
 
         # JSON Endpoint
+        self._crawler_http_port = crawler_http_port
         self._flask = None
 
     def _initialize_influx(self):
@@ -422,7 +415,7 @@ class Crawler(Learner):
             # Start up
             self.start_learning_loop(now=False)
             self.make_flask_server()
-            hx_deployer = HendrixDeploy(action="start", options={"wsgi": self._flask, "http_port": 9555})
+            hx_deployer = HendrixDeploy(action="start", options={"wsgi": self._flask, "http_port": self._crawler_http_port})
             hx_deployer.run()  # <--- Blocking Call to Reactor
 
     def stop(self):
