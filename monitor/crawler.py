@@ -125,6 +125,7 @@ class Crawler(Learner):
     RETENTION = '5w'  # Weeks
     REPLICATION = '1'
 
+    METRICS_ENDPOINT = 'stats'
     DEFAULT_CRAWLER_HTTP_PORT = 9555
 
     def __init__(self,

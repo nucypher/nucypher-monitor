@@ -7,10 +7,11 @@ from twisted.internet import reactor
 from monitor.cli._utils import _get_registry, _get_tls_hosting_power
 from monitor.crawler import Crawler
 from monitor.dashboard import Dashboard
+from nucypher.blockchain.eth.networks import NetworksInventory
 from nucypher.cli import actions
 from nucypher.cli.config import group_general_config
 from nucypher.cli.painting import echo_version
-from nucypher.cli.types import NETWORK_PORT, EXISTING_READABLE_FILE, NETWORK_DOMAIN
+from nucypher.cli.types import NETWORK_PORT, EXISTING_READABLE_FILE
 from nucypher.network.middleware import RestMiddleware
 
 CRAWLER = "Crawler"
@@ -42,7 +43,7 @@ def monitor():
 @click.option('--teacher', 'teacher_uri', help="An Ursula URI to start learning from (seednode)", type=click.STRING, default=DEFAULT_TEACHER)
 @click.option('--registry-filepath', help="Custom contract registry filepath", type=EXISTING_READABLE_FILE)
 @click.option('--min-stake', help="The minimum stake the teacher must have to be a teacher", type=click.INT, default=0)
-@click.option('--network', help="Network Domain Name", type=click.STRING, required=True)
+@click.option('--network', help="Network Domain Name", type=click.Choice(choices=NetworksInventory.networks), required=True)
 @click.option('--learn-on-launch', help="Conduct first learning loop on main thread at launch.", is_flag=True)
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
 @click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
@@ -103,7 +104,7 @@ def crawl(general_config,
 @click.option('--certificate-filepath', help="Pre-signed TLS certificate filepath")
 @click.option('--tls-key-filepath', help="TLS private key filepath")
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
-@click.option('--network', help="Network Domain Name", type=NETWORK_DOMAIN, required=True)
+@click.option('--network', help="Network Domain Name", type=click.Choice(choices=NetworksInventory.networks), required=True)
 @click.option('--crawler-host', help="Crawler's host address", type=click.STRING, default='localhost')
 @click.option('--crawler-port', help="Crawler's HTTP port serving JSON", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the dashboard", is_flag=True)
@@ -139,7 +140,7 @@ def dashboard(general_config,
     Dashboard(flask_server=rest_app,
               route_url='/',
               registry=registry,
-              domain=network,
+              network=network,
               crawler_host=crawler_host,
               crawler_port=crawler_port)
 

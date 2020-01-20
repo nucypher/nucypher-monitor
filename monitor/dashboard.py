@@ -13,11 +13,16 @@ from monitor.charts import (
     stakers_breakdown_pie_chart,
     historical_known_nodes_line_chart,
     historical_work_orders_line_chart,
-    top_stakers_pie_chart)
+    top_stakers_chart)
 from monitor.crawler import Crawler
 from monitor.db import CrawlerInfluxClient, CrawlerStorageClient
-from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency, NucypherTokenAgent, PolicyManagerAgent, \
+from nucypher.blockchain.eth.agents import (
+    StakingEscrowAgent,
+    ContractAgency,
+    NucypherTokenAgent,
+    PolicyManagerAgent,
     AdjudicatorAgent
+)
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
 
@@ -31,7 +36,7 @@ class Dashboard:
                  registry,
                  flask_server: Flask,
                  route_url: str,
-                 domain: str,
+                 network: str,
                  crawler_host: str,
                  crawler_port: int):
 
@@ -44,15 +49,15 @@ class Dashboard:
         self.storage_client = CrawlerStorageClient()
 
         # Blockchain & Contracts
+        self.network = network
         self.registry = registry
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
 
         # Dash
-        self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url, domain=domain)
+        self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url, domain=network)
 
     def make_request(self):
-        endpoint = 'stats'  # TODO: Needs cleanup
-        url = f'http://{self.crawler_host}:{self.crawler_port}/{endpoint}'
+        url = f'http://{self.crawler_host}:{self.crawler_port}/{Crawler.METRICS_ENDPOINT}'
         response = requests.get(url=url)
         payload = response.json()
         return payload
@@ -102,7 +107,7 @@ class Dashboard:
         @dash_app.callback(Output('top-stakers-graph', 'children'), [Input('minute-interval', 'n_intervals')])
         def top_stakers(n):
             data = self.make_request()
-            return top_stakers_pie_chart(data=data['top_stakers'])
+            return top_stakers_chart(data=data['top_stakers'])
 
         @dash_app.callback(Output('current-period', 'children'), [Input('minute-interval', 'n_intervals')])
         def current_period(pathname):
@@ -127,7 +132,7 @@ class Dashboard:
 
         @dash_app.callback(Output('registry', 'children'), [Input('url', 'pathname')])  # on page-load
         def registry(pathname):
-            latest = InMemoryContractRegistry.from_latest_publication()  # TODO: Configure network / domain
+            latest = InMemoryContractRegistry.from_latest_publication(network=self.network)
             return html.Div([html.H4('Registry'), html.H5(latest.id[:16], id="registry-value")])
 
         @dash_app.callback(Output('contracts', 'children'), [Input('url', 'pathname')])  # on page-load
