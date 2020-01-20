@@ -16,7 +16,9 @@ from monitor.charts import (
     top_stakers_pie_chart)
 from monitor.crawler import Crawler
 from monitor.db import CrawlerInfluxClient, CrawlerStorageClient
-from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency
+from nucypher.blockchain.eth.agents import StakingEscrowAgent, ContractAgency, NucypherTokenAgent, PolicyManagerAgent, \
+    AdjudicatorAgent
+from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
 
 

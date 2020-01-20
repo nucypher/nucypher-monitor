@@ -6,12 +6,12 @@ from nucypher.network.server import TLSHostingPower
 from umbral.keys import UmbralPrivateKey
 
 
-def _get_registry(provider_uri, registry_filepath):
+def _get_registry(provider_uri, registry_filepath, network):
     BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri)
     if registry_filepath:
-        registry = LocalContractRegistry.from_latest_publication()
+        registry = LocalContractRegistry.from_latest_publication(network=network)
     else:
-        registry = InMemoryContractRegistry.from_latest_publication()
+        registry = InMemoryContractRegistry.from_latest_publication(network=network)
 
     return registry
 

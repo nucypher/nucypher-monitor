@@ -10,7 +10,7 @@ from monitor.dashboard import Dashboard
 from nucypher.cli import actions
 from nucypher.cli.config import group_general_config
 from nucypher.cli.painting import echo_version
-from nucypher.cli.types import NETWORK_PORT, EXISTING_READABLE_FILE
+from nucypher.cli.types import NETWORK_PORT, EXISTING_READABLE_FILE, NETWORK_DOMAIN
 from nucypher.network.middleware import RestMiddleware
 
 CRAWLER = "Crawler"
@@ -29,7 +29,6 @@ MONITOR_BANNER = r"""
 # TODO: Help!!!
 DEFAULT_PROVIDER = f'file://{os.path.expanduser("~")}/.ethereum/goerli/geth.ipc'
 DEFAULT_TEACHER = 'https://discover.nucypher.network:9151'
-DEFAULT_NETWORK = 'goerli'
 
 
 @click.group()
@@ -43,7 +42,7 @@ def monitor():
 @click.option('--teacher', 'teacher_uri', help="An Ursula URI to start learning from (seednode)", type=click.STRING, default=DEFAULT_TEACHER)
 @click.option('--registry-filepath', help="Custom contract registry filepath", type=EXISTING_READABLE_FILE)
 @click.option('--min-stake', help="The minimum stake the teacher must have to be a teacher", type=click.INT, default=0)
-@click.option('--network', help="Network Domain Name", type=click.STRING, default=DEFAULT_NETWORK)
+@click.option('--network', help="Network Domain Name", type=click.STRING, required=True)
 @click.option('--learn-on-launch', help="Conduct first learning loop on main thread at launch.", is_flag=True)
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
 @click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
@@ -68,7 +67,7 @@ def crawl(general_config,
     emitter.clear()
     emitter.banner(MONITOR_BANNER.format(CRAWLER))
 
-    registry = _get_registry(provider_uri, registry_filepath)
+    registry = _get_registry(provider_uri, registry_filepath, network)
 
     # Teacher Ursula
     teacher_uris = [teacher_uri] if teacher_uri else None
@@ -79,7 +78,6 @@ def crawl(general_config,
                                            network_domains={network} if network else None,
                                            network_middleware=RestMiddleware())
 
-    # Configure Storage
     crawler = Crawler(domains={network} if network else None,
                       network_middleware=RestMiddleware(),
                       known_nodes=teacher_nodes,
@@ -128,7 +126,7 @@ def dashboard(general_config,
     emitter.banner(MONITOR_BANNER.format(DASHBOARD))
 
     # Setup
-    registry = _get_registry(provider_uri, registry_filepath)
+    registry = _get_registry(provider_uri, registry_filepath, network)
 
     #
     # WSGI Service
