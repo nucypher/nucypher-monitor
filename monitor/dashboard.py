@@ -122,7 +122,29 @@ class Dashboard:
 
         @dash_app.callback(Output('domains', 'children'), [Input('url', 'pathname')])  # on page-load
         def domains(pathname):
-            return html.Div([html.H4('Domain'), html.H5(domain, id="domain-value")])
+            domains = f'{domain.capitalize()} | {self.staking_agent.blockchain.client.chain_name}'
+            return html.Div([html.H4('Network'), html.H5(domains, id="domain-value")])
+
+        @dash_app.callback(Output('registry', 'children'), [Input('url', 'pathname')])  # on page-load
+        def registry(pathname):
+            latest = InMemoryContractRegistry.from_latest_publication()  # TODO: Configure network / domain
+            return html.Div([html.H4('Registry'), html.H5(latest.id[:16], id="registry-value")])
+
+        @dash_app.callback(Output('contracts', 'children'), [Input('url', 'pathname')])  # on page-load
+        def contracts(pathname):
+            token = ContractAgency.get_agent(NucypherTokenAgent, registry=self.registry)
+            staking_escrow = self.staking_agent
+            policy_manager = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
+            adjudicator = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
+
+            # TODO: link to etherscan
+            # https://goerli.etherscan.io/address/0x894a30aec251c7a38c868e831137514a27c25504
+            return html.Div([html.H4('Contracts'),
+                             html.H5(f'{token.contract_name} {token.contract_address}', id="token-contract-address"),
+                             html.H5(f'{staking_escrow.contract_name} {staking_escrow.contract_address}', id="staking-contract-address"),
+                             html.H5(f'{policy_manager.contract_name} {policy_manager.contract_address}', id="policy-contract-address"),
+                             html.H5(f'{adjudicator.contract_name} {adjudicator.contract_address}', id="adjudicator-contract-address"),
+                             ])
 
         @dash_app.callback(Output('staked-tokens', 'children'), [Input('minute-interval', 'n_intervals')])
         def staked_tokens(n):

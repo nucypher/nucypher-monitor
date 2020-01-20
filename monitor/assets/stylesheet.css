@@ -198,7 +198,12 @@ label, legend {
     width: 98%;
 }
 
-#prev-locked-stake-graph[data-dash-is-loading] {}
+
+#prev-locked-stake-graph {
+    flex-basis: 70%;
+}
+
+/*#prev-locked-stake-graph[data-dash-is-loading] {}*/
 
 #locked-graph {
     width: 98%;
@@ -284,4 +289,12 @@ label, legend {
 
 .nucypher-button {
     display: none;
+}
+
+#contracts {
+    flex-basis: 20%;
+}
+
+#top-stakers-graph {
+    flex-basis: 10%;
 }

@@ -23,15 +23,17 @@ HEADER = html.Div([html.Img(src=LOGO_PATH, className='banner'), html.Div(id='hea
 
 STATS = html.Div([
             html.Div(id='blocktime-value'),
+            html.Div(id='registry'),
             html.Div([html.Div(id='current-period')]),
             html.Div(id='time-remaining'),
             html.Div(id='domains'),
             html.Div(id='active-stakers'),
             html.Div(id='staked-tokens'),
-        ], id='stats')
+], id='stats')
 
 
 GRAPHS = html.Div([
+            html.Div(id='contracts'),
             html.Div(id='staker-breakdown'),
             html.Div(id='prev-num-stakers-graph'),
             # html.Div(id='prev-work-orders-graph'),  # TODO
