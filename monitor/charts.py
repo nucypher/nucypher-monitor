@@ -99,15 +99,18 @@ def stakers_breakdown_pie_chart(data):
     return dcc.Graph(figure=fig, id='staker-breakdown-graph', config=GRAPH_CONFIG)
 
 
-def top_stakers_pie_chart(data):  # TODO: Resuse above function?
+def top_stakers_chart(data):
+    colors = ['#FAE755', '#74C371', '#3E0751']  # colors from Viridis colorscale
     fig = go.Figure(
         data=[
             go.Pie(
                 labels=list(data.keys()),
                 values=list(data.values()),
-                hole=.3,
+                # hole=.3,
                 name='Stakers',
-                textinfo='none')
+                textinfo='none',
+                marker=dict(colors=colors, line=dict(width=2))
+            )
         ],
         layout=go.Layout(
             title=f'Top Stakers',
@@ -116,7 +119,7 @@ def top_stakers_pie_chart(data):  # TODO: Resuse above function?
             plot_bgcolor='rgba(0,0,0,0)'
         ))
 
-    fig['layout'].update(autosize=True, width=None, height=None, showlegend=False)
+    fig['layout'].update(autosize=True, width=None, height=None)
     return dcc.Graph(figure=fig, id='top-stakers-graph', config=GRAPH_CONFIG)
 
 
