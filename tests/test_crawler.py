@@ -13,7 +13,7 @@ from nucypher.network.middleware import RestMiddleware
 
 import monitor
 from monitor.crawler import CrawlerNodeStorage, Crawler
-from monitor.db import CrawlerNodeMetadataDBClient
+from monitor.db import CrawlerStorageClient
 from tests.utilities import (
     create_random_mock_node,
     create_specific_mock_node,
@@ -215,8 +215,8 @@ def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, dont_set_teacher:
                       registry=registry,
                       start_learning_now=True,
                       learn_on_same_thread=False,
-                      blockchain_db_host='localhost',  # TODO: Needs Cleanup
-                      blockchain_db_port=8086,  # TODO: Needs Cleanup
+                      influx_host='localhost',  # TODO: Needs Cleanup
+                      influx_port=8086,  # TODO: Needs Cleanup
                       node_storage_filepath=node_db_filepath
                       )
     return crawler
@@ -318,7 +318,7 @@ def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
         # ensure table existence check run
         mock_influxdb_client.get_list_database.assert_called_once()
         # db created since not present
-        mock_influxdb_client.create_database.assert_called_once_with(Crawler.BLOCKCHAIN_DB_NAME)
+        mock_influxdb_client.create_database.assert_called_once_with(Crawler.INFLUX_DB_NAME)
         mock_influxdb_client.create_retention_policy.assert_called_once()
     finally:
         crawler.stop()
@@ -332,7 +332,7 @@ def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
 def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
     mock_influxdb_client = new_influx_db.return_value
     mock_influxdb_client.get_list_database.return_value = [{'name': 'db1'},
-                                                           {'name': f'{Crawler.BLOCKCHAIN_DB_NAME}'},
+                                                           {'name': f'{Crawler.INFLUX_DB_NAME}'},
                                                            {'name': 'db3'}]
 
     staking_agent = MagicMock(spec=StakingEscrowAgent)
@@ -367,7 +367,7 @@ def test_crawler_learn_no_teacher(new_influx_db, get_agent, tempfile_path):
     get_agent.side_effect = contract_agency.get_agent
 
     crawler = create_crawler(node_db_filepath=tempfile_path, dont_set_teacher=True)
-    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     try:
         crawler.start()
         assert crawler.is_running
@@ -397,7 +397,7 @@ def test_crawler_learn_about_teacher(new_influx_db, get_agent, tempfile_path):
     get_agent.side_effect = contract_agency.get_agent
 
     crawler = create_crawler(node_db_filepath=tempfile_path)
-    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     try:
         crawler.start()
         assert crawler.is_running
@@ -435,7 +435,7 @@ def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, temp
     get_economics.return_value = token_economics
 
     crawler = create_crawler(node_db_filepath=tempfile_path)
-    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     try:
         crawler.start()
         assert crawler.is_running

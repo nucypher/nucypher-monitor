@@ -6,7 +6,7 @@ from influxdb.resultset import ResultSet
 from maya import MayaDT
 
 from monitor.crawler import CrawlerNodeStorage, Crawler
-from monitor.db import CrawlerNodeMetadataDBClient, CrawlerBlockchainDBClient
+from monitor.db import CrawlerStorageClient, CrawlerInfluxClient
 from tests.utilities import (
     create_random_mock_node,
     create_random_mock_state,
@@ -14,13 +14,13 @@ from tests.utilities import (
 
 
 #
-# CrawlerNodeMetadataDBClient tests
+# CrawlerStorageClient tests
 #
 
 
 def test_node_client_init_values():
     temp_db_filepath = "/tmp/test.db"
-    node_db_client = CrawlerNodeMetadataDBClient(temp_db_filepath)
+    node_db_client = CrawlerStorageClient(temp_db_filepath)
     assert node_db_client._db_filepath == temp_db_filepath
 
 
@@ -37,7 +37,7 @@ def test_node_client_get_node_metadata(tempfile_path):
     for node in node_list:
         node_storage.store_node_metadata(node=node)
 
-    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     result = node_db_client.get_known_nodes_metadata()
 
     node_list.sort(key=lambda x: x.checksum_address)  # result is sorted by staker address
@@ -63,7 +63,7 @@ def test_node_client_get_state_metadata(tempfile_path):
     for state in state_list:
         node_storage.store_state_metadata(state=state)
 
-    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     result = node_db_client.get_previous_states_metadata(limit=len(state_list))
 
     state_list.sort(key=lambda x: x.updated.epoch, reverse=True)  # sorted by timestamp in descending order
@@ -82,7 +82,7 @@ def test_node_client_get_current_teacher_checksum(tempfile_path):
     teacher_checksum = '0x123456789'
     node_storage.store_current_teacher(teacher_checksum=teacher_checksum)
 
-    node_db_client = CrawlerNodeMetadataDBClient(db_filepath=tempfile_path)
+    node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
 
     result = node_db_client.get_current_teacher_checksum()
     assert result == teacher_checksum
@@ -94,13 +94,13 @@ def test_node_client_get_current_teacher_checksum(tempfile_path):
 
 
 #
-# CrawlerBlockchainDBClient tests
+# CrawlerInfluxClient tests
 #
 @patch('monitor.db.InfluxDBClient', autospec=True)
 def test_blockchain_client_close(new_influx_db):
     mock_influxdb_client = new_influx_db.return_value
 
-    blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
+    blockchain_db_client = CrawlerInfluxClient(None, None, None)
 
     blockchain_db_client.close()
     mock_influxdb_client.close.assert_called_once()
@@ -124,7 +124,7 @@ def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
         results.append(dict(time=start_date.add(days=day).rfc3339(), sum=base_amount + (day * amount_increment)))
     mock_query_object.get_points.return_value = results
 
-    blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
+    blockchain_db_client = CrawlerInfluxClient(None, None, None)
 
     locked_tokens_dict = blockchain_db_client.get_historical_locked_tokens_over_range(days)
 
@@ -138,7 +138,7 @@ def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
         "SELECT SUM(locked_stake)",
         "AS locked_stake",
 
-        f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+        f"FROM {Crawler.NODE_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
         f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
 
         "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
@@ -165,7 +165,7 @@ def test_blockchain_client_get_historical_locked_tokens(new_influx_db):
         locked_tokens = locked_tokens_dict[key]
         assert locked_tokens == base_amount + (idx * amount_increment)
 
-    # close must be explicitly called on CrawlerBlockchainDBClient
+    # close must be explicitly called on CrawlerInfluxClient
     mock_influxdb_client.close.assert_not_called()
 
 
@@ -187,7 +187,7 @@ def test_blockchain_client_get_historical_num_stakers(new_influx_db):
         results.append(dict(time=start_date.add(days=day).rfc3339(), count=base_count + (day * count_increment)))
     mock_query_object.get_points.return_value = results
 
-    blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
+    blockchain_db_client = CrawlerInfluxClient(None, None, None)
 
     num_stakers_dict = blockchain_db_client.get_historical_num_stakers_over_range(days)
 
@@ -200,7 +200,7 @@ def test_blockchain_client_get_historical_num_stakers(new_influx_db):
     expected_in_query = [
         "SELECT COUNT(staker_address)",
 
-        f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+        f"FROM {Crawler.NODE_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
         f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
 
         "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
@@ -227,7 +227,7 @@ def test_blockchain_client_get_historical_num_stakers(new_influx_db):
         num_stakers = num_stakers_dict[key]
         assert num_stakers == base_count + (idx * count_increment)
 
-    # close must be explicitly called on CrawlerBlockchainDBClient
+    # close must be explicitly called on CrawlerInfluxClient
     mock_influxdb_client.close.assert_not_called()
 
 
@@ -249,7 +249,7 @@ def test_blockchain_client_get_historical_work_orders(new_influx_db):
         results.append(dict(time=start_date.add(days=day).rfc3339(), sum=base_count + (day * count_increment)))
     mock_query_object.get_points.return_value = results
 
-    blockchain_db_client = CrawlerBlockchainDBClient(None, None, None)
+    blockchain_db_client = CrawlerInfluxClient(None, None, None)
 
     work_orders_dict = blockchain_db_client.get_historical_work_orders_over_range(days)
 
@@ -262,7 +262,7 @@ def test_blockchain_client_get_historical_work_orders(new_influx_db):
     expected_in_query = [
         "SELECT SUM(work_orders)",
 
-        f"FROM {Crawler.BLOCKCHAIN_DB_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+        f"FROM {Crawler.NODE_MEASUREMENT} WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
         f"time < '{MayaDT.from_datetime(range_end).rfc3339()}'",
 
         "GROUP BY staker_address, time(1d)) GROUP BY time(1d)",
@@ -289,7 +289,7 @@ def test_blockchain_client_get_historical_work_orders(new_influx_db):
         num_work_orders = work_orders_dict[key]
         assert num_work_orders == base_count + (idx * count_increment)
 
-    # close must be explicitly called on CrawlerBlockchainDBClient
+    # close must be explicitly called on CrawlerInfluxClient
     mock_influxdb_client.close.assert_not_called()
 
 

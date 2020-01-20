@@ -18,7 +18,7 @@ from tests.utilities import MockContractAgency, create_random_mock_node, create_
 
 @circleci_only(reason="Additional complexity when using local machine's chromedriver")
 @patch.object(monitor.dashboard.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.dashboard.CrawlerBlockchainDBClient', autospec=True)
+@patch('monitor.dashboard.CrawlerInfluxClient', autospec=True)
 def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, dash_duo):
     ############## SETUP ################
     current_period = 18622
@@ -59,9 +59,9 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
                                             route_url='/',
                                             registry=None,
                                             domain='goerli',
-                                            blockchain_db_host='localhost',
-                                            blockchain_db_port=8086,
-                                            node_storage_filepath=tempfile_path)
+                                            influx_host='localhost',
+                                            influx_port=8086,
+                                            node_storage_db_filepath=tempfile_path)
     dash_duo.start_server(dashboard.dash_app)
 
     # check version
