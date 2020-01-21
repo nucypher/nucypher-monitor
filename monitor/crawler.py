@@ -345,6 +345,11 @@ class Crawler(Learner):
             stakes = StakeList(checksum_address=staker_address, registry=self.registry)
             stakes.refresh()
 
+            # if not (stakes.initial_period is NOT_STAKING):
+            from constant_sorrow.constants import NOT_STAKING
+            if stakes.initial_period is NOT_STAKING:
+                continue  # TODO: Skip this measurement for now
+
             start_date = datetime_at_period(stakes.initial_period, seconds_per_period=economics.seconds_per_period)
             start_date = start_date.datetime().timestamp()
             end_date = datetime_at_period(stakes.terminal_period, seconds_per_period=economics.seconds_per_period)
