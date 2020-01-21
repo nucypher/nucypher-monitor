@@ -46,15 +46,18 @@ services:
               "--influx-host", "172.28.1.2",
               "--crawler-host", "172.28.1.3",
               "--provider", "${WEB3_PROVIDER_URI}",
-              "--network", "${NUCYPHER_NETWORK}"]
+              "--network", "${NUCYPHER_NETWORK}",
+              "--tls-key-filepath", "/root/tls/key.pem",
+              "--certificate-filepath", "/root/tls/fullchain.pem"]
     networks:
       monitor:
         ipv4_address: 172.28.1.4
     ports:
-      - "12500:12500"
+      - "443:12500"
     volumes:
       - .:/code
       - "nucypher_datadir:/root/.local/share/nucypher"
+      - "${NUCYPHER_LETSENCRYPT_DIR}:/root/tls"
     depends_on:
       - crawler
       - influxdb

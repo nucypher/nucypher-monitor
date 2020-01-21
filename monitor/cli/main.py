@@ -2,6 +2,7 @@ import os
 
 import click
 from flask import Flask
+from hendrix.deploy.tls import HendrixDeployTLS
 from twisted.internet import reactor
 
 from monitor.cli._utils import _get_registry, _get_tls_hosting_power
@@ -157,10 +158,16 @@ def dashboard(general_config,
     # Server
     #
 
-    tls_hosting_power = _get_tls_hosting_power(host=host,
-                                               tls_certificate_filepath=certificate_filepath,
-                                               tls_private_key_filepath=tls_key_filepath)
-    deployer = tls_hosting_power.get_deployer(rest_app=rest_app, port=http_port)
+    if tls_key_filepath and certificate_filepath:
+        deployer = HendrixDeployTLS("start",
+                                    key=tls_key_filepath,
+                                    cert=certificate_filepath,
+                                    options={"wsgi": rest_app, "https_port": http_port})
+    else:
+        tls_hosting_power = _get_tls_hosting_power(host=host,
+                                                   tls_certificate_filepath=certificate_filepath,
+                                                   tls_private_key_filepath=tls_key_filepath)
+        deployer = tls_hosting_power.get_deployer(rest_app=rest_app, port=http_port)
 
     if not dry_run:
         emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}", color='blue', bold=True)
