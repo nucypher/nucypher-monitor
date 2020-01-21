@@ -105,7 +105,9 @@ def crawl(general_config,
 @click.option('--tls-key-filepath', help="TLS private key filepath")
 @click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
 @click.option('--network', help="Network Domain Name", type=click.Choice(choices=NetworksInventory.networks), required=True)
-@click.option('--crawler-host', help="Crawler's host address", type=click.STRING, default='localhost')
+@click.option('--influx-host', help="InfluxDB host URI", type=click.STRING)
+@click.option('--influx-port', help="InfluxDB network port", type=NETWORK_PORT, default=8086)
+@click.option('--crawler-host', help="Crawler's HTTP host address", type=click.STRING, default='localhost')
 @click.option('--crawler-port', help="Crawler's HTTP port serving JSON", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the dashboard", is_flag=True)
 def dashboard(general_config,
@@ -116,6 +118,8 @@ def dashboard(general_config,
               tls_key_filepath,
               provider_uri,
               network,
+              influx_host,
+              influx_port,
               crawler_host,
               crawler_port,
               dry_run,
@@ -136,11 +140,16 @@ def dashboard(general_config,
     # WSGI Service
     #
 
+    if not influx_host:
+        influx_host = crawler_host
+
     rest_app = Flask("monitor-dashboard")
     Dashboard(flask_server=rest_app,
               route_url='/',
               registry=registry,
               network=network,
+              influx_host=influx_host,
+              influx_port=influx_port,
               crawler_host=crawler_host,
               crawler_port=crawler_port)
 

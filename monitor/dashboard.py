@@ -38,14 +38,16 @@ class Dashboard:
                  route_url: str,
                  network: str,
                  crawler_host: str,
-                 crawler_port: int):
+                 crawler_port: int,
+                 influx_host: str,
+                 influx_port: int):
 
         self.log = Logger(self.__class__.__name__)
 
         # Crawler
         self.crawler_host = crawler_host
         self.crawler_port = crawler_port
-        self.influx_client = CrawlerInfluxClient(host=crawler_host, port=8086, database=Crawler.INFLUX_DB_NAME)
+        self.influx_client = CrawlerInfluxClient(host=influx_host, port=influx_port, database=Crawler.INFLUX_DB_NAME)
         self.storage_client = CrawlerStorageClient()
 
         # Blockchain & Contracts
