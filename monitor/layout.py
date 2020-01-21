@@ -45,9 +45,13 @@ GRAPHS = html.Div([
 
 CONTENT = html.Div([html.Div([STATS, GRAPHS, html.Div([html.Div(id='known-nodes')])])], id='main')
 
+# Hidden div inside the app that stores previously decrypted heartbeats
+HIDDEN_DIV = html.Div(id='cached-crawler-stats', style={'display': 'none'})
+
 BODY = html.Div([
         dcc.Location(id='url', refresh=False),
         HEADER,
+        HIDDEN_DIV,
         CONTENT,
         dcc.Interval(
             id='minute-interval',
@@ -63,5 +67,10 @@ BODY = html.Div([
             id='daily-interval',
             interval=DAILY_REFRESH_RATE,
             n_intervals=0
+        ),
+        dcc.Interval(
+            id='request-interval',
+            interval=(MINUTE_REFRESH_RATE / 2),  # should ALWAYS be the minimum value of the intervals above
+            n_intervals=0,
         )
     ])

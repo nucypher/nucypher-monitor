@@ -25,4 +25,6 @@ chains
 .env
 .python-version
 /reports
+/tests/reports/
+/tests/cli/reports/
 /deploy/influxdb
