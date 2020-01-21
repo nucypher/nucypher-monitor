@@ -78,7 +78,7 @@ class Dashboard:
             return components.header()
 
         @dash_app.callback(Output('prev-states', 'children'), [Input('minute-interval', 'n_intervals')])
-        def state(n_clicks, n_intervals):
+        def state(n_intervals):
             data = self.make_request()
             states = data['prev_states']
             return components.previous_states(states=states)

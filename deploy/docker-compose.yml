@@ -22,6 +22,9 @@ services:
     build:
       context: ..
       dockerfile: ./deploy/Dockerfile
+    ports:
+      - "9151:9151"
+      - "9555:9555"
     command: ["crawl",
               "--influx-host", "172.28.1.2",
               "--provider", "${WEB3_PROVIDER_URI}",
@@ -40,7 +43,7 @@ services:
     image: nucypher-monitor:latest
     command: ["dashboard",
               "--debug",
-              "--crawler-host", "172.28.1.2",
+              "--crawler-host", "172.28.1.3",
               "--provider", "${WEB3_PROVIDER_URI}",
               "--network", "${NUCYPHER_NETWORK}"]
     networks:

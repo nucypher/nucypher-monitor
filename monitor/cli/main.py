@@ -85,7 +85,7 @@ def crawl(general_config,
                       network_middleware=RestMiddleware(),
                       known_nodes=teacher_nodes,
                       registry=registry,
-                      start_learning_now=True,
+                      start_learning_now=False,
                       learn_on_same_thread=learn_on_launch,
                       influx_host=influx_host,
                       influx_port=influx_port)

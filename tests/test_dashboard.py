@@ -58,7 +58,7 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
     dashboard = monitor.dashboard.Dashboard(flask_server=server,
                                             route_url='/',
                                             registry=None,
-                                            domain='goerli',
+                                            network='goerli',
                                             influx_host='localhost',
                                             influx_port=8086,
                                             node_storage_db_filepath=tempfile_path)
