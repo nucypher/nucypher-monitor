@@ -5,7 +5,7 @@ from flask import Flask
 from hendrix.deploy.tls import HendrixDeployTLS
 from twisted.internet import reactor
 
-from monitor.cli._utils import _get_registry, _get_tls_hosting_power
+from monitor.cli._utils import _get_registry, _get_self_signed_hosting_power
 from monitor.crawler import Crawler
 from monitor.dashboard import Dashboard
 from nucypher.blockchain.eth.networks import NetworksInventory
@@ -157,16 +157,14 @@ def dashboard(general_config,
     #
     # Server
     #
-
+    # TODO: Move to utility  function
     if tls_key_filepath and certificate_filepath:
         deployer = HendrixDeployTLS("start",
                                     key=tls_key_filepath,
                                     cert=certificate_filepath,
                                     options={"wsgi": rest_app, "https_port": http_port})
     else:
-        tls_hosting_power = _get_tls_hosting_power(host=host,
-                                                   tls_certificate_filepath=certificate_filepath,
-                                                   tls_private_key_filepath=tls_key_filepath)
+        tls_hosting_power = _get_self_signed_hosting_power(host=host)
         deployer = tls_hosting_power.get_deployer(rest_app=rest_app, port=http_port)
 
     if not dry_run:

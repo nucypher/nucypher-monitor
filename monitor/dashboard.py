@@ -140,14 +140,14 @@ class Dashboard:
         @dash_app.callback(Output('current-period', 'children'),
                            [Input('minute-interval', 'n_intervals')],
                            [State('cached-crawler-stats', 'children')])
-        def current_period(pathname, latest_crawler_stats):
+        def current_period(n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
             return html.Div([html.H4("Current Period"), html.H5(data['current_period'], id='current-period-value')])
 
         @dash_app.callback(Output('blocktime-value', 'children'),
                            [Input('minute-interval', 'n_intervals')],
                            [State('cached-crawler-stats', 'children')])
-        def blocktime(pathname, latest_crawler_stats):
+        def blocktime(n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
             blocktime = MayaDT(data['blocktime']).iso8601()
             return html.Div([html.H4("Blocktime"), html.H5(blocktime, id='blocktime')])
@@ -161,7 +161,7 @@ class Dashboard:
 
         @dash_app.callback(Output('domains', 'children'), [Input('url', 'pathname')])  # on page-load
         def domains(pathname):
-            domains = f'{domain.capitalize()} | {self.staking_agent.blockchain.client.chain_name}'
+            domains = f'{self.network.capitalize()} | {self.staking_agent.blockchain.client.chain_name}'
             return html.Div([html.H4('Network'), html.H5(domains, id="domain-value")])
 
         @dash_app.callback(Output('registry', 'children'), [Input('url', 'pathname')])  # on page-load
