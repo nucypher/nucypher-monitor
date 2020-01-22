@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import maya
 from influxdb.resultset import ResultSet
 from maya import MayaDT
+from nucypher.network.nodes import FleetStateTracker
 
 from monitor.crawler import CrawlerNodeStorage, Crawler
 from monitor.db import CrawlerStorageClient, CrawlerInfluxClient
@@ -61,7 +62,9 @@ def test_node_client_get_state_metadata(tempfile_path):
 
     state_list = [state_1, state_2, state_3]
     for state in state_list:
-        node_storage.store_state_metadata(state=state)
+        state_dict = FleetStateTracker.abridged_state_details(state)
+        state_dict['updated'] = state.updated.rfc3339()
+        node_storage.store_state_metadata(state=state_dict)
 
     node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     result = node_db_client.get_previous_states_metadata(limit=len(state_list))

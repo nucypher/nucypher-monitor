@@ -74,7 +74,6 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
     def store_state_metadata(self, state: dict):
         # TODO Limit the size of this table - no reason to store really old state values
         # TODO: Convert updated timestamp format for supported sqlite3 sorting
-        # state['updated'] = state['updated'].rfc3339()
         db_row = (state['nickname'],
                   state['symbol'],
                   state['color_hex'],

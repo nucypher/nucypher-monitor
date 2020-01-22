@@ -11,6 +11,7 @@ from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.interfaces import BlockchainInterface
 from nucypher.blockchain.eth.registry import BaseContractRegistry
 from nucypher.keystore.keypairs import HostingKeypair
+from nucypher.network.nodes import Teacher
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'black', 'brown', 'purple']
 
@@ -76,6 +77,8 @@ def create_specific_mock_node(generate_certificate: bool = False,
     work_orders_list = MagicMock(spec=list)
     work_orders_list.__len__.return_value = num_work_orders
     node.work_orders.return_value = work_orders_list
+
+    node.abridged_node_details.side_effect = Teacher.abridged_node_details
 
     return node
 
