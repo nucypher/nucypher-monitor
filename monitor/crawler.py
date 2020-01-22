@@ -174,6 +174,8 @@ class Crawler(Learner):
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
 
         # Crawler Tasks
+        self.__collecting_nodes = False  # thread tracking
+        self.__collecting_stats = False
         self._node_details_task = task.LoopingCall(self._learn_about_nodes)
         self._stats_collection_task = task.LoopingCall(self._collect_stats, threaded=True)
 
@@ -281,7 +283,11 @@ class Crawler(Learner):
     def _collect_stats(self, threaded: bool = True) -> None:
         # TODO: Handle faulty connection to provider (requests.exceptions.ReadTimeout)
         if threaded:
+            if self.__collecting_stats:
+                self.log.debug("Skipping Round - Metrics collection thread is already running")
+                return
             return reactor.callInThread(self._collect_stats, threaded=False)
+        self.__collecting_stats = True
 
         start = maya.now()
         self.log.info("Collecting Statistics...")
@@ -326,11 +332,16 @@ class Crawler(Learner):
                        }
         done = maya.now()
         delta = done - start
-        self.log.debug(f"Collected new metrics ({delta.seconds})")
+        self.__collecting_stats = False
+        self.log.debug(f"Collected new metrics in {delta.seconds}.")
 
     def _learn_about_nodes(self, threaded: bool = True):
         if threaded:
+            if self.__collecting_nodes:
+                self.log.debug("Skipping Round - Metrics collection thread is already running")
+                return
             return reactor.callInThread(self._learn_about_nodes, threaded=False)
+        self.__collecting_nodes = True
 
         agent = self.staking_agent
         known_nodes = list(self.known_nodes)
@@ -388,6 +399,7 @@ class Crawler(Learner):
                                                    time_precision='s',
                                                    batch_size=10000,
                                                    protocol='line')
+        self.__collecting_nodes = False
         if not success:
             # TODO: What do we do here - Event hook for alerting?
             self.log.warn(f'Unable to write to database {self.INFLUX_DB_NAME} at '
