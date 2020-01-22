@@ -1,21 +1,22 @@
 import os
 
 import maya
-import time
-from datetime import datetime, timedelta
-
 import requests
-from eth_utils import to_checksum_address
+from constant_sorrow.constants import NOT_STAKING
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
+from twisted.internet import task, reactor
+from twisted.logger import Logger
 
+from monitor.components import generate_node_status_icon
 from nucypher.blockchain.economics import TokenEconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
     StakingEscrowAgent,
 )
+from nucypher.blockchain.eth.interfaces import BlockchainInterface
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
 from nucypher.blockchain.eth.token import StakeList, NU
 from nucypher.blockchain.eth.utils import datetime_at_period
@@ -23,8 +24,6 @@ from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import SQLiteForgetfulNodeStorage
 from nucypher.network.nodes import FleetStateTracker, Teacher
 from nucypher.network.nodes import Learner
-from twisted.internet import task, reactor
-from twisted.logger import Logger
 
 
 class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
@@ -96,7 +95,7 @@ class Crawler(Learner):
     Obtain Blockchain information for Monitor and output to a DB.
     """
 
-    _SHORT_LEARNING_DELAY = .5
+    _SHORT_LEARNING_DELAY = 2
     _LONG_LEARNING_DELAY = 30
     _ROUNDS_WITHOUT_NODES_AFTER_WHICH_TO_SLOW_DOWN = 25
 
@@ -216,6 +215,10 @@ class Crawler(Learner):
 
         return new_nodes
 
+    #
+    # Measurements
+    #
+
     @property
     def stats(self) -> dict:
         return self._stats
@@ -252,16 +255,28 @@ class Crawler(Learner):
         remaining = next_period.slang_time()
         return remaining
 
-    def make_flask_server(self):
-        """JSON Endpoint"""
-        flask = Flask('nucypher-monitor')
-        self._flask = flask
-        self._flask.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
+    def measure_known_nodes(self):
+        known_nodes = self._crawler_client.get_known_nodes_metadata()
+        current_period = self.staking_agent.get_current_period()
 
-        @flask.route('/stats', methods=['GET'])
-        def stats():
-            response = jsonify(self._stats)
-            return response
+        color_codex = {-1: ('green', 'OK'),  # Confirmed Next Period
+                       0: ('#e0b32d', 'Pending'),  # Pending Confirmation of Next Period
+                       current_period: ('#525ae3', 'Idle'),  # Never confirmed
+                       BlockchainInterface.NULL_ADDRESS: ('red', 'Headless')  # Headless Staker (No Worker)
+                       }
+        for staker_address in known_nodes:
+            last_confirmed_period = self.staking_agent.get_last_active_period(staker_address)
+            missing_confirmations = current_period - last_confirmed_period
+            worker = self.staking_agent.get_worker_from_staker(staker_address)
+            if worker == BlockchainInterface.NULL_ADDRESS:
+                missing_confirmations = BlockchainInterface.NULL_ADDRESS
+            try:
+                color, status_message = color_codex[missing_confirmations]
+            except KeyError:
+                color, status_message = 'red', f'{missing_confirmations} Unconfirmed'
+            node_status = {'status': status_message, 'missing_confirmations': missing_confirmations, 'color': color}
+            known_nodes[staker_address]['status'] = node_status
+        return known_nodes
 
     def _collect_stats(self, threaded: bool = True) -> None:
         # TODO: Handle faulty connection to provider (requests.exceptions.ReadTimeout)
@@ -283,12 +298,10 @@ class Crawler(Learner):
         # Nodes
         teacher = self._crawler_client.get_current_teacher_checksum()
         states = self._crawler_client.get_previous_states_metadata()
-        # known_nodes = self._crawler_client.get_known_nodes_metadata()
+        known_nodes = self.measure_known_nodes()
         activity = self._measure_staker_activity()
-        # historical_stakers = self._influx_client.get_historical_num_stakers_over_range()
 
         # Stake
-        # past_locked_tokens = self._influx_client.get_historical_locked_tokens_over_range()
         future_locked_tokens = self._measure_future_locked_tokens()
         global_locked_tokens = self.staking_agent.get_global_locked_tokens()
         top_stakers = self._measure_top_stakers()
@@ -305,13 +318,11 @@ class Crawler(Learner):
                        'current_teacher': teacher,
                        'known_nodes': len(self.known_nodes),
                        'activity': activity,
-                       # 'node_details': known_nodes,
-                       # 'historical_stakers': historical_stakers,
+                       'node_details': known_nodes,
 
                        'global_locked_tokens': global_locked_tokens,
-                       # 'past_locked_tokens': past_locked_tokens,
                        'future_locked_tokens': future_locked_tokens,
-                       'top_stakers': top_stakers
+                       'top_stakers': top_stakers,
                        }
         done = maya.now()
         delta = done - start
@@ -332,7 +343,6 @@ class Crawler(Learner):
 
         data = list()
         for node in known_nodes:
-            time.sleep(0.1)  # chill out and share the damn machine will ya
 
             staker_address = node.checksum_address
             worker = agent.get_worker_from_staker(staker_address)
@@ -345,8 +355,6 @@ class Crawler(Learner):
             stakes = StakeList(checksum_address=staker_address, registry=self.registry)
             stakes.refresh()
 
-            # if not (stakes.initial_period is NOT_STAKING):
-            from constant_sorrow.constants import NOT_STAKING
             if stakes.initial_period is NOT_STAKING:
                 continue  # TODO: Skip this measurement for now
 
@@ -357,7 +365,7 @@ class Crawler(Learner):
 
             last_confirmed_period = agent.get_last_active_period(staker_address)
 
-            num_work_orders = 0 # len(node.work_orders())  # TODO: Only works for is_me with datastore attached
+            num_work_orders = 0  # len(node.work_orders())  # TODO: Only works for is_me with datastore attached
 
             # TODO: do we need to worry about how much information is in memory if number of nodes is
             #  large i.e. should I check for size of data and write within loop if too big
@@ -375,14 +383,26 @@ class Crawler(Learner):
                 work_orders=num_work_orders
             ))
 
-        if not self._influx_client.write_points(data,
-                                                database=self.INFLUX_DB_NAME,
-                                                time_precision='s',
-                                                batch_size=10000,
-                                                protocol='line'):
+        success = self._influx_client.write_points(data,
+                                                   database=self.INFLUX_DB_NAME,
+                                                   time_precision='s',
+                                                   batch_size=10000,
+                                                   protocol='line')
+        if not success:
             # TODO: What do we do here - Event hook for alerting?
             self.log.warn(f'Unable to write to database {self.INFLUX_DB_NAME} at '
                           f'{MayaDT(epoch=block_time)} | Period {current_period}')
+
+    def make_flask_server(self):
+        """JSON Endpoint"""
+        flask = Flask('nucypher-monitor')
+        self._flask = flask
+        self._flask.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
+
+        @flask.route('/stats', methods=['GET'])
+        def stats():
+            response = jsonify(self._stats)
+            return response
 
     def _handle_errors(self, *args, **kwargs):
         failure = args[0]
@@ -435,8 +455,6 @@ class Crawler(Learner):
             if self._influx_client is not None:
                 self._influx_client.close()
                 self._influx_client = None
-
-            # TODO: should I delete the NodeStorage to close the sqlite db connection here?
 
     @property
     def is_running(self):

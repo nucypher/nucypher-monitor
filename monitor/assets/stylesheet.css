@@ -199,8 +199,8 @@ label, legend {
 }
 
 
-#prev-locked-stake-graph {
-    flex-basis: 70%;
+#locked-stake {
+    width: 100%;
 }
 
 /*#prev-locked-stake-graph[data-dash-is-loading] {}*/
@@ -292,9 +292,9 @@ label, legend {
 }
 
 #contracts {
-    flex-basis: 20%;
+    flex-basis: 100%;
 }
 
-#top-stakers-graph {
-    flex-basis: 10%;
-}
+/*#top-stakers-graph {*/
+/*    flex-basis: 10%;*/
+/*}*/

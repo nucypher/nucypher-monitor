@@ -11,13 +11,11 @@ from twisted.logger import Logger
 from monitor import layout, components, settings
 from monitor.charts import (
     future_locked_tokens_bar_chart,
-    historical_locked_tokens_bar_chart,
     stakers_breakdown_pie_chart,
-    historical_known_nodes_line_chart,
-    historical_work_orders_line_chart,
-    top_stakers_chart)
+    top_stakers_chart
+)
 from monitor.crawler import Crawler
-from monitor.db import CrawlerInfluxClient, CrawlerStorageClient
+from monitor.db import CrawlerInfluxClient
 from nucypher.blockchain.eth.agents import (
     StakingEscrowAgent,
     ContractAgency,
@@ -50,15 +48,19 @@ class Dashboard:
         self.crawler_host = crawler_host
         self.crawler_port = crawler_port
         self.influx_client = CrawlerInfluxClient(host=influx_host, port=influx_port, database=Crawler.INFLUX_DB_NAME)
-        self.storage_client = CrawlerStorageClient()
 
         # Blockchain & Contracts
         self.network = network
         self.registry = registry
+
+        # Agency
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
+        self.token_agent = ContractAgency.get_agent(NucypherTokenAgent, registry=self.registry)
+        self.policy_manager = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
+        self.adjudicator = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
 
         # Dash
-        self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url, domain=network)
+        self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
 
     def make_request(self):
         url = f'http://{self.crawler_host}:{self.crawler_port}/{Crawler.METRICS_ENDPOINT}'
@@ -75,12 +77,13 @@ class Dashboard:
             data = json.loads(cached_stats)
         return data
 
-    def make_dash_app(self, flask_server: Flask, route_url: str, domain: str, debug: bool = False):
+    def make_dash_app(self, flask_server: Flask, route_url: str, debug: bool = False):
         dash_app = Dash(name=__name__,
                         server=flask_server,
                         assets_folder=settings.ASSETS_PATH,
                         url_base_pathname=route_url,
-                        suppress_callback_exceptions=debug)
+                        suppress_callback_exceptions=debug,
+                        eager_loading=False)
 
         # Initial State
         dash_app.title = settings.TITLE
@@ -104,13 +107,11 @@ class Dashboard:
             return components.previous_states(states=states)
 
         @dash_app.callback(Output('known-nodes', 'children'),
-                           [Input('url', 'pathname'), Input('half-minute-interval', 'n_intervals')],
+                           [Input('url', 'pathname'), Input('minute-interval', 'n_intervals')],
                            [State('cached-crawler-stats', 'children')])
-        def known_nodes(n_clicks, n_intervals, latest_crawler_stats):
+        def known_nodes(pathname, n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
-            teacher_checksum = data['current_teacher']
-            nodes = self.storage_client.get_known_nodes_metadata()
-            table = components.known_nodes(nodes_dict=nodes, teacher_checksum=teacher_checksum, registry=self.registry)
+            table = components.known_nodes(nodes_dict=data['node_details'])
             return table
 
         @dash_app.callback(Output('active-stakers', 'children'),
@@ -171,19 +172,25 @@ class Dashboard:
 
         @dash_app.callback(Output('contracts', 'children'), [Input('url', 'pathname')])  # on page-load
         def contracts(pathname):
-            token = ContractAgency.get_agent(NucypherTokenAgent, registry=self.registry)
-            staking_escrow = self.staking_agent
-            policy_manager = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
-            adjudicator = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
+            base_url = "https://goerli.etherscan.io/address/{}"
+            components = html.Div([html.H4('Contracts'),
+                          html.H5(f'{self.token_agent.contract_name} {self.token_agent.contract_address}',
+                                  id="token-contract-address",
+                                  href=base_url.format(self.token_agent.contract_address)),
 
-            # TODO: link to etherscan
-            # https://goerli.etherscan.io/address/0x894a30aec251c7a38c868e831137514a27c25504
-            return html.Div([html.H4('Contracts'),
-                             html.H5(f'{token.contract_name} {token.contract_address}', id="token-contract-address"),
-                             html.H5(f'{staking_escrow.contract_name} {staking_escrow.contract_address}', id="staking-contract-address"),
-                             html.H5(f'{policy_manager.contract_name} {policy_manager.contract_address}', id="policy-contract-address"),
-                             html.H5(f'{adjudicator.contract_name} {adjudicator.contract_address}', id="adjudicator-contract-address"),
-                             ])
+                          html.H5(f'{self.staking_agent.contract_name} {self.staking_agent.contract_address}',
+                                  id="staking-contract-address",
+                                  href=base_url.format(self.staking_agent.contract_address)),
+
+                          html.H5(f'{self.policy_manager.contract_name} {self.policy_manager.contract_address}',
+                                  id="policy-contract-address",
+                                  href=base_url.format(self.policy_manager.contract_address)),
+
+                          html.H5(f'{self.adjudicator.contract_name} {self.adjudicator.contract_address}',
+                                  id="adjudicator-contract-address",
+                                  href=base_url.format(self.adjudicator.contract_address)),
+                          ])
+            return components
 
         @dash_app.callback(Output('staked-tokens', 'children'),
                            [Input('minute-interval', 'n_intervals')],
@@ -193,17 +200,19 @@ class Dashboard:
             staked = NU.from_nunits(data['global_locked_tokens'])
             return html.Div([html.H4('Staked Tokens'), html.H5(f"{staked}", id='staked-tokens-value')])
 
-        @dash_app.callback(Output('prev-locked-stake-graph', 'children'), [Input('daily-interval', 'n_intervals')])
-        def prev_locked_tokens(n):
+        @dash_app.callback(Output('locked-stake-graph', 'children'),
+                           [Input('daily-interval', 'n_intervals')],
+                           [State('cached-crawler-stats', 'children')])
+        def stake_and_known_nodes_plot(n, latest_crawler_stats):
             prior_periods = 30
-            locked_tokens_data = self.influx_client.get_historical_locked_tokens_over_range(prior_periods)
-            return historical_locked_tokens_bar_chart(locked_tokens=locked_tokens_data)
-
-        @dash_app.callback(Output('prev-num-stakers-graph', 'children'), [Input('daily-interval', 'n_intervals')])
-        def historical_known_nodes(n):
-            prior_periods = 30
-            num_stakers_data = self.influx_client.get_historical_num_stakers_over_range(prior_periods)
-            return historical_known_nodes_line_chart(data=num_stakers_data)
+            data = self.verify_cached_stats(latest_crawler_stats)
+            nodes_history = self.influx_client.get_historical_num_stakers_over_range(prior_periods)
+            past_stakes = self.influx_client.get_historical_locked_tokens_over_range(prior_periods)
+            future_stakes = data['future_locked_tokens']
+            graph = future_locked_tokens_bar_chart(future_locked_tokens=future_stakes,
+                                                   past_locked_tokens=past_stakes,
+                                                   node_history=nodes_history)
+            return graph
 
         # @dash_app.callback(Output('prev-work-orders-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         # def historical_work_orders(n):
@@ -211,12 +220,5 @@ class Dashboard:
         #     prior_periods = 30
         #     num_work_orders_data = self.influx_client.get_historical_work_orders_over_range(prior_periods)
         #     return historical_work_orders_line_chart(data=num_work_orders_data)
-
-        @dash_app.callback(Output('locked-stake-graph', 'children'),
-                           [Input('daily-interval', 'n_intervals')],
-                           [State('cached-crawler-stats', 'children')])
-        def future_locked_tokens(n, latest_crawler_stats):
-            data = self.verify_cached_stats(latest_crawler_stats)
-            return future_locked_tokens_bar_chart(data=data['future_locked_tokens'])
 
         return dash_app
