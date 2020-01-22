@@ -58,11 +58,17 @@ def stakers_breakdown_pie_chart(data):
             title=f'Staker Status',
             showlegend=True,
             paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)'
+            plot_bgcolor='rgba(0,0,0,0)',
+            autosize=True,
+            width=None,
+            height=None
         ))
 
-    fig['layout'].update(autosize=True, width=None, height=None)
-    return dcc.Graph(figure=fig, id='staker-breakdown-graph', config=GRAPH_CONFIG)
+    graph = dcc.Graph(figure=fig,
+                      id='staker-breakdown-graph',
+                      config=GRAPH_CONFIG,
+                      style={'width': '100%', 'height': '100%'})
+    return graph
 
 
 def top_stakers_chart(data: dict):
@@ -70,7 +76,10 @@ def top_stakers_chart(data: dict):
     total_staked = sum(data_values_list)
 
     # add Total entry as root element
+    # TODO: Pending upstream fix
+    # treemap_labels = (list(to_checksum_address(a) for a in data.keys()) + ['Total'])
     treemap_labels = (list(data.keys()) + ['Total'])
+
     treemap_values = data_values_list + [total_staked]
     treemap_parents = ['Total'] * len(data) + ['']  # set parent of Total entry to be root ('')
 
@@ -90,10 +99,17 @@ def top_stakers_chart(data: dict):
             title=f'Top Stakers',
             showlegend=False,
             paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)'
+            plot_bgcolor='rgba(0,0,0,0)',
+            autosize=True,
+            width=None,
+            height=None,
         ))
-    fig['layout'].update(autosize=True, width=None, height=None)
-    return dcc.Graph(figure=fig, id='top-stakers-graph', config=GRAPH_CONFIG)
+
+    graph = dcc.Graph(figure=fig,
+                      id='top-stakers-graph',
+                      config=GRAPH_CONFIG,
+                      style={'width': '100%', 'height': '100%'})
+    return graph
 
 
 def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_tokens: dict, node_history: dict):
@@ -149,16 +165,22 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
     ]
 
     layout = go.Layout(
-            title=f'Staked NU and Stakers | {period_range[0]} - {period_range[-1]}',
+            title=f'Stake and Stakers | {period_range[0].capitalize()} - {period_range[-1]}',
             xaxis={'title': 'Days'},
             yaxis={'title': 'NU Tokens', 'rangemode': 'tozero', 'showgrid': False},
-            yaxis2={'title': f'Past Stakers', 'overlaying': 'y', 'side': 'right', 'rangemode': 'tozero', 'showgrid': False},
+            yaxis2={'title': f'Stakers', 'overlaying': 'y', 'side': 'right', 'rangemode': 'tozero', 'showgrid': False},
             showlegend=False,
             legend=go.layout.Legend(x=0, y=1.0),
             paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)'
-        )
+            plot_bgcolor='rgba(0,0,0,0)',
+            autosize=True,
+            width=None,
+            height=None
+    )
 
     fig = go.Figure(data=plots, layout=layout)
-    fig['layout'].update(autosize=True, width=None, height=None)
-    return dcc.Graph(figure=fig, id='locked-stake', config=GRAPH_CONFIG)
+    graph = dcc.Graph(figure=fig,
+                      id='locked-stake',
+                      config=GRAPH_CONFIG,
+                      style={'width': '100%', 'height': '100%'})
+    return graph
