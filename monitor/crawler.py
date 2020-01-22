@@ -231,11 +231,10 @@ class Crawler(Learner):
         return dict(token_counter)
 
     def _measure_top_stakers(self):
-        confirmed, pending, inactive = self.staking_agent.partition_stakers_by_activity()
+        _, stakers = self.staking_agent.get_all_active_stakers(periods=1)
         data = dict()
-        for staker_address in confirmed:
-            locked = self.staking_agent.get_locked_tokens(staker_address=staker_address, periods=1)
-            data[staker_address] = float(NU.from_nunits(locked).to_tokens())
+        for staker_info in stakers:
+            data[staker_info[0]] = float(NU.from_nunits(staker_info[1]).to_tokens())
         data = dict(sorted(data.items(), key=lambda s: s[1], reverse=True))
         return data
 

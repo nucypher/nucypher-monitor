@@ -65,38 +65,33 @@ def stakers_breakdown_pie_chart(data):
     return dcc.Graph(figure=fig, id='staker-breakdown-graph', config=GRAPH_CONFIG)
 
 
-def top_stakers_chart(data):
-    colors = ['#FAE755', '#74C371', '#3E0751']  # colors from Viridis colorscale
+def top_stakers_chart(data: dict):
+    data_values_list = list(data.values())
+    total_staked = sum(data_values_list)
+
+    # add Total entry as root element
+    treemap_labels = (list(data.keys()) + ['Total'])
+    treemap_values = data_values_list + [total_staked]
+    treemap_parents = ['Total'] * len(data) + ['']  # set parent of Total entry to be root ('')
+
     fig = go.Figure(
-        data=[
-
-            # TODO
-            # go.Treemap(
-            #     branchvalues="total",
-            #     labels=list(data.keys()),
-            #     parents=list(data.keys()),
-            #     values=list(data.values()),
-            #     textinfo="label+value+percent parent+percent entry",
-            #     outsidetextfont={"size": 20, "color": "darkblue"},
-            #     marker={"line": {"width": 2}},
-            #     pathbar={"visible": False}),
-
-            go.Pie(
-                labels=list(data.keys()),
-                values=list(data.values()),
-                # hole=.3,
-                name='Stakers',
-                textinfo='none',
-                marker=dict(colors=colors, line=dict(width=2))
-            )
-        ],
+        data=go.Treemap(
+            branchvalues="total",
+            labels=treemap_labels,
+            name='',
+            parents=treemap_parents,
+            values=treemap_values,
+            textinfo='none',
+            hovertemplate="<b>%{label} </b> <br> Stake Size: %{value:,.2f} NU<br> % of Network: %{percentRoot:.3% %}",
+            marker=go.treemap.Marker(colors=data_values_list, colorscale='Viridis', line={"width": 2}, showscale=True),
+            pathbar=dict(visible=False),
+        ),
         layout=go.Layout(
             title=f'Top Stakers',
             showlegend=False,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)'
         ))
-
     fig['layout'].update(autosize=True, width=None, height=None)
     return dcc.Graph(figure=fig, id='top-stakers-graph', config=GRAPH_CONFIG)
 
