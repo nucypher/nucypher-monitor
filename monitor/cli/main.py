@@ -91,6 +91,9 @@ def crawl(general_config,
                       influx_host=influx_host,
                       influx_port=influx_port)
     if not dry_run:
+        emitter.message(f"Network: {network}", color='yellow')
+        emitter.message(f"InfluxDB: {influx_host}:{influx_port}", color='blue')
+        emitter.message(f"Provider: {provider_uri}", color='blue')
         message = f"Running Nucypher Crawler JSON endpoint at http://localhost:{http_port}/stats"
         emitter.message(message, color='blue', bold=True)
         crawler.start()
@@ -145,6 +148,8 @@ def dashboard(general_config,
         influx_host = crawler_host
 
     rest_app = Flask("monitor-dashboard")
+    if general_config.debug:
+        os.environ['FLASK_ENV'] ='development'  # TODO: Review layer
     Dashboard(flask_server=rest_app,
               route_url='/',
               registry=registry,
@@ -168,5 +173,9 @@ def dashboard(general_config,
         deployer = tls_hosting_power.get_deployer(rest_app=rest_app, port=http_port)
 
     if not dry_run:
+        emitter.message(f"Network: {network}", color='yellow')
+        emitter.message(f"Crawler: {crawler_host}:{crawler_port}", color='blue')
+        emitter.message(f"InfluxDB: {influx_host}:{influx_port}", color='blue')
+        emitter.message(f"Provider: {provider_uri}", color='blue')
         emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}", color='blue', bold=True)
         deployer.run()
