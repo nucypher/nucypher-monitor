@@ -174,22 +174,22 @@ class Dashboard:
         def contracts(pathname):
             base_url = "https://goerli.etherscan.io/address/{}"
             components = html.Div([html.H4('Contracts'),
-                          html.H5(f'{self.token_agent.contract_name} {self.token_agent.contract_address}',
-                                  id="token-contract-address",
-                                  href=base_url.format(self.token_agent.contract_address)),
+                                   html.A(f'{self.token_agent.contract_name} {self.token_agent.contract_address}',
+                                          id="token-contract-address",
+                                          href=base_url.format(self.token_agent.contract_address)),
 
-                          html.H5(f'{self.staking_agent.contract_name} {self.staking_agent.contract_address}',
-                                  id="staking-contract-address",
-                                  href=base_url.format(self.staking_agent.contract_address)),
+                                   html.A(f'{self.staking_agent.contract_name} {self.staking_agent.contract_address}',
+                                          id="staking-contract-address",
+                                          href=base_url.format(self.staking_agent.contract_address)),
 
-                          html.H5(f'{self.policy_manager.contract_name} {self.policy_manager.contract_address}',
-                                  id="policy-contract-address",
-                                  href=base_url.format(self.policy_manager.contract_address)),
+                                   html.A(f'{self.policy_manager.contract_name} {self.policy_manager.contract_address}',
+                                          id="policy-contract-address",
+                                          href=base_url.format(self.policy_manager.contract_address)),
 
-                          html.H5(f'{self.adjudicator.contract_name} {self.adjudicator.contract_address}',
-                                  id="adjudicator-contract-address",
-                                  href=base_url.format(self.adjudicator.contract_address)),
-                          ])
+                                   html.A(f'{self.adjudicator.contract_name} {self.adjudicator.contract_address}',
+                                          id="adjudicator-contract-address",
+                                          href=base_url.format(self.adjudicator.contract_address)),
+                                   ], id='contract-names')
             return components
 
         @dash_app.callback(Output('staked-tokens', 'children'),

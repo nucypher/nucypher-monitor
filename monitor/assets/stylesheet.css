@@ -295,6 +295,11 @@ label, legend {
     flex-basis: 100%;
 }
 
+#contract-names {
+    display: flex;
+    flex-direction: column;
+}
+
 /*#top-stakers-graph {*/
 /*    flex-basis: 10%;*/
 /*}*/
