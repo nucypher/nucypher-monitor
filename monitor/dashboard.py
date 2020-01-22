@@ -56,8 +56,8 @@ class Dashboard:
         # Agency
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
         self.token_agent = ContractAgency.get_agent(NucypherTokenAgent, registry=self.registry)
-        self.policy_manager = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
-        self.adjudicator = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
+        self.policy_agent = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
+        self.adjudicator_agent = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
 
         # Dash
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
@@ -173,22 +173,43 @@ class Dashboard:
         @dash_app.callback(Output('contracts', 'children'), [Input('url', 'pathname')])  # on page-load
         def contracts(pathname):
             base_url = "https://goerli.etherscan.io/address/{}"
+            reward_supply = NU.from_nunits(self.token_agent.get_balance(self.staking_agent.contract_address))
             components = html.Div([html.H4('Contracts'),
-                                   html.A(f'{self.token_agent.contract_name} {self.token_agent.contract_address}',
-                                          id="token-contract-address",
-                                          href=base_url.format(self.token_agent.contract_address)),
 
-                                   html.A(f'{self.staking_agent.contract_name} {self.staking_agent.contract_address}',
-                                          id="staking-contract-address",
-                                          href=base_url.format(self.staking_agent.contract_address)),
+                                   html.Div([
+                                       html.A(f'{self.token_agent.contract_name} {self.token_agent.contract_address}',
+                                              id="token-contract-address",
+                                              href=base_url.format(self.token_agent.contract_address)),
+                                       html.Span(f'')
+                                   ]),
 
-                                   html.A(f'{self.policy_manager.contract_name} {self.policy_manager.contract_address}',
-                                          id="policy-contract-address",
-                                          href=base_url.format(self.policy_manager.contract_address)),
+                                   html.Div([
+                                       html.A(
+                                           f'{self.staking_agent.contract_name} {self.staking_agent.contract_address}',
+                                           id="staking-contract-address",
+                                           href=base_url.format(self.staking_agent.contract_address)),
+                                       html.Span(f'{self.staking_agent.contract.version}'),
+                                       html.Span(f'Reward Supply {reward_supply}')
+                                   ]),
 
-                                   html.A(f'{self.adjudicator.contract_name} {self.adjudicator.contract_address}',
-                                          id="adjudicator-contract-address",
-                                          href=base_url.format(self.adjudicator.contract_address)),
+                                   html.Div([
+                                       html.A(
+                                           f'{self.policy_agent.contract_name} {self.policy_agent.contract_address}',
+                                           id="policy-contract-address",
+                                           href=base_url.format(self.policy_agent.contract_address)),
+                                       html.Span(f'{self.policy_agent.contract.version}'),
+                                       html.Span(f'{self.token_agent.get_balance(self.policy_agent.contract_address)}')
+                                   ]),
+
+                                   html.Div([
+                                       html.A(f'{self.adjudicator_agent.contract_name} {self.adjudicator_agent.contract_address}',
+                                              id="adjudicator-contract-address",
+                                              href=base_url.format(self.adjudicator_agent.contract_address)),
+                                       html.Span(f'{self.adjudicator_agent.contract.version}'),
+                                       html.Span(
+                                           f'{self.token_agent.get_balance(self.adjudicator_agent.contract_address)}')
+                                   ])
+
                                    ], id='contract-names')
             return components
 
