@@ -76,10 +76,7 @@ def top_stakers_chart(data: dict):
     total_staked = sum(data_values_list)
 
     # add Total entry as root element
-    # TODO: Pending upstream fix
-    # treemap_labels = (list(to_checksum_address(a) for a in data.keys()) + ['Total'])
     treemap_labels = (list(data.keys()) + ['Total'])
-
     treemap_values = data_values_list + [total_staked]
     treemap_parents = ['Total'] * len(data) + ['']  # set parent of Total entry to be root ('')
 
@@ -92,7 +89,7 @@ def top_stakers_chart(data: dict):
             values=treemap_values,
             textinfo='none',
             hovertemplate="<b>%{label} </b> <br> Stake Size: %{value:,.2f} NU<br> % of Network: %{percentRoot:.3% %}",
-            marker=go.treemap.Marker(colors=data_values_list, colorscale='Viridis', line={"width": 2}, showscale=True),
+            marker=go.treemap.Marker(colors=list(data.keys()), colorscale='Viridis', line={"width": 2}),
             pathbar=dict(visible=False),
         ),
         layout=go.Layout(

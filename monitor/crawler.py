@@ -3,6 +3,7 @@ import os
 import maya
 import requests
 from constant_sorrow.constants import NOT_STAKING
+from eth_utils import to_checksum_address
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
@@ -10,7 +11,6 @@ from maya import MayaDT
 from twisted.internet import task, reactor
 from twisted.logger import Logger
 
-from monitor.components import generate_node_status_icon
 from nucypher.blockchain.economics import TokenEconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
@@ -234,7 +234,9 @@ class Crawler(Learner):
         _, stakers = self.staking_agent.get_all_active_stakers(periods=1)
         data = dict()
         for staker_info in stakers:
-            data[staker_info[0]] = float(NU.from_nunits(staker_info[1]).to_tokens())
+            # TODO: remove once nucypher: #1611 is merged
+            staker_address = to_checksum_address(staker_info[0].to_bytes(20, 'big'))
+            data[staker_address] = float(NU.from_nunits(staker_info[1]).to_tokens())
         data = dict(sorted(data.items(), key=lambda s: s[1], reverse=True))
         return data
 
