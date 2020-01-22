@@ -67,7 +67,7 @@ def stakers_breakdown_pie_chart(data):
     graph = dcc.Graph(figure=fig,
                       id='staker-breakdown-graph',
                       config=GRAPH_CONFIG,
-                      style={'width': '100%', 'height': '100%'})
+                      style={'width': '100%'})
     return graph
 
 
@@ -105,7 +105,7 @@ def top_stakers_chart(data: dict):
     graph = dcc.Graph(figure=fig,
                       id='top-stakers-graph',
                       config=GRAPH_CONFIG,
-                      style={'width': '100%', 'height': '100%'})
+                      style={'width': '100%'})
     return graph
 
 
@@ -179,5 +179,5 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
     graph = dcc.Graph(figure=fig,
                       id='locked-stake',
                       config=GRAPH_CONFIG,
-                      style={'width': '100%', 'height': '100%'})
+                      style={'width': '100%'})
     return graph

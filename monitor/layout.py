@@ -51,6 +51,13 @@ BODY = html.Div([
         HEADER,
         HIDDEN_DIV,
         CONTENT,
+
+        dcc.Interval(
+            id='second-interval',
+            interval=1 * 1000,  # in milliseconds
+            n_intervals=0
+        ),
+
         dcc.Interval(
             id='minute-interval',
             interval=MINUTE_REFRESH_RATE,

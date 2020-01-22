@@ -1,6 +1,8 @@
 import json
+from datetime import datetime, timedelta
 
 import dash_html_components as html
+import maya
 import requests
 from dash import Dash
 from dash.dependencies import Output, Input, State
@@ -146,18 +148,24 @@ class Dashboard:
             return html.Div([html.H4("Current Period"), html.H5(data['current_period'], id='current-period-value')])
 
         @dash_app.callback(Output('blocktime-value', 'children'),
-                           [Input('minute-interval', 'n_intervals')],
-                           [State('cached-crawler-stats', 'children')])
-        def blocktime(n, latest_crawler_stats):
-            data = self.verify_cached_stats(latest_crawler_stats)
-            blocktime = MayaDT(data['blocktime']).iso8601()
+                           [Input('minute-interval', 'n_intervals')])
+        def blocktime(n):
+            # TODO: Consider doing this here or not - It exposes a web3 call on a public interface
+            block = self.staking_agent.blockchain.client.w3.eth.getBlock('latest')
+            blocktime = block.timestamp  # epoch
+            blocktime = f"{MayaDT(blocktime).iso8601()} | {block.number}"
             return html.Div([html.H4("Blocktime"), html.H5(blocktime, id='blocktime')])
 
         @dash_app.callback(Output('time-remaining', 'children'),
                            [Input('minute-interval', 'n_intervals')],
                            [State('cached-crawler-stats', 'children')])
         def time_remaining(n, latest_crawler_stats):
-            data = self.verify_cached_stats(latest_crawler_stats)
+            # data = self.verify_cached_stats(latest_crawler_stats)  # TODO: use period utils
+            tomorrow = datetime.now() + timedelta(1)
+            midnight = datetime(year=tomorrow.year, month=tomorrow.month, day=tomorrow.day, hour=0, minute=0, second=0)
+            delta = (midnight - datetime.now())
+            slang = (maya.now() + delta).slang_time()
+            data = {'next_period': slang}
             return html.Div([html.H4("Next Period"), html.H5(data['next_period'])])
 
         @dash_app.callback(Output('domains', 'children'), [Input('url', 'pathname')])  # on page-load
@@ -176,38 +184,37 @@ class Dashboard:
             reward_supply = NU.from_nunits(self.token_agent.get_balance(self.staking_agent.contract_address))
             components = html.Div([html.H4('Contracts'),
 
-                                   html.Div([
+                                   html.Tr([
                                        html.A(f'{self.token_agent.contract_name} {self.token_agent.contract_address}',
                                               id="token-contract-address",
                                               href=base_url.format(self.token_agent.contract_address)),
-                                       html.Span(f'')
+                                       html.Span(f'{self.token_agent.contract.version}')
                                    ]),
 
-                                   html.Div([
+                                   html.Tr([
                                        html.A(
                                            f'{self.staking_agent.contract_name} {self.staking_agent.contract_address}',
                                            id="staking-contract-address",
                                            href=base_url.format(self.staking_agent.contract_address)),
                                        html.Span(f'{self.staking_agent.contract.version}'),
-                                       html.Span(f'Reward Supply {reward_supply}')
+                                       html.Span(f'{reward_supply}')
                                    ]),
 
-                                   html.Div([
+                                   html.Tr([
                                        html.A(
                                            f'{self.policy_agent.contract_name} {self.policy_agent.contract_address}',
                                            id="policy-contract-address",
                                            href=base_url.format(self.policy_agent.contract_address)),
                                        html.Span(f'{self.policy_agent.contract.version}'),
-                                       html.Span(f'{self.token_agent.get_balance(self.policy_agent.contract_address)}')
+                                       html.Span(f'{NU.from_nunits(self.token_agent.get_balance(self.policy_agent.contract_address))}')
                                    ]),
 
-                                   html.Div([
+                                   html.Tr([
                                        html.A(f'{self.adjudicator_agent.contract_name} {self.adjudicator_agent.contract_address}',
                                               id="adjudicator-contract-address",
                                               href=base_url.format(self.adjudicator_agent.contract_address)),
                                        html.Span(f'{self.adjudicator_agent.contract.version}'),
-                                       html.Span(
-                                           f'{self.token_agent.get_balance(self.adjudicator_agent.contract_address)}')
+                                       html.Span(f'{NU.from_nunits(self.token_agent.get_balance(self.adjudicator_agent.contract_address))}')
                                    ])
 
                                    ], id='contract-names')

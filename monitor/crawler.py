@@ -252,15 +252,15 @@ class Crawler(Learner):
         current_period = self.staking_agent.get_current_period()
         economics = TokenEconomicsFactory.get_economics(registry=self.registry)
         next_period = datetime_at_period(period=current_period+1, seconds_per_period=economics.seconds_per_period)
-        remaining = next_period.slang_time()
+        remaining = str(next_period - maya.now())
         return remaining
 
     def measure_known_nodes(self):
         known_nodes = self._crawler_client.get_known_nodes_metadata()
         current_period = self.staking_agent.get_current_period()
 
-        color_codex = {-1: ('green', 'OK'),  # Confirmed Next Period
-                       0: ('#e0b32d', 'Pending'),  # Pending Confirmation of Next Period
+        color_codex = {-1: ('green', 'OK'),                  # Confirmed Next Period
+                       0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
                        current_period: ('#525ae3', 'Idle'),  # Never confirmed
                        BlockchainInterface.NULL_ADDRESS: ('red', 'Headless')  # Headless Staker (No Worker)
                        }

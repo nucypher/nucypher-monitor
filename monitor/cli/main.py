@@ -90,12 +90,13 @@ def crawl(general_config,
                       learn_on_same_thread=learn_on_launch,
                       influx_host=influx_host,
                       influx_port=influx_port)
+
+    emitter.message(f"Network: {network.capitalize()}", color='blue')
+    emitter.message(f"InfluxDB: {influx_host}:{influx_port}", color='blue')
+    emitter.message(f"Provider: {provider_uri}", color='blue')
+    message = f"Running Nucypher Crawler JSON endpoint at http://localhost:{http_port}/stats"
+    emitter.message(message, color='green', bold=True)
     if not dry_run:
-        emitter.message(f"Network: {network}", color='yellow')
-        emitter.message(f"InfluxDB: {influx_host}:{influx_port}", color='blue')
-        emitter.message(f"Provider: {provider_uri}", color='blue')
-        message = f"Running Nucypher Crawler JSON endpoint at http://localhost:{http_port}/stats"
-        emitter.message(message, color='blue', bold=True)
         crawler.start()
         reactor.run()
 
@@ -173,9 +174,9 @@ def dashboard(general_config,
         deployer = tls_hosting_power.get_deployer(rest_app=rest_app, port=http_port)
 
     if not dry_run:
-        emitter.message(f"Network: {network}", color='yellow')
+        emitter.message(f"Network: {network.capitalize()}", color='blue')
         emitter.message(f"Crawler: {crawler_host}:{crawler_port}", color='blue')
         emitter.message(f"InfluxDB: {influx_host}:{influx_port}", color='blue')
         emitter.message(f"Provider: {provider_uri}", color='blue')
-        emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}", color='blue', bold=True)
+        emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}", color='green', bold=True)
         deployer.run()

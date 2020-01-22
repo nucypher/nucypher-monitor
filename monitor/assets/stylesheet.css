@@ -298,6 +298,30 @@ label, legend {
 #contract-names {
     display: flex;
     flex-direction: column;
+    width: 100%;
+}
+
+
+#contract-names > tr {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    width: 99%;
+    padding: 1rem;
+}
+
+#contracts tr:nth-child(even){
+  background-color: #2c2c318a;
+  color: #fff;
+}
+
+#contracts tr:nth-child(odd){
+  background-color: #16171929;
+  color: #fff;
+}
+
+#contract-names > tr > * {
+    width: 25%;
 }
 
 /*#top-stakers-graph {*/
