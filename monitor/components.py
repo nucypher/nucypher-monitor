@@ -49,20 +49,18 @@ def generate_node_status_icon(status: dict) -> html.Td:
     status_cell = daq.Indicator(id='Status',
                                 color=color,
                                 value=True,
-                                label=status_message,
-                                labelPosition='right',
-                                size=25)  # pixels
-    status = html.Td(status_cell)
+                                size=10)  # pixels
+    status = html.Td(status_cell, className='node-status-indicator', title=status_message)
     return status
 
 
-def generate_node_table_components(node_info: dict) -> dict:
+def generate_node_row(node_info: dict) -> dict:
 
     identity = html.Td(children=html.Div([
         html.A(node_info['nickname'],
                href=f'https://{node_info["rest_url"]}/status',
                target='_blank')
-    ]))
+    ]), className='node-nickname')
 
     # Fleet State
     fleet_state_div = []
@@ -82,7 +80,7 @@ def generate_node_table_components(node_info: dict) -> dict:
     status = generate_node_status_icon(node_info['status'])
     components = {
         'Status': status,
-        'Checksum': html.Td(html.A(f'{staker_address[:10]}...', href=etherscan_url, target='_blank')),
+        'Checksum': html.Td(html.A(f'{staker_address[:10]}...', href=etherscan_url, target='_blank'), className='node-address'),
         'Nickname': identity,
         'Launched': html.Td(node_info['timestamp']),
         'Last Seen': html.Td([slang_last_seen]),
@@ -92,55 +90,27 @@ def generate_node_table_components(node_info: dict) -> dict:
     return components
 
 
-def nodes_table(nodes, teacher_index: int) -> html.Table:
+def nodes_table(nodes) -> html.Table:
     rows = []
     for index, node_info in enumerate(nodes):
-        row = []
-        # TODO: could return list (skip column for-loop); however, dict is good in case of re-ordering of columns
-        components = generate_node_table_components(node_info=node_info)
-
+        row = list()
+        components = generate_node_row(node_info=node_info)
         for col in NODE_TABLE_COLUMNS:
             cell = components[col]
-            if cell:
-                row.append(cell)
-
+            row.append(cell)
         style_dict = {'overflowY': 'scroll'}
-        # highlight teacher
-        if index == teacher_index:
-            style_dict['backgroundColor'] = '#1E65F3'
-            style_dict['color'] = 'white'
-
         rows.append(html.Tr(row, style=style_dict, className='node-row'))
-
-    table = html.Table(
-        # header
-        [html.Tr([html.Th(col) for col in NODE_TABLE_COLUMNS], className='table-header')] +
-        rows,
-        id='node-table'
-    )
-
+    table = html.Table(rows, id='node-table')
     return table
 
 
-def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> html.Div:
-    nodes = list()
-    teacher_index = None
-    for checksum in nodes_dict:
-        node_data = nodes_dict[checksum]
-        if node_data:
-            if checksum == teacher_checksum:
-                teacher_index = len(nodes)
-            nodes.append(node_data)
-
-    component = html.Div([
-        html.H4('Network Nodes'),
-        html.Div([
-            html.Div('* Current Teacher',
-                     style={'backgroundColor': '#1E65F3', 'color': 'white'},
-                     className='two columns'),
-        ]),
-        html.Br(),
-        html.H6(f'Known Nodes: {len(nodes_dict)}'),
-        html.Div([nodes_table(nodes, teacher_index)])
-    ])
-    return component
+def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
+    components = list()
+    for label, nodes in reversed(list(nodes_dict.items())):
+        component = html.Div([
+            html.H4(f'{label.capitalize()} Nodes ({len(nodes)})'),
+            html.Br(),
+            html.Div([nodes_table(nodes)])
+        ], id=f"{label}-list")
+        components.append(component)
+    return components

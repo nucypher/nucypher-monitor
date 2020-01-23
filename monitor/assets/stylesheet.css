@@ -17,17 +17,19 @@ th {
     padding: 12px 15px;
     text-align: left;
     border-bottom: 1px solid #E1E1E1;
-    flex: 1;
+    /*flex: 1;*/
 }
 
 td {
     padding: 12px 15px;
     text-align: left;
-    flex: 1;
+    /*flex: 1;*/
     display: flex;
     flex-direction: row;
     justify-content: start;
     border-bottom: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 label, legend {
@@ -91,6 +93,22 @@ label, legend {
     padding-left: 2em;
 }
 
+h4 {
+    font-size: 2.2rem;
+    line-height: 1.35;
+    letter-spacing: -.08rem;
+    margin-bottom: 1.2rem;
+    margin-top: 1.2rem;
+}
+
+h5 {
+    font-size: 1.5rem;
+    line-height: 1.5;
+    letter-spacing: -.05rem;
+    margin-bottom: 0.6rem;
+    margin-top: 0.6rem;
+}
+
 #stats > div {
     width: 20%;
 }
@@ -113,6 +131,10 @@ label, legend {
     display: inline-block;
 }
 
+
+.node-status-indicator {
+    flex-basis: 2%;
+}
 
 .symbols {
     float: left;
@@ -156,6 +178,11 @@ label, legend {
     width: 100%;
     display: flex;
     flex-direction: column;
+}
+
+
+.node-row td {
+    width: 100%;
 }
 
 
@@ -264,19 +291,21 @@ label, legend {
 .node-row {
     -webkit-font-smoothing: antialiased;
     box-shadow: rgb(229, 229, 229) 0 0 1px;
-    border: 1px solid lightslategrey;
-    padding-left: 2rem;
-    margin: 5px;
+    border: 1px solid #000000;
+    padding-left: 1rem;
+    margin: 0;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    padding-right: 2rem;
     overflow-y: hidden !important;
+    height: 2em;
+    text-overflow: ellipsis;
+    font-size: 1.2rem;
 }
 
 .node-row:hover {
-    box-shadow: rgb(0, 101, 229) 0 0 20px;
+    box-shadow: rgb(220, 220, 220) 0 0 10px;
 }
 
 .status-indicator {
@@ -310,6 +339,14 @@ label, legend {
     padding: 1rem;
 }
 
+.node-address {
+    flex-basis: 40%;
+}
+
+.node-nickname {
+    flex-basis: 260%;
+}
+
 #contracts tr:nth-child(even){
   background-color: #2c2c318a;
   color: #fff;
@@ -322,6 +359,10 @@ label, legend {
 
 #contract-names > tr > * {
     width: 25%;
+}
+
+#known-nodes {
+    color: #767676;
 }
 
 /*#top-stakers-graph {*/

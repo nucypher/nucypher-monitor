@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 
 import maya
 import requests
@@ -266,6 +267,8 @@ class Crawler(Learner):
                        current_period: ('#525ae3', 'Idle'),  # Never confirmed
                        BlockchainInterface.NULL_ADDRESS: ('red', 'Headless')  # Headless Staker (No Worker)
                        }
+
+        payload = defaultdict(list)
         for staker_address in known_nodes:
             last_confirmed_period = self.staking_agent.get_last_active_period(staker_address)
             missing_confirmations = current_period - last_confirmed_period
@@ -278,7 +281,9 @@ class Crawler(Learner):
                 color, status_message = 'red', f'{missing_confirmations} Unconfirmed'
             node_status = {'status': status_message, 'missing_confirmations': missing_confirmations, 'color': color}
             known_nodes[staker_address]['status'] = node_status
-        return known_nodes
+            payload[status_message.lower()].append(known_nodes[staker_address])
+
+        return payload
 
     def _collect_stats(self, threaded: bool = True) -> None:
         # TODO: Handle faulty connection to provider (requests.exceptions.ReadTimeout)
