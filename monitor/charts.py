@@ -126,6 +126,8 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
     future_locked_tokens, future_num_stakers = map(list, zip(*future_locked_tokens.values()))
     locked_tokens = past_token_values + future_locked_tokens
 
+    x_coord_today = now.datetime().strftime(date_format)
+
     plots = [
 
         #
@@ -141,7 +143,7 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
         ),
 
         #
-        # Known Nodes
+        # Known Nodes (past and future)
         #
 
         go.Scatter(
@@ -161,6 +163,25 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
             yaxis='y2',
             xaxis='x',
             marker={'color': 'rgb(0, 153, 239)'}
+        ),
+
+        # Today Vertical Line
+        go.Scatter(
+            x=[x_coord_today, x_coord_today],
+            y=[0, max(locked_tokens) * 1.1],  # point slightly above actual max
+            name='',
+            text=['', 'Today'],
+            mode='lines+text',
+            textposition='top center',
+            hoverinfo='none',
+            line=dict(
+                color='Red',
+                width=5,
+                dash='dashdot',
+            ),
+            textfont=dict(
+                color='Red',
+            )
         )
     ]
 
