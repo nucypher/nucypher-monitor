@@ -115,8 +115,11 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
 
     nodes_history = list(node_history.values())
 
-    past_period_range = [maya.MayaDT.from_datetime(d).slang_date() for d in past_locked_tokens.keys()]
-    future_period_range = list((now+maya.timedelta(days=p)).slang_date() for p in range(1, future_periods + 1))
+    # eg. Jan-23-2020
+    date_format = '%b-%d-%Y'
+
+    past_period_range = [d.strftime(date_format) for d in past_locked_tokens.keys()]
+    future_period_range = list((now+maya.timedelta(days=p)).datetime().strftime(date_format) for p in range(1, future_periods + 1))
     period_range = past_period_range + future_period_range
 
     past_token_values = [float(v) for v in past_locked_tokens.values()]
