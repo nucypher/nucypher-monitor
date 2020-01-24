@@ -24,7 +24,7 @@ def state_detail(state: dict, current_state: bool) -> html.Div:
 
     if current_state:
         # add current annotation to children
-        children.append(html.Span('(*Current)'))
+        children.append(html.Span('(*Current)', style={'color': 'red'}))
 
     detail = html.Div(children=children,
                       className='state state-current' if current_state else 'state',
