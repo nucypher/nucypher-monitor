@@ -274,7 +274,9 @@ class Crawler(Learner):
             missing_confirmations = current_period - last_confirmed_period
             worker = self.staking_agent.get_worker_from_staker(staker_address)
             if worker == BlockchainInterface.NULL_ADDRESS:
-                missing_confirmations = BlockchainInterface.NULL_ADDRESS
+                # missing_confirmations = BlockchainInterface.NULL_ADDRESS
+                continue  # TODO: Skip this DetachedWoker
+                
             try:
                 color, status_message = color_codex[missing_confirmations]
             except KeyError:
