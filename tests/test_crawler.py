@@ -6,6 +6,7 @@ import pytest
 from nucypher.blockchain.economics import StandardTokenEconomics
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
+from nucypher.blockchain.eth.token import NU
 from nucypher.blockchain.eth.utils import datetime_to_period
 from nucypher.cli import actions
 from nucypher.config.storages import SQLiteForgetfulNodeStorage

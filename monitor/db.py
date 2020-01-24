@@ -55,7 +55,7 @@ class CrawlerStorageClient:
                     column_name = column_names[idx]
                     if column_name == 'updated':
                         # convert column from rfc3339 (for sorting) back to rfc2822
-                        # TODO does this matter for displaying?
+                        # TODO does this matter for displaying? - it doesn't, but rfc2822 is easier on the eyes
                         state_info[column_name] = MayaDT.from_rfc3339(row[idx]).rfc2822()
                     else:
                         state_info[column_name] = row[idx]

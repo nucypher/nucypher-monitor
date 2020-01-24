@@ -296,6 +296,12 @@ h5 {
     opacity: 0.9;
 }
 
+.state-current {
+    border-style: solid;
+    border-width: 7px;
+    border-color: red;
+}
+
 .state > span {
     font-size: 1em;
     font-weight: 100;

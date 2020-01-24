@@ -75,12 +75,13 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
 
     def store_state_metadata(self, state: dict):
         # TODO Limit the size of this table - no reason to store really old state values
-        # TODO: Convert updated timestamp format for supported sqlite3 sorting
+
         db_row = (state['nickname'],
                   state['symbol'],
                   state['color_hex'],
                   state['color_name'],
-                  state['updated'])
+                  # convert to rfc3339 for ease of sqlite3 sorting; we lose millisecond precision, but meh!
+                  MayaDT.from_rfc2822(state['updated']).rfc3339())
         sql = f'REPLACE INTO {self.STATE_DB_NAME} VALUES(?,?,?,?,?)'
         with self.db_conn:
             self.db_conn.execute(sql, db_row)

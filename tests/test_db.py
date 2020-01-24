@@ -63,7 +63,6 @@ def test_node_client_get_state_metadata(tempfile_path):
     state_list = [state_1, state_2, state_3]
     for state in state_list:
         state_dict = FleetStateTracker.abridged_state_details(state)
-        state_dict['updated'] = state.updated.rfc3339()
         node_storage.store_state_metadata(state=state_dict)
 
     node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
@@ -75,7 +74,7 @@ def test_node_client_get_state_metadata(tempfile_path):
     # verify result
     # "result" of form of a list of state_info dictionaries
     for idx, value in enumerate(result):
-        expected_row = convert_state_to_db_row(state_list[idx])
+        expected_row = convert_state_to_display_values(state_list[idx])
         for info_idx, column in enumerate(CrawlerNodeStorage.STATE_DB_SCHEMA):
             assert value[column[0]] == expected_row[info_idx], f"{column[0]} matches"
 
@@ -301,6 +300,6 @@ def convert_node_to_db_row(node):
             node.timestamp.iso8601(), node.last_seen.iso8601(), "?")
 
 
-def convert_state_to_db_row(state):
+def convert_state_to_display_values(state):
     return (state.nickname, state.metadata[0][1], state.metadata[0][0]['hex'],
             state.metadata[0][0]['color'], state.updated.rfc2822())

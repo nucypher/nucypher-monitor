@@ -15,21 +15,29 @@ def header() -> html.Div:
     return html.Div([html.Div(f'v{nucypher.__version__}', id='version')], className="logo-widget")
 
 
-def state_detail(state_dict) -> html.Div:
-    detail = html.Div([
+def state_detail(state: dict, current_state: bool) -> html.Div:
+    children = [
         html.Div([
-            html.Div(state_dict['symbol'], className='single-symbol'),
-        ], className='nucypher-nickname-icon', style={'border-color': state_dict['color_hex']}),
-        html.Span(state_dict['nickname'], title=state_dict['updated']),
-    ], className='state', style={'background-color': state_dict['color_hex']})
+            html.Div(state['symbol'], className='single-symbol'),
+        ], className='nucypher-nickname-icon', style={'border-color': state['color_hex']}),
+        html.Span(state['nickname'], title=state['updated'])]
+
+    if current_state:
+        # add current annotation to children
+        children.append(html.Span('(*Current)'))
+
+    detail = html.Div(children=children,
+                      className='state state-current' if current_state else 'state',
+                      style={'background-color': state['color_hex']})
     return detail
 
 
-def _states_table(states_dict_list) -> html.Table:
+def _states_table(states: List[dict]) -> html.Table:
     row = []
-    for state_dict in states_dict_list:
+    for idx, state_dict in enumerate(states):
         # add previous states in order (already reversed)
-        row.append(html.Td(state_detail(state_dict)))
+        current_state = (idx == 0)
+        row.append(html.Td(state_detail(state=state_dict, current_state=current_state)))
     return html.Table([html.Tr(row, id='state-table')])
 
 
