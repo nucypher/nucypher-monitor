@@ -264,10 +264,10 @@
         },
         "dash-daq": {
             "hashes": [
-                "sha256:98ffce2946374140b630e9659f50262512a9f7adfa6ab22a88dac301d0b49208"
+                "sha256:8370e6624c2b2dd8c53ed8af9a5a376d4b4a8bb4eb4899b57ae8e55fdb8bad8f"
             ],
             "index": "pypi",
-            "version": "==0.3.1"
+            "version": "==0.3.3"
         },
         "dash-html-components": {
             "hashes": [
@@ -578,11 +578,11 @@
         },
         "nucypher": {
             "hashes": [
-                "sha256:06d33c17b91e8190bb66d82951390011763c3ea17c3430c22a5e90aec919fd5d",
-                "sha256:d499a74ce8643905c7429f262edd42e439334424ee774e089509a70f632647ad"
+                "sha256:aa5ee775a7ad03287a73091a502bb328404da5417ecfb7108074af4785d0d244",
+                "sha256:ab7fcf6acffa407661470325e7a4a51889fe111c7ed912cbeaa45517edccd614"
             ],
             "index": "pypi",
-            "version": "==2.0.0b0"
+            "version": "==2.0.0b1"
         },
         "parsimonious": {
             "hashes": [
@@ -609,11 +609,11 @@
         },
         "plotly": {
             "hashes": [
-                "sha256:582ecdfd0e7db3a6f9e079c43f598280489b97d59f38b4c8f8400dc7eb3a3705",
-                "sha256:acc94f17452471ca3446c2ce491c4d1affb99b9ddd9eac4e05614ac4318f8780"
+                "sha256:a19ed783bcf094e6207b3699ab261465bf3c7d299403678801de634bf17e2559",
+                "sha256:bb5271f648913cf330a0de4ede3084cda848f8ad8b080330a0678e1b21df97b0"
             ],
             "index": "pypi",
-            "version": "==4.4.1"
+            "version": "==4.5.0"
         },
         "protobuf": {
             "hashes": [
@@ -1436,10 +1436,10 @@
         },
         "packaging": {
             "hashes": [
-                "sha256:aec3fdbb8bc9e4bb65f0634b9f551ced63983a529d6a8931817d52fdd0816ddb",
-                "sha256:fe1d8331dfa7cc0a883b49d75fc76380b2ab2734b220fbb87d774e4fd4b851f8"
+                "sha256:170748228214b70b672c581a3dd610ee51f733018650740e98c7df862a583f73",
+                "sha256:e665345f9eef0c621aa0bf2f8d78cf6d21904eef16a93f020240b704a57f1334"
             ],
-            "version": "==20.0"
+            "version": "==20.1"
         },
         "percy": {
             "hashes": [
@@ -1450,11 +1450,11 @@
         },
         "plotly": {
             "hashes": [
-                "sha256:582ecdfd0e7db3a6f9e079c43f598280489b97d59f38b4c8f8400dc7eb3a3705",
-                "sha256:acc94f17452471ca3446c2ce491c4d1affb99b9ddd9eac4e05614ac4318f8780"
+                "sha256:a19ed783bcf094e6207b3699ab261465bf3c7d299403678801de634bf17e2559",
+                "sha256:bb5271f648913cf330a0de4ede3084cda848f8ad8b080330a0678e1b21df97b0"
             ],
             "index": "pypi",
-            "version": "==4.4.1"
+            "version": "==4.5.0"
         },
         "pluggy": {
             "hashes": [

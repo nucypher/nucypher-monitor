@@ -27,9 +27,9 @@ jinja2==2.10.3
 lxml==4.4.2
 markupsafe==1.1.1
 more-itertools==8.0.2
-packaging==20.0
+packaging==20.1
 percy==2.0.2
-plotly==4.4.1
+plotly==4.5.0
 pluggy==0.13.1
 py==1.8.1
 pycparser==2.19

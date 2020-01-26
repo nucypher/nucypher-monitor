@@ -21,7 +21,7 @@ constantly==15.1.0
 cryptography==2.8
 cytoolz==0.10.1 ; implementation_name == 'cpython'
 dash-core-components==1.7.0
-dash-daq==0.3.1
+dash-daq==0.3.3
 dash-html-components==1.0.2
 dash-renderer==1.2.3
 dash-table==4.6.0
@@ -63,11 +63,11 @@ msgpack-python==0.5.6
 multiaddr==0.0.9
 mypy-extensions==0.4.3
 netaddr==0.7.19
-git+git://github.com/KPrasch/nucypher.git@monitoring#egg=nucypher
+nucypher==2.0.0b1
 parsimonious==0.8.1
 pathtools==0.1.2
 pendulum==2.0.5
-plotly==4.4.1
+plotly==4.5.0
 protobuf==3.11.2
 py-ecc==1.7.1
 py-evm==0.3.0a12
