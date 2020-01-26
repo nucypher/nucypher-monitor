@@ -378,6 +378,28 @@ h5 {
     color: #767676;
 }
 
+#newborn {
+    /*content: "U+1F389";*/
+    /*content: "🎉";*/
+    color: rgb(141, 78, 171);
+    font-size: 1.2em;
+    font-weight: 900;
+    /*text-indent: -2em;*/
+}
+
+
+#uptime-king {
+    /*content: "♔";*/
+    color: rgb(169, 162, 101);
+    font-size: 1.2em;
+    font-weight: 900;
+    /*text-indent: -2em;*/
+}
+
+.uptime-cell {
+    display: flex;
+}
+
 /*#top-stakers-graph {*/
 /*    flex-basis: 10%;*/
 /*}*/

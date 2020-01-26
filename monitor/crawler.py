@@ -1,6 +1,7 @@
 import os
 from collections import defaultdict
 
+import click
 import maya
 import requests
 from constant_sorrow.constants import NOT_STAKING
@@ -259,17 +260,35 @@ class Crawler(Learner):
         return remaining
 
     def measure_known_nodes(self):
-        known_nodes = self._crawler_client.get_known_nodes_metadata()
-        current_period = self.staking_agent.get_current_period()
 
+        #
+        # Setup
+        #
+
+        current_period = self.staking_agent.get_current_period()
         color_codex = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
                        0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
                        current_period: ('#525ae3', 'Idle'),  # Never confirmed
                        BlockchainInterface.NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
                        }
 
+        shortest_uptime, newborn = float('inf'), None
+        longest_uptime, uptime_king = 0, None
+
+        uptime_template = '{days}d:{hours}h:{minutes}m'
+
+        #
+        # Scrape
+        #
+
         payload = defaultdict(list)
+        known_nodes = self._crawler_client.get_known_nodes_metadata()
         for staker_address in known_nodes:
+
+            #
+            # Missing Confirmations Scraping
+            #
+
             last_confirmed_period = self.staking_agent.get_last_active_period(staker_address)
             missing_confirmations = current_period - last_confirmed_period
             worker = self.staking_agent.get_worker_from_staker(staker_address)
@@ -281,30 +300,49 @@ class Crawler(Learner):
             except KeyError:
                 color, status_message = 'red', f'Unconfirmed'
             node_status = {'status': status_message, 'missed_confirmations': missing_confirmations, 'color': color}
-            known_nodes[staker_address]['status'] = node_status
+
+            #
+            # Uptime Scraping
+            #
 
             now = maya.now()
             timestamp = maya.MayaDT.from_iso8601(known_nodes[staker_address]['timestamp'])
-            hours, rem = divmod(now.epoch - timestamp.epoch, 3600)
-            days = hours // 24
-            minutes, seconds = divmod(rem, 60)
-            uptime = "{:0>2}d:{:0>2}h:{:0>2}m".format(int(days), int(hours), int(minutes))
-            known_nodes[staker_address]['uptime'] = uptime
+            delta = now - timestamp
 
+            node_qualifies_as_newborn = (delta.total_seconds() < shortest_uptime) and missing_confirmations == -1
+            node_qualifies_for_uptime_king = (delta.total_seconds() > longest_uptime) and missing_confirmations == -1
+            if node_qualifies_as_newborn:
+                shortest_uptime, newborn = delta.total_seconds(), staker_address
+            elif node_qualifies_for_uptime_king:
+                longest_uptime, uptime_king = delta.total_seconds(), staker_address
+
+            hours = delta.seconds // 3600
+            minutes = delta.seconds % 3600 // 60
+            natural_uptime = uptime_template.format(days=delta.days, hours=hours, minutes=minutes)
+
+            #
+            # Aggregate
+            #
+
+            known_nodes[staker_address]['status'] = node_status
+            known_nodes[staker_address]['uptime'] = natural_uptime
             payload[status_message.lower()].append(known_nodes[staker_address])
-
+        known_nodes[newborn]['newborn'] = True
+        known_nodes[uptime_king]['uptime_king'] = True
         return payload
 
     def _collect_stats(self, threaded: bool = True) -> None:
         # TODO: Handle faulty connection to provider (requests.exceptions.ReadTimeout)
         if threaded:
             if self.__collecting_stats:
+                click.echo("Skipping Round - Metrics collection thread is already running", color="blue")  # TODO
                 self.log.debug("Skipping Round - Metrics collection thread is already running")
                 return
             return reactor.callInThread(self._collect_stats, threaded=False)
         self.__collecting_stats = True
 
         start = maya.now()
+        click.echo("Starting new scraping round.", color='blue')  # TODO
         self.log.info("Collecting Statistics...")
 
         #
@@ -348,7 +386,9 @@ class Crawler(Learner):
         done = maya.now()
         delta = done - start
         self.__collecting_stats = False
-        self.log.debug(f"Collected new metrics in {delta.seconds}.")
+
+        click.echo(f"Scraping round completed (duration {delta}).", color='yellow')  # TODO: Make optional, use emitter, or remove
+        self.log.debug(f"Collected new metrics took {delta}.")
 
     def _learn_about_nodes(self, threaded: bool = True):
         if threaded:
