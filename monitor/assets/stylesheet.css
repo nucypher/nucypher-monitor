@@ -23,7 +23,7 @@ th {
 td {
     padding: 12px 15px;
     text-align: left;
-    /*flex: 1;*/
+    flex: 1;
     display: flex;
     flex-direction: row;
     justify-content: start;
@@ -94,7 +94,7 @@ label, legend {
 }
 
 h4 {
-    font-size: 2.2rem;
+    font-size: 2.5rem;
     line-height: 1.35;
     letter-spacing: -.08rem;
     margin-bottom: 1.2rem;
@@ -102,7 +102,7 @@ h4 {
 }
 
 h5 {
-    font-size: 1.5rem;
+    font-size: 1.7rem;
     line-height: 1.5;
     letter-spacing: -.05rem;
     margin-bottom: 0.6rem;
@@ -133,8 +133,17 @@ h5 {
 
 
 .node-status-indicator {
-    flex-basis: 2%;
+    flex-grow: 0;
 }
+
+.status-indicator {
+    padding-left: 1em !important;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 6em;
+}
+
 
 .symbols {
     float: left;
@@ -249,6 +258,10 @@ h5 {
     width: 50%;
 }
 
+#staker-breakdown {
+    flex-basis: 0;
+}
+
 #staker-breakdown-graph {
     width: 100%;
     height: 100%;
@@ -263,9 +276,9 @@ h5 {
 
 #state-table > td {
     padding: 0;
-    border-bottom: 1px solid white;
     margin-right: 2px;
     margin-bottom: 2em;
+    width: 5em;
 }
 
 
@@ -274,9 +287,13 @@ h5 {
     text-align: center;
     display: flex;
     flex-direction: column;
-    width: 10em;
+    width: 18em;
     color: black;
     font-weight: 900;
+    font-size: 1rem;
+    height: 6em;
+    border: 0;
+    opacity: 0.9;
 }
 
 .state > span {
@@ -297,10 +314,10 @@ h5 {
     margin: 0;
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: center;
     overflow-y: hidden !important;
-    height: 2em;
+    height: 2.5em;
     text-overflow: ellipsis;
     font-size: 1.2rem;
 }
@@ -309,13 +326,6 @@ h5 {
     box-shadow: rgb(220, 220, 220) 0 0 10px;
 }
 
-.status-indicator {
-    padding-left: 1em !important;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 6em;
-}
 
 .nucypher-button {
     display: none;
@@ -341,11 +351,13 @@ h5 {
 }
 
 .node-address {
-    flex-basis: 40%;
+    flex-basis: 5%;
+    flex-grow: 0;
 }
 
 .node-nickname {
-    flex-basis: 260%;
+    flex-basis: 35%;
+    flex-grow: 0;
 }
 
 #contracts tr:nth-child(even){

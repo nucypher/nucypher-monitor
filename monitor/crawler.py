@@ -262,10 +262,10 @@ class Crawler(Learner):
         known_nodes = self._crawler_client.get_known_nodes_metadata()
         current_period = self.staking_agent.get_current_period()
 
-        color_codex = {-1: ('green', 'OK'),                  # Confirmed Next Period
+        color_codex = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
                        0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
                        current_period: ('#525ae3', 'Idle'),  # Never confirmed
-                       BlockchainInterface.NULL_ADDRESS: ('red', 'Headless')  # Headless Staker (No Worker)
+                       BlockchainInterface.NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
                        }
 
         payload = defaultdict(list)
@@ -275,14 +275,22 @@ class Crawler(Learner):
             worker = self.staking_agent.get_worker_from_staker(staker_address)
             if worker == BlockchainInterface.NULL_ADDRESS:
                 # missing_confirmations = BlockchainInterface.NULL_ADDRESS
-                continue  # TODO: Skip this DetachedWoker
-                
+                continue  # TODO: Skip this DetachedWorker and do not display it
             try:
                 color, status_message = color_codex[missing_confirmations]
             except KeyError:
-                color, status_message = 'red', f'{missing_confirmations} Unconfirmed'
-            node_status = {'status': status_message, 'missing_confirmations': missing_confirmations, 'color': color}
+                color, status_message = 'red', f'Unconfirmed'
+            node_status = {'status': status_message, 'missed_confirmations': missing_confirmations, 'color': color}
             known_nodes[staker_address]['status'] = node_status
+
+            now = maya.now()
+            timestamp = maya.MayaDT.from_iso8601(known_nodes[staker_address]['timestamp'])
+            hours, rem = divmod(now.epoch - timestamp.epoch, 3600)
+            days = hours // 24
+            minutes, seconds = divmod(rem, 60)
+            uptime = "{:0>2}d:{:0>2}h:{:0>2}m".format(int(days), int(hours), int(minutes))
+            known_nodes[staker_address]['uptime'] = uptime
+
             payload[status_message.lower()].append(known_nodes[staker_address])
 
         return payload

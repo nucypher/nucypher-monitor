@@ -8,7 +8,7 @@ from pendulum.parsing import ParserError
 
 import nucypher
 
-NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Launched', 'Last Seen', 'Fleet State']
+NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 
 
 def header() -> html.Div:
@@ -45,11 +45,14 @@ def previous_states(states: List[dict]) -> html.Div:
 def generate_node_status_icon(status: dict) -> html.Td:
     # TODO: daq loading issue with dash >1.5.0
     # https://community.plot.ly/t/solved-intermittent-dash-dependency-exception-dash-daq-is-registered-but-the-path-requested-is-not-valid/31563
-    status_message, color = status['status'], status['color']
+    status_message, color, missed = status['status'], status['color'], status['missed_confirmations']
     status_cell = daq.Indicator(id='Status',
                                 color=color,
                                 value=True,
                                 size=10)  # pixels
+
+    if missed > 0:
+        status_message = f"{missed} missed confirmations"
     status = html.Td(status_cell, className='node-status-indicator', title=status_message)
     return status
 
@@ -72,17 +75,19 @@ def generate_node_row(node_info: dict) -> dict:
 
     staker_address = node_info['staker_address']
     etherscan_url = f'https://goerli.etherscan.io/address/{node_info["staker_address"]}'
+
     try:
         slang_last_seen = MayaDT.from_rfc3339(node_info['last_seen']).slang_time()
     except ParserError:
-        slang_last_seen = node_info['last_seen']
+        # Show whatever we have anyways
+        slang_last_seen = str(node_info['last_seen'])
 
     status = generate_node_status_icon(node_info['status'])
     components = {
         'Status': status,
         'Checksum': html.Td(html.A(f'{staker_address[:10]}...', href=etherscan_url, target='_blank'), className='node-address'),
         'Nickname': identity,
-        'Launched': html.Td(node_info['timestamp']),
+        'Uptime': html.Td(node_info['uptime']),
         'Last Seen': html.Td([slang_last_seen]),
         'Fleet State': fleet_state
     }
@@ -106,7 +111,7 @@ def nodes_table(nodes) -> html.Table:
 
 def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
     components = list()
-    for label, nodes in reversed(list(nodes_dict.items())):
+    for label, nodes in list(nodes_dict.items()):
         component = html.Div([
             html.H4(f'{label.capitalize()} Nodes ({len(nodes)})'),
             html.Br(),

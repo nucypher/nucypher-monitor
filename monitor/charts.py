@@ -55,8 +55,13 @@ def stakers_breakdown_pie_chart(data):
             )
         ],
         layout=go.Layout(
-            title=f'Staker Status',
+            title=f'Swarm Status',
             showlegend=True,
+            font=dict(
+                family="monospace",
+                size=11,
+                color="slategrey"
+            ),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             autosize=True,
@@ -93,8 +98,13 @@ def top_stakers_chart(data: dict):
             pathbar=dict(visible=False),
         ),
         layout=go.Layout(
-            title=f'Top Stakers',
+            title=f'Top Stakers ({len(treemap_values)})',
             showlegend=False,
+            font=dict(
+                family="monospace",
+                size=11,
+                color="slategrey"
+            ),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             autosize=True,
@@ -176,7 +186,7 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
             hoverinfo='none',
             line=dict(
                 color='Red',
-                width=5,
+                width=4,
                 dash='dashdot',
             ),
             textfont=dict(
@@ -192,6 +202,11 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
             yaxis2={'title': f'Stakers', 'overlaying': 'y', 'side': 'right', 'rangemode': 'tozero', 'showgrid': False},
             showlegend=False,
             legend=go.layout.Legend(x=0, y=1.0),
+            font=dict(
+                family="monospace",
+                size=11,
+                color="slategrey"
+            ),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             autosize=True,
@@ -200,6 +215,8 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
     )
 
     fig = go.Figure(data=plots, layout=layout)
+    fig.update_traces(marker_line_width=0.1, opacity=1)
+    fig.update_layout(bargap=0.15)
     graph = dcc.Graph(figure=fig,
                       id='locked-stake',
                       config=GRAPH_CONFIG,
