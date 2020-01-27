@@ -406,6 +406,20 @@ h5 {
     display: flex;
 }
 
+.nodes-list-description {
+    font-style: italic;
+}
+
+/* Unreachable node elements */
+#unreachable-list .node-row {
+    background-color: rgba(255,0,0,.5);
+    color: white;
+}
+
+#unreachable-list a {
+    color: white;
+}
+
 /*#top-stakers-graph {*/
 /*    flex-basis: 10%;*/
 /*}*/
