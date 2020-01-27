@@ -28,7 +28,6 @@ MONITOR_BANNER = r"""
 """
 
 
-# TODO: Help!!!
 DEFAULT_PROVIDER = f'file://{os.path.expanduser("~")}/.ethereum/goerli/geth.ipc'
 DEFAULT_TEACHER = 'https://discover.nucypher.network:9151'
 
@@ -94,6 +93,7 @@ def crawl(general_config,
     emitter.message(f"Network: {network.capitalize()}", color='blue')
     emitter.message(f"InfluxDB: {influx_host}:{influx_port}", color='blue')
     emitter.message(f"Provider: {provider_uri}", color='blue')
+    emitter.message(f"Refresh Rate: {crawler._refresh_rate}s", color='blue')
     message = f"Running Nucypher Crawler JSON endpoint at http://localhost:{http_port}/stats"
     emitter.message(message, color='green', bold=True)
     if not dry_run:

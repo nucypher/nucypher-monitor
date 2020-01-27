@@ -88,19 +88,15 @@ def generate_node_row(node_info: dict) -> dict:
     king = 'uptime-king' if node_info.get('uptime_king') else ''
     baby = 'newborn' if node_info.get('newborn') else ''
     king_or_baby = king or baby
-    if king:
-        symbol = '♔'
-    elif baby:
-        symbol = '🎉'
-    uptime_cell = html.Span(f"{node_info['uptime']} {symbol if king_or_baby else ''}")
-
+    uptime_cell = html.Td( html.Span(node_info['uptime']), className='uptime-cell', id=king_or_baby, title=king_or_baby),
     components = {
         'Status': status,
         'Checksum': html.Td(html.A(f'{staker_address[:10]}...', href=etherscan_url, target='_blank'), className='node-address'),
         'Nickname': identity,
-        'Uptime': html.Td(uptime_cell, className='uptime-cell', id=king_or_baby, title=king_or_baby),
+        'Uptime': uptime_cell,
         'Last Seen': html.Td([slang_last_seen]),
-        'Fleet State': fleet_state
+        'Fleet State': fleet_state,
+        'Peers ': html.Td(node_info['peers']),
     }
 
     return components
