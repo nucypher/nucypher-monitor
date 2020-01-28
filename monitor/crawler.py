@@ -235,13 +235,12 @@ class Crawler(Learner):
             token_counter[day] = (float(NU.from_nunits(tokens).to_tokens()), len(stakers))
         return dict(token_counter)
 
-    def _measure_top_stakers(self):
+    def _measure_top_stakers(self) -> dict:
         _, stakers = self.staking_agent.get_all_active_stakers(periods=1)
         data = dict()
-        for staker_info in stakers:
-            # TODO: remove once nucypher: #1611 is merged
-            staker_address = to_checksum_address(staker_info[0].to_bytes(20, 'big'))
-            data[staker_address] = float(NU.from_nunits(staker_info[1]).to_tokens())
+        for staker, stake in stakers:
+            staker_address = to_checksum_address(staker)
+            data[staker_address] = float(NU.from_nunits(stake).to_tokens())
         data = dict(sorted(data.items(), key=lambda s: s[1], reverse=True))
         return data
 
@@ -328,8 +327,12 @@ class Crawler(Learner):
             known_nodes[staker_address]['status'] = node_status
             known_nodes[staker_address]['uptime'] = natural_uptime
             payload[status_message.lower()].append(known_nodes[staker_address])
-        known_nodes[newborn]['newborn'] = True
-        known_nodes[uptime_king]['uptime_king'] = True
+
+        # There are not always winners...
+        if newborn:
+            known_nodes[newborn]['newborn'] = True
+        if uptime_king:
+            known_nodes[uptime_king]['uptime_king'] = True
         return payload
 
     def _collect_stats(self, threaded: bool = True) -> None:
