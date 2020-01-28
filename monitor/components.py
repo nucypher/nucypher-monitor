@@ -15,7 +15,7 @@ NODE_LABEL_DESCRIPTIONS = {
     'pending': "Nodes that previously confirmed activity for the current period but not for the next period",
     'idle': "Nodes that have never confirmed activity",
     'unconfirmed': "Nodes that have previously confirmed activity but have missed multiple periods since then",
-    'unreachable':  "Nodes that are currently unreachable by the monitor",
+    'unconnected': "Nodes that the monitor has not connected to - can be temporary while learning about the network (nodes should NOT remain here)",
 }
 
 
@@ -123,13 +123,13 @@ def get_last_seen(node_info):
     return slang_last_seen
 
 
-def nodes_table(nodes, track_unreachable_nodes: bool = True) -> (html.Table, List):
+def nodes_table(nodes, track_unconnected_nodes: bool = True) -> (html.Table, List):
     rows = []
-    unreachable_nodes = [] if track_unreachable_nodes else None
+    unconnected_nodes = [] if track_unconnected_nodes else None
     for index, node_info in enumerate(nodes):
         row = list()
-        if track_unreachable_nodes and 'No Connection' in get_last_seen(node_info):
-            unreachable_nodes.append(node_info)
+        if track_unconnected_nodes and 'No Connection' in get_last_seen(node_info):
+            unconnected_nodes.append(node_info)
             continue
         components = generate_node_row(node_info=node_info)
         for col in NODE_TABLE_COLUMNS:
@@ -138,39 +138,40 @@ def nodes_table(nodes, track_unreachable_nodes: bool = True) -> (html.Table, Lis
         style_dict = {'overflowY': 'scroll'}
         rows.append(html.Tr(row, style=style_dict, className='node-row'))
     table = html.Table(rows, id='node-table')
-    return table, unreachable_nodes
+    return table, unconnected_nodes
 
 
 def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
     components = list()
-    unreachable_nodes = list()
+    unconnected_nodes = list()
 
     # nodes
     for label, nodes in list(nodes_dict.items()):
-        component, unreachable = nodes_list_section(label, nodes)
-        unreachable_nodes += unreachable
+        component, unconnected = nodes_list_section(label, nodes)
+        unconnected_nodes += unconnected
         components.append(component)
 
-    # unreachable nodes
-    if len(unreachable_nodes) > 0:
-        label = 'unreachable'
-        component, _ = nodes_list_section(label, unreachable_nodes, track_unreachable_nodes=False)
+    # unconnected nodes
+    if len(unconnected_nodes) > 0:
+        label = 'unconnected'
+        component, _ = nodes_list_section(label, unconnected_nodes, track_unconnected_nodes=False)
         components.append(component)
 
     return components
 
 
-def nodes_list_section(label, nodes, track_unreachable_nodes: bool = True):
-    table, unreachable_nodes = nodes_table(nodes, track_unreachable_nodes=track_unreachable_nodes)
+def nodes_list_section(label, nodes, track_unconnected_nodes: bool = True):
+    table, unconnected_nodes = nodes_table(nodes, track_unconnected_nodes=track_unconnected_nodes)
     try:
         label_description = NODE_LABEL_DESCRIPTIONS[label]
     except KeyError:
         label_description = None
 
+    total_nodes = len(nodes) if unconnected_nodes is None else (len(nodes) - len(unconnected_nodes))
     component = html.Div([
-        html.H4(f'{label.capitalize()} Nodes ({len(nodes)})'),
+        html.H4(f'{label.capitalize()} Nodes ({total_nodes})'),
         html.P(label_description, className='nodes-list-description'),
         html.Br(),
         html.Div([table])
     ], id=f"{label}-list")
-    return component, unreachable_nodes
+    return component, unconnected_nodes

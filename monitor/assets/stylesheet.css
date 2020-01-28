@@ -278,7 +278,7 @@ h5 {
     padding: 0;
     margin-right: 2px;
     margin-bottom: 2em;
-    width: 5em;
+    width: 10em;
 }
 
 
@@ -287,11 +287,11 @@ h5 {
     text-align: center;
     display: flex;
     flex-direction: column;
-    width: 18em;
+    width: 20em;
     color: black;
     font-weight: 900;
     font-size: 1rem;
-    height: 6em;
+    height: 10em;
     border: 0;
     opacity: 0.9;
 }
@@ -410,13 +410,13 @@ h5 {
     font-style: italic;
 }
 
-/* Unreachable node elements */
-#unreachable-list .node-row {
+/* Unconnected node elements */
+#unconnected-list .node-row {
     background-color: rgba(255,0,0,.5);
     color: white;
 }
 
-#unreachable-list a {
+#unconnected-list a {
     color: white;
 }
 
