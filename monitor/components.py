@@ -10,12 +10,12 @@ import nucypher
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 
-NODE_LABEL_DESCRIPTIONS = {
+BUCKET_DESCRIPTIONS = {
     'confirmed': "Nodes that confirmed activity for the next period",
     'pending': "Nodes that previously confirmed activity for the current period but not for the next period",
     'idle': "Nodes that have never confirmed activity",
     'unconfirmed': "Nodes that have previously confirmed activity but have missed multiple periods since then",
-    'unconnected': "Nodes that the monitor has not connected to - can be temporary while learning about the network (nodes should NOT remain here)",
+    # 'unconnected': "Nodes that the monitor has not connected to - can be temporary while learning about the network (nodes should NOT remain here)",
 }
 
 
@@ -96,19 +96,20 @@ def generate_node_row(node_info: dict) -> dict:
 
     status = generate_node_status_icon(node_info['status'])
 
+    # TODO
     # Uptime
-    #king = 'uptime-king' if node_info.get('uptime_king') else ''
-    #baby = 'newborn' if node_info.get('newborn') else ''
-    #king_or_baby = king or baby
-    #uptime_cell = html.Td( html.Span(node_info['uptime']), className='uptime-cell', id=king_or_baby, title=king_or_baby),
+    # king = 'uptime-king' if node_info.get('uptime_king') else ''
+    # baby = 'newborn' if node_info.get('newborn') else ''
+    # king_or_baby = king or baby
+    # uptime_cell = html.Td(html.Span(node_info['uptime']), className='uptime-cell', id=king_or_baby, title=king_or_baby),
     components = {
         'Status': status,
         'Checksum': html.Td(html.A(f'{staker_address[:10]}...', href=etherscan_url, target='_blank'), className='node-address'),
         'Nickname': identity,
-        'Uptime': html.Td(html.Span(node_info['uptime']), className='uptime-cell'),
+        'Uptime': html.Td(html.Span(node_info['uptime'])),
         'Last Seen': html.Td([slang_last_seen]),
         'Fleet State': fleet_state,
-        #'Peers ': html.Td(node_info['peers']),
+        #'Peers ': html.Td(node_info['peers']),  # TODO
     }
 
     return components
@@ -123,55 +124,56 @@ def get_last_seen(node_info):
     return slang_last_seen
 
 
-def nodes_table(nodes, track_unconnected_nodes: bool = True) -> (html.Table, List):
-    rows = []
-    unconnected_nodes = [] if track_unconnected_nodes else None
+def nodes_table(nodes, display_unconnected_nodes: bool = True) -> (html.Table, List):
+    style_dict = {'overflowY': 'scroll'}
+
+    rows = list()
     for index, node_info in enumerate(nodes):
         row = list()
-        if track_unconnected_nodes and 'No Connection' in get_last_seen(node_info):
-            unconnected_nodes.append(node_info)
-            continue
+
+        # Fill columns
         components = generate_node_row(node_info=node_info)
         for col in NODE_TABLE_COLUMNS:
             cell = components[col]
             row.append(cell)
-        style_dict = {'overflowY': 'scroll'}
-        rows.append(html.Tr(row, style=style_dict, className='node-row'))
+
+        # Handle In-line Row Styles
+        row_class = 'connected-to-node'
+        if 'No Connection' in get_last_seen(node_info):
+            if display_unconnected_nodes:
+                row_class = 'no-connection-to-node'
+            else:
+                continue
+
+        # Aggregate
+        rows.append(html.Tr(row, style=style_dict, className=f'node-row {row_class}'))
     table = html.Table(rows, id='node-table')
-    return table, unconnected_nodes
+    return table
 
 
 def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
-    components = list()
-    unconnected_nodes = list()
-
-    # nodes
-    for label, nodes in list(nodes_dict.items()):
-        component, unconnected = nodes_list_section(label, nodes)
-        unconnected_nodes += unconnected
-        components.append(component)
-
-    # unconnected nodes
-    if len(unconnected_nodes) > 0:
-        label = 'unconnected'
-        component, _ = nodes_list_section(label, unconnected_nodes, track_unconnected_nodes=False)
-        components.append(component)
-
-    return components
+    components = dict()
+    buckets = {'active': sorted([*nodes_dict['confirmed'], *nodes_dict['pending']], key=lambda n: n['timestamp']),
+               'idle': nodes_dict['idle'],
+               'inactive': nodes_dict['unconfirmed']}
+    for label, nodes in list(buckets.items()):
+        component = nodes_list_section(label, nodes, display_unconnected_nodes=True)
+        components[label] = component
+    return list(components.values())
 
 
-def nodes_list_section(label, nodes, track_unconnected_nodes: bool = True):
-    table, unconnected_nodes = nodes_table(nodes, track_unconnected_nodes=track_unconnected_nodes)
+def nodes_list_section(label, nodes, display_unconnected_nodes: bool = True):
+    table = nodes_table(nodes, display_unconnected_nodes=display_unconnected_nodes)
     try:
-        label_description = NODE_LABEL_DESCRIPTIONS[label]
+        label_description = BUCKET_DESCRIPTIONS[label]
     except KeyError:
         label_description = None
 
-    total_nodes = len(nodes) if unconnected_nodes is None else (len(nodes) - len(unconnected_nodes))
+    total_nodes = len(nodes)
     component = html.Div([
         html.H4(f'{label.capitalize()} Nodes ({total_nodes})'),
         html.P(label_description, className='nodes-list-description'),
         html.Br(),
         html.Div([table])
     ], id=f"{label}-list")
-    return component, unconnected_nodes
+    return component

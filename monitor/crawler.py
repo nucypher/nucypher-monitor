@@ -267,11 +267,11 @@ class Crawler(Learner):
         #
 
         current_period = self.staking_agent.get_current_period()
-        color_codex = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
-                       0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
-                       current_period: ('#525ae3', 'Idle'),  # Never confirmed
-                       BlockchainInterface.NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
-                       }
+        buckets = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
+                   0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
+                   current_period: ('#525ae3', 'Idle'),  # Never confirmed
+                   BlockchainInterface.NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
+                   }
 
         shortest_uptime, newborn = float('inf'), None
         longest_uptime, uptime_king = 0, None
@@ -287,7 +287,7 @@ class Crawler(Learner):
         for staker_address in known_nodes:
 
             #
-            # Missing Confirmations Scraping
+            # Confirmation Status Scraping
             #
 
             last_confirmed_period = self.staking_agent.get_last_active_period(staker_address)
@@ -297,7 +297,7 @@ class Crawler(Learner):
                 # missing_confirmations = BlockchainInterface.NULL_ADDRESS
                 continue  # TODO: Skip this DetachedWorker and do not display it
             try:
-                color, status_message = color_codex[missing_confirmations]
+                color, status_message = buckets[missing_confirmations]
             except KeyError:
                 color, status_message = 'red', f'Unconfirmed'
             node_status = {'status': status_message, 'missed_confirmations': missing_confirmations, 'color': color}
@@ -482,7 +482,7 @@ class Crawler(Learner):
         else:
             self.log.critical(f'Unhandled error: {cleaned_traceback}')
 
-    def start(self):
+    def start(self, eager: bool = False):
         """Start the crawler if not already running"""
         if not self.is_running:
             self.log.info('Starting Crawler...')
@@ -499,8 +499,8 @@ class Crawler(Learner):
                 # self.crawler_influx_client = CrawlerInfluxClient()
 
             # start tasks
-            collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=False)
-            node_learner_deferred = self._node_details_task.start(interval=self._refresh_rate, now=False)
+            collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=eager)
+            node_learner_deferred = self._node_details_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks
             node_learner_deferred.addErrback(self._handle_errors)

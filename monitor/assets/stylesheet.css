@@ -299,7 +299,11 @@ h5 {
 .state-current {
     border-style: solid;
     border-width: 7px;
-    border-color: red;
+    border-color: #8c2828;
+    margin: 0.5em;
+    border-left: 0;
+    border-right: 0;
+    padding: 0;
 }
 
 .state > span {
@@ -418,6 +422,10 @@ h5 {
 
 #unconnected-list a {
     color: white;
+}
+
+.no-connection-to-node {
+    opacity: 0.45;
 }
 
 /*#top-stakers-graph {*/

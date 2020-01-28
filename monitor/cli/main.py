@@ -50,6 +50,7 @@ def monitor():
 @click.option('--influx-port', help="InfluxDB network port", type=NETWORK_PORT, default=8086)
 @click.option('--http-port', help="Crawler HTTP port for JSON endpoint", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the crawler", is_flag=True)
+@click.option('--eager', help="Start learning and scraping before starting up other services", is_flag=True, default=False)
 def crawl(general_config,
           teacher_uri,
           registry_filepath,
@@ -60,7 +61,8 @@ def crawl(general_config,
           influx_host,
           influx_port,
           http_port,
-          dry_run):
+          dry_run,
+          eager):
     """
     Gather NuCypher network information.
     """
@@ -85,7 +87,7 @@ def crawl(general_config,
                       network_middleware=RestMiddleware(),
                       known_nodes=teacher_nodes,
                       registry=registry,
-                      start_learning_now=False,
+                      start_learning_now=eager,
                       learn_on_same_thread=learn_on_launch,
                       influx_host=influx_host,
                       influx_port=influx_port)
@@ -97,7 +99,7 @@ def crawl(general_config,
     message = f"Running Nucypher Crawler JSON endpoint at http://localhost:{http_port}/stats"
     emitter.message(message, color='green', bold=True)
     if not dry_run:
-        crawler.start()
+        crawler.start(eager=eager)
         reactor.run()
 
 
