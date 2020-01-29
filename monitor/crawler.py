@@ -13,6 +13,7 @@ from maya import MayaDT
 from twisted.internet import task, reactor
 from twisted.logger import Logger
 
+from monitor.utils import collector
 from nucypher.blockchain.economics import TokenEconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
@@ -177,6 +178,7 @@ class Crawler(Learner):
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
 
         # Crawler Tasks
+        self.__collection_round = 0
         self.__collecting_nodes = False  # thread tracking
         self.__collecting_stats = False
         self._node_details_task = task.LoopingCall(self._learn_about_nodes)
@@ -227,6 +229,7 @@ class Crawler(Learner):
     def stats(self) -> dict:
         return self._stats
 
+    @collector(label="Projected Stake and Stakers")
     def _measure_future_locked_tokens(self, periods: int = 365):
         period_range = range(1, periods + 1)
         token_counter = dict()
@@ -235,6 +238,7 @@ class Crawler(Learner):
             token_counter[day] = (float(NU.from_nunits(tokens).to_tokens()), len(stakers))
         return dict(token_counter)
 
+    @collector(label="Top Stakes")
     def _measure_top_stakers(self) -> dict:
         _, stakers = self.staking_agent.get_all_active_stakers(periods=1)
         data = dict()
@@ -244,6 +248,7 @@ class Crawler(Learner):
         data = dict(sorted(data.items(), key=lambda s: s[1], reverse=True))
         return data
 
+    @collector(label="Staker Confirmation Status")
     def _measure_staker_activity(self) -> dict:
         confirmed, pending, inactive = self.staking_agent.partition_stakers_by_activity()
         stakers = dict()
@@ -252,6 +257,7 @@ class Crawler(Learner):
         stakers['inactive'] = len(inactive)
         return stakers
 
+    @collector(label="Time Until Next Period")
     def _measure_time_remaining(self) -> str:
         current_period = self.staking_agent.get_current_period()
         economics = TokenEconomicsFactory.get_economics(registry=self.registry)
@@ -259,6 +265,7 @@ class Crawler(Learner):
         remaining = str(next_period - maya.now())
         return remaining
 
+    @collector(label="Known Nodes")
     def measure_known_nodes(self):
 
         #
@@ -339,14 +346,14 @@ class Crawler(Learner):
         # TODO: Handle faulty connection to provider (requests.exceptions.ReadTimeout)
         if threaded:
             if self.__collecting_stats:
-                click.echo("Skipping Round - Metrics collection thread is already running", color="blue")  # TODO
                 self.log.debug("Skipping Round - Metrics collection thread is already running")
                 return
             return reactor.callInThread(self._collect_stats, threaded=False)
+        self.__collection_round += 1
         self.__collecting_stats = True
 
         start = maya.now()
-        click.echo("Starting new scraping round.", color='blue')  # TODO
+        click.secho(f"Scraping Round #{self.__collection_round} ========================", color='blue')
         self.log.info("Collecting Statistics...")
 
         #
@@ -356,17 +363,22 @@ class Crawler(Learner):
         # Time
         block_time = self.staking_agent.blockchain.client.w3.eth.getBlock('latest').timestamp  # epoch
         current_period = self.staking_agent.get_current_period()
+        click.secho("✓ ... Current Period", color='blue')
         time_remaining = self._measure_time_remaining()
 
         # Nodes
         teacher = self._crawler_client.get_current_teacher_checksum()
         states = self._crawler_client.get_previous_states_metadata()
+
         known_nodes = self.measure_known_nodes()
+
         activity = self._measure_staker_activity()
 
         # Stake
         future_locked_tokens = self._measure_future_locked_tokens()
         global_locked_tokens = self.staking_agent.get_global_locked_tokens()
+        click.secho("✓ ... Global Network Locked Tokens", color='blue')
+
         top_stakers = self._measure_top_stakers()
 
         #
@@ -390,10 +402,11 @@ class Crawler(Learner):
         done = maya.now()
         delta = done - start
         self.__collecting_stats = False
-
         click.echo(f"Scraping round completed (duration {delta}).", color='yellow')  # TODO: Make optional, use emitter, or remove
+        click.echo("==========================================")
         self.log.debug(f"Collected new metrics took {delta}.")
 
+    @collector(label="Known Node Details")
     def _learn_about_nodes(self, threaded: bool = True):
         if threaded:
             if self.__collecting_nodes:

@@ -8,6 +8,7 @@ from influxdb import InfluxDBClient
 from maya import MayaDT
 
 from monitor.crawler import CrawlerNodeStorage, Crawler
+from monitor.utils import collector
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 
 
@@ -39,7 +40,8 @@ class CrawlerStorageClient:
         finally:
             db_conn.close()
 
-    def get_previous_states_metadata(self, limit: int = 5) -> List[Dict]:
+    @collector(label="Previous Fleet States")
+    def get_previous_states_metadata(self, limit: int = 20) -> List[Dict]:
         # dash threading means that connection needs to be established in same thread as use
         db_conn = sqlite3.connect(self._db_filepath)
         states_dict_list = []
@@ -65,6 +67,7 @@ class CrawlerStorageClient:
         finally:
             db_conn.close()
 
+    @collector(label="Latest Teacher")
     def get_current_teacher_checksum(self):
         db_conn = sqlite3.connect(self._db_filepath)
         try:
