@@ -11,11 +11,12 @@ import nucypher
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 
 BUCKET_DESCRIPTIONS = {
+    'active': "Nodes that are currently confirmed or pending",
     'confirmed': "Nodes that confirmed activity for the next period",
     'pending': "Nodes that previously confirmed activity for the current period but not for the next period",
-    'idle': "Nodes that have never confirmed activity",
-    'unconfirmed': "Nodes that have previously confirmed activity but have missed multiple periods since then",
-    # 'unconnected': "Nodes that the monitor has not connected to - can be temporary while learning about the network (nodes should NOT remain here)",
+    'idle': "Nodes that have never confirmed.",
+    'inactive': "Nodes that previously confirmed activity but missed multiple periods since then.",
+    'unconnected': "Nodes that the monitor has not connected to - can be temporary while learning about the network (nodes should NOT remain here)",
 }
 
 
@@ -166,12 +167,19 @@ def nodes_list_section(label, nodes, display_unconnected_nodes: bool = True):
     try:
         label_description = BUCKET_DESCRIPTIONS[label]
     except KeyError:
-        label_description = None
+        label_description = ''
 
     total_nodes = len(nodes)
-    component = html.Div([
+
+    tooltip = html.Div([
         html.H4(f'{label.capitalize()} Nodes ({total_nodes})'),
-        html.P(label_description, className='nodes-list-description'),
+        html.Div([
+            html.Img(src='/assets/info.png', className='info-icon'),
+            html.Span(label_description, className='tooltiptext')], className='tooltip')
+        ], className='label-and-tooltip')
+
+    component = html.Div([
+        tooltip,
         html.Br(),
         html.Div([table])
     ], id=f"{label}-list")

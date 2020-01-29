@@ -431,3 +431,48 @@ h5 {
 /*#top-stakers-graph {*/
 /*    flex-basis: 10%;*/
 /*}*/
+
+
+.label-and-tooltip {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    width: 20vw;
+    padding: 0;
+}
+
+
+.info-icon {
+    padding-top: 0.85vh;
+    margin-left: .75vw;
+    height: 50%;
+    opacity: 0.75;
+}
+
+.info-icon:hover {
+    opacity: 1;
+}
+
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 30em;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    padding-top: 0vh;
+    border-radius: 6px;
+    position: absolute;
+    z-index: 1;
+    margin-top: 1vh;
+    margin-left: .5vw;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
