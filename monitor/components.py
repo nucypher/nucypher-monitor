@@ -96,17 +96,16 @@ def generate_node_row(node_info: dict) -> dict:
 
     status = generate_node_status_icon(node_info['status'])
 
-    # TODO
     # Uptime
-    # king = 'uptime-king' if node_info.get('uptime_king') else ''
-    # baby = 'newborn' if node_info.get('newborn') else ''
-    # king_or_baby = king or baby
-    # uptime_cell = html.Td(html.Span(node_info['uptime']), className='uptime-cell', id=king_or_baby, title=king_or_baby),
+    king = 'uptime-king' if node_info.get('uptime_king') else ''
+    baby = 'newborn' if node_info.get('newborn') else ''
+    king_or_baby = king or baby
+    uptime_cell = html.Td(node_info['uptime'], className='uptime-cell', id=king_or_baby, title=king_or_baby)
     components = {
         'Status': status,
         'Checksum': html.Td(html.A(f'{staker_address[:10]}...', href=etherscan_url, target='_blank'), className='node-address'),
         'Nickname': identity,
-        'Uptime': html.Td(html.Span(node_info['uptime'])),
+        'Uptime': uptime_cell,
         'Last Seen': html.Td([slang_last_seen]),
         'Fleet State': fleet_state,
         #'Peers ': html.Td(node_info['peers']),  # TODO
