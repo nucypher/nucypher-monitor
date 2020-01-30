@@ -20,7 +20,7 @@ th {
     /*flex: 1;*/
 }
 
-td {
+#known-nodes .node_row td {
     padding: 12px 15px;
     text-align: left;
     flex: 1;
@@ -134,6 +134,7 @@ h5 {
 
 .node-status-indicator {
     flex-grow: 0;
+    flex-basis: 2%;
 }
 
 .status-indicator {
@@ -272,18 +273,18 @@ h5 {
     flex-direction: row;
     justify-content: start;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 #state-table > td {
     padding: 0;
-    margin-right: 2px;
-    margin-bottom: 2em;
-    width: 10em;
+    border-bottom: 0;
+    margin: 0;
 }
 
 
 .state {
-    float: left;
+    /* float: left; */
     text-align: center;
     display: flex;
     flex-direction: column;
@@ -291,19 +292,19 @@ h5 {
     color: black;
     font-weight: 900;
     font-size: 1rem;
-    height: 10em;
+    height: 6em;
     border: 0;
     opacity: 0.9;
 }
 
 .state-current {
     border-style: solid;
-    border-width: 7px;
-    border-color: #8c2828;
-    margin: 0.5em;
+    /* border-width: 7px; */
+    /* border-color: #8c2828; */
     border-left: 0;
     border-right: 0;
-    padding: 0;
+    padding: 0px;
+    /* margin: 0px; */
 }
 
 .state > span {
@@ -366,7 +367,7 @@ h5 {
 }
 
 .node-nickname {
-    flex-basis: 35%;
+    flex-basis: 200%;
     flex-grow: 0;
 }
 
@@ -437,7 +438,7 @@ h5 {
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
-    width: 20vw;
+    width: 25vw;
     padding: 0;
 }
 
