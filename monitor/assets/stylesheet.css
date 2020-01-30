@@ -1,4 +1,4 @@
-body{
+body {
     font-size: 2em;
     line-height: 1.6;
     font-weight: 400;
@@ -64,7 +64,7 @@ hr {
     position: absolute;
 }
 
-#react-entry-point>div {
+#react-entry-point > div {
     height: 90%;
 }
 
@@ -95,7 +95,7 @@ hr {
     margin-top: 0.5em;
 }
 
-#stats>div, #widgets>div {
+#stats > div, #widgets > div {
     border: 1px solid #2b2b2b;
     /* text-align: center; */
     display: flex;
@@ -141,7 +141,7 @@ h5 {
 }
 
 .app_name {
-    color: rgb(30,101,243);
+    color: rgb(30, 101, 243);
     padding-top: 10px;
     display: inline-block;
 }
@@ -167,27 +167,29 @@ h5 {
 }
 
 .single-symbol {
-    font-size: 2em;
+    font-size: 3.5em;
     color: black;
     margin-right: 2px;
     opacity: 0.75;
+    margin-top: -0.25em;
+    margin-bottom: 0.15em;
 }
 
 .nucypher-nickname-icon {
     margin: 3px;
     padding: 3px;
     text-align: center;
-    height: 50px;
+    margin-bottom: -5px; /* cheat the margin */
 }
 
 .dot {
-  height: 24px;
-  width: 24px;
-  display: inline-block;
-  border-color: black;
-  border-width: 2px;
-  border-style: solid;
-  border-radius: 50%;  /* (height/width + border-width) should equate to an even number */
+    height: 24px;
+    width: 24px;
+    display: inline-block;
+    border-color: black;
+    border-width: 2px;
+    border-style: solid;
+    border-radius: 50%; /* (height/width + border-width) should equate to an even number */
 }
 
 
@@ -225,7 +227,6 @@ h5 {
 .small-address {
     text-shadow: none;
 }
-
 
 
 .logo-box {
@@ -307,7 +308,10 @@ h5 {
     font-size: 1rem;
     height: 6em;
     border: 0;
-    opacity: 0.9;
+    opacity: 0.8;
+    border-radius: 5px;
+    margin-right: 2px;
+    margin-bottom: 2px;
 }
 
 .state-current {
@@ -318,12 +322,15 @@ h5 {
     height: 9em;
     color: rgb(29, 28, 28);
     mix-blend-mode: difference;
-    border-top: 5px solid white;
+    border-top: 5px solid #e60808;
+    opacity: 0.9;
 }
 
 .state > span {
     font-size: 1em;
     font-weight: 100;
+    margin-top: -1.2em;
+    margin-bottom: 1.2em;
 }
 
 #prev-states {
@@ -389,14 +396,14 @@ h5 {
     overflow: hidden;
 }
 
-#contracts tr:nth-child(even){
-  background-color: #2c2c318a;
-  color: #fff;
+#contracts tr:nth-child(even) {
+    background-color: #2c2c318a;
+    color: #fff;
 }
 
-#contracts tr:nth-child(odd){
-  background-color: #16171929;
-  color: #fff;
+#contracts tr:nth-child(odd) {
+    background-color: #16171929;
+    color: #fff;
 }
 
 #known-nodes {
@@ -426,7 +433,7 @@ h5 {
 }
 
 #unconnected-list .node-row {
-    background-color: rgba(255,0,0,.5);
+    background-color: rgba(255, 0, 0, .5);
     color: white;
 }
 
@@ -479,6 +486,6 @@ h5 {
 }
 
 .tooltip:hover .tooltiptext {
-  visibility: visible;
+    visibility: visible;
 }
 
