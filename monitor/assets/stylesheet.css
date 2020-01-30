@@ -20,7 +20,7 @@ th {
     /*flex: 1;*/
 }
 
-#known-nodes .node_row td {
+td {
     padding: 12px 15px;
     text-align: left;
     flex: 1;
@@ -28,13 +28,19 @@ th {
     flex-direction: row;
     justify-content: start;
     border-bottom: none;
-    overflow: hidden;
     text-overflow: ellipsis;
 }
 
 label, legend {
     display: block;
     margin: 0.25vh;
+}
+
+hr {
+    margin-top: 3rem;
+    margin-bottom: 3.5rem;
+    border-width: 0;
+    border-top: 1px solid #2c2c2c;
 }
 
 ._dash-loading-callback {
@@ -64,11 +70,11 @@ label, legend {
 
 #controls {
     display: flex;
-    border-bottom: 1px solid #e5e6ec;
-    padding: 1em;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    padding-top: 0.75em;
+    padding-bottom: 0;
 }
 
 #stats, #widgets {
@@ -134,7 +140,6 @@ h5 {
 
 .node-status-indicator {
     flex-grow: 0;
-    flex-basis: 2%;
 }
 
 .status-indicator {
@@ -301,7 +306,7 @@ h5 {
     border-style: solid;
     border-left: 0;
     border-right: 0;
-    padding: 0px;
+    padding: 0;
     height: 9em;
     margin-bottom: 3em;
     color: rgb(0, 255, 255);
@@ -328,7 +333,7 @@ h5 {
     flex-direction: row;
     justify-content: flex-start;
     align-items: center;
-    overflow-y: hidden !important;
+    overflow: hidden !important;
     height: 2.5em;
     text-overflow: ellipsis;
     font-size: 1.2rem;
@@ -363,13 +368,17 @@ h5 {
 }
 
 .node-address {
-    flex-basis: 5%;
     flex-grow: 0;
 }
 
 .node-nickname {
-    flex-basis: 200%;
-    flex-grow: 0;
+    flex-basis: 25%;
+}
+
+.node-nickname > div > a {
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 #contracts tr:nth-child(even){
@@ -382,21 +391,14 @@ h5 {
   color: #fff;
 }
 
-#contract-names > tr > * {
-    width: 25%;
-}
-
 #known-nodes {
     color: #767676;
 }
 
 #newborn {
-    /*content: "U+1F389";*/
-    /*content: "🎉";*/
     color: rgb(141, 78, 171);
     font-size: 1.2em;
     font-weight: 900;
-    /*text-indent: -2em;*/
 }
 
 
@@ -405,7 +407,6 @@ h5 {
     color: rgb(169, 162, 101);
     font-size: 1.2em;
     font-weight: 900;
-    /*text-indent: -2em;*/
 }
 
 .uptime-cell {
@@ -416,7 +417,6 @@ h5 {
     font-style: italic;
 }
 
-/* Unconnected node elements */
 #unconnected-list .node-row {
     background-color: rgba(255,0,0,.5);
     color: white;
@@ -430,10 +430,6 @@ h5 {
     opacity: 0.45;
 }
 
-/*#top-stakers-graph {*/
-/*    flex-basis: 10%;*/
-/*}*/
-
 
 .label-and-tooltip {
     display: flex;
@@ -446,31 +442,32 @@ h5 {
 .info-icon {
     padding-top: 0.85vh;
     margin-left: .75vw;
-    height: 50%;
+    height: 33px;
     opacity: 0.75;
 }
 
 .info-icon:hover {
-    opacity: 1;
+    opacity: 0.9;
 }
 
 .tooltip {
-  position: relative;
-  display: inline-block;
+    position: relative;
+    display: inline-block;
 }
 
 .tooltip .tooltiptext {
+    opacity: 0.9;
     visibility: hidden;
     width: 30em;
-    background-color: black;
-    color: #fff;
+    background-color: #212124;
     text-align: center;
     padding-top: 0vh;
-    border-radius: 6px;
+    border-radius: 1px;
     position: absolute;
     z-index: 1;
     margin-top: 1vh;
     margin-left: .5vw;
+    border: 1px solid #5e5e5e;
 }
 
 .tooltip:hover .tooltiptext {

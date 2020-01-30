@@ -7,6 +7,7 @@ from maya import MayaDT
 from pendulum.parsing import ParserError
 
 import nucypher
+from nucypher.blockchain.eth.token import NU
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 
@@ -22,8 +23,25 @@ BUCKET_DESCRIPTIONS = {
 }
 
 
+ETHERSCAN_URL_TEMPLATE = "https://goerli.etherscan.io/address/{}"
+
+
 def header() -> html.Div:
     return html.Div([html.Div(f'v{nucypher.__version__}', id='version')], className="logo-widget")
+
+
+def make_contract_row(agent, balance: NU = None):
+    cells = [
+        html.A(f'{agent.contract_name} {agent.contract_address} ({agent.contract.version})',
+               id=f"{agent.contract_name}-contract-address",
+               href=ETHERSCAN_URL_TEMPLATE.format(agent.contract_address)),
+    ]
+
+    if balance is not None:
+        cells.append(html.Span(balance))
+
+    row = html.Tr(cells)
+    return row
 
 
 def state_detail(state: dict, current_state: bool) -> html.Div:
@@ -54,7 +72,7 @@ def _states_table(states: List[dict]) -> html.Table:
 
 def previous_states(states: List[dict]) -> html.Div:
     return html.Div([
-        html.H4('Previous States'),
+        html.H4('Fleet States'),
         html.Div([
             _states_table(states)
         ]),
@@ -129,7 +147,7 @@ def get_last_seen(node_info):
 def nodes_table(nodes, display_unconnected_nodes: bool = True) -> (html.Table, List):
     style_dict = {'overflowY': 'scroll'}
 
-    rows = list()
+    rows = []
     for index, node_info in enumerate(nodes):
         row = list()
 
