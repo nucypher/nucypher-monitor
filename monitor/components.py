@@ -10,6 +10,8 @@ import nucypher
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 
+
+# Note: Unused entries will be ignored
 BUCKET_DESCRIPTIONS = {
     'active': "Nodes that are currently confirmed or pending",
     'confirmed': "Nodes that confirmed activity for the next period",
@@ -33,7 +35,7 @@ def state_detail(state: dict, current_state: bool) -> html.Div:
 
     if current_state:
         # add current annotation to children
-        children.append(html.Span('(*Current)', style={'color': 'red'}))
+        children.append(html.Span('(*Current)'))
 
     detail = html.Div(children=children,
                       className='state state-current' if current_state else 'state',
@@ -179,8 +181,8 @@ def nodes_list_section(label, nodes, display_unconnected_nodes: bool = True):
         ], className='label-and-tooltip')
 
     component = html.Div([
+        html.Hr(),
         tooltip,
-        html.Br(),
         html.Div([table])
     ], id=f"{label}-list")
     return component
