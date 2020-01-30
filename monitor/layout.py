@@ -1,6 +1,10 @@
 import dash_core_components as dcc
 import dash_html_components as html
 
+# NOTE: changing this to an empty string is enough to remove the pinned message.
+PINNED_MESSAGE_TEXT = 'This page is under active development: bugs and inaccuracies may be present.  '\
+                      'New issues can be filed at https://github.com/nucypher/nucypher-monitor/issues/.'\
+
 MINUTE_REFRESH_RATE = 60 * 1000
 DAILY_REFRESH_RATE = MINUTE_REFRESH_RATE * 60 * 24
 LOGO_PATH = '/assets/nucypher_logo.png'  # TODO: Configure assets path
@@ -19,7 +23,16 @@ HIDDEN_BUTTONS = html.Div([
                 className='nucypher-button button-primary'),
 ])
 
-HEADER = html.Div([html.Img(src=LOGO_PATH, className='banner'), html.Div(id='header'), HIDDEN_BUTTONS], id="controls")
+if PINNED_MESSAGE_TEXT:
+    PINNED_MESSAGE = html.Div(PINNED_MESSAGE_TEXT, id='pinned-message')
+else:
+    PINNED_MESSAGE = ''
+
+HEADER = html.Div([
+    html.A(html.Img(src=LOGO_PATH, className='banner'), href='https://www.nucypher.com'),
+    html.Div(id='header'),
+    HIDDEN_BUTTONS],
+    id="controls")
 
 STATS = html.Div([
             html.Div(id='blocktime-value'),
@@ -48,6 +61,7 @@ HIDDEN_DIV = html.Div(id='cached-crawler-stats', style={'display': 'none'})
 
 BODY = html.Div([
         dcc.Location(id='url', refresh=False),
+        PINNED_MESSAGE,
         HEADER,
         HIDDEN_DIV,
         CONTENT,

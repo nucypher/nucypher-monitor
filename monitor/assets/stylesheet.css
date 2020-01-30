@@ -43,6 +43,16 @@ hr {
     border-top: 1px solid #2c2c2c;
 }
 
+#pinned-message {
+    height: 1.5em;
+    background-color: #462e7a;
+    margin: 0;
+    color: #d8d9da;
+    display: flex;
+    text-align: center;
+    padding: 1vh;
+}
+
 ._dash-loading-callback {
     display: none;
 }
