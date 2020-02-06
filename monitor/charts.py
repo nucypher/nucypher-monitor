@@ -1,6 +1,7 @@
 import dash_core_components as dcc
 import maya
 import plotly.graph_objs as go
+import IP2Location
 
 GRAPH_CONFIG = {'displaylogo': False,
                 'autosizable': True,
@@ -114,7 +115,80 @@ def top_stakers_chart(data: dict):
         ))
 
     graph = dcc.Graph(figure=fig,
-                      id='top-stakers-graph',
+                      id='top-stakers',
+                      config=GRAPH_CONFIG,
+                      style={'width': '100%'})
+    return graph
+
+
+def nodes_geolocation_map(nodes_dict: dict, ip2loc: IP2Location):
+    longitudes = []
+    latitudes = []
+    staker_text = []
+    status_colors = []
+
+    # determine geo locations
+    for bucket in nodes_dict:
+        nodes = nodes_dict[bucket]
+        for node_info in nodes:
+            rest_url = node_info['rest_url'][:-5]  # remove port number
+            try:
+                # get_all is called even if more specific element is requested eg. get_longitude
+                geo_info = ip2loc.get_all(rest_url)
+                long = geo_info.longitude
+                lat = geo_info.latitude
+                country = geo_info.country_long
+
+                longitudes.append(long)
+                latitudes.append(lat)
+                staker_text.append(f"{node_info['staker_address']} ({country})")
+                status_colors.append(node_info['status']['color'])
+            except OSError:
+                # TODO: log something? nothing to see here
+                pass
+
+    fig = go.Figure(
+        data=go.Scattergeo(
+            lon=longitudes,
+            lat=latitudes,
+            text=staker_text,
+            hoverinfo='text',
+            mode='markers',
+            marker=dict(
+                opacity=0.5,
+                color=status_colors
+            )
+        ),
+        layout=go.Layout(
+            title='Node Locations',
+            showlegend=False,
+            geo=dict(
+                scope='world',
+                showframe=True,
+                projection={'type': 'equirectangular'},
+                showcountries=True,
+                countrycolor='darkslategrey',
+                showland=True,
+                landcolor='slategrey',
+                showcoastlines=True,
+                coastlinecolor='darkslategrey',
+                showlakes=False,
+                bgcolor='rgba(0,0,0,0)',
+            ),
+            font=dict(
+                family='monospace',
+                size=11,
+                color='slategrey'
+            ),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            autosize=True,
+            width=None,
+            height=None,
+        ))
+
+    graph = dcc.Graph(figure=fig,
+                      id='nodes-geolocation',
                       config=GRAPH_CONFIG,
                       style={'width': '100%'})
     return graph

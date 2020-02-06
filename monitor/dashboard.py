@@ -14,7 +14,8 @@ from monitor import layout, components, settings
 from monitor.charts import (
     future_locked_tokens_bar_chart,
     stakers_breakdown_pie_chart,
-    top_stakers_chart
+    top_stakers_chart,
+    nodes_geolocation_map
 )
 from monitor.components import make_contract_row
 from monitor.crawler import Crawler
@@ -28,7 +29,9 @@ from nucypher.blockchain.eth.agents import (
 )
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
+from os import path
 
+import IP2Location
 
 class Dashboard:
     """
@@ -65,6 +68,10 @@ class Dashboard:
         # Dash
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
 
+        # GeoLocation
+        self.ip2loc = IP2Location.IP2Location()
+        self.ip2loc.open(path.join(settings.ASSETS_PATH, 'IP2LOCATION-LITE-DB5.BIN'))
+
     def make_request(self):
         url = f'http://{self.crawler_host}:{self.crawler_port}/{Crawler.METRICS_ENDPOINT}'
         response = requests.get(url=url)
@@ -86,7 +93,8 @@ class Dashboard:
                         assets_folder=settings.ASSETS_PATH,
                         url_base_pathname=route_url,
                         suppress_callback_exceptions=debug,
-                        eager_loading=False)
+                        eager_loading=False,
+                        assets_ignore='.*\\.BIN')  # ignore ip2loc database file
 
         # Initial State
         dash_app.title = settings.TITLE
@@ -207,6 +215,14 @@ class Dashboard:
                                                    past_locked_tokens=past_stakes,
                                                    node_history=nodes_history)
             return graph
+
+        @dash_app.callback(Output('nodes-geolocation-graph', 'children'),
+                           [Input('daily-interval', 'n_intervals')],
+                           [State('cached-crawler-stats', 'children')])
+        def nodes_geographical_locations(n, latest_crawler_stats):
+            data = self.verify_cached_stats(latest_crawler_stats)
+            nodes_map = nodes_geolocation_map(nodes_dict=data['node_details'], ip2loc=self.ip2loc)
+            return nodes_map
 
         # @dash_app.callback(Output('prev-work-orders-graph', 'children'), [Input('daily-interval', 'n_intervals')])
         # def historical_work_orders(n):
