@@ -16,6 +16,7 @@ from monitor.charts import (
     stakers_breakdown_pie_chart,
     top_stakers_chart
 )
+from monitor.components import make_contract_row
 from monitor.crawler import Crawler
 from monitor.db import CrawlerInfluxClient
 from nucypher.blockchain.eth.agents import (
@@ -180,45 +181,10 @@ class Dashboard:
 
         @dash_app.callback(Output('contracts', 'children'), [Input('url', 'pathname')])  # on page-load
         def contracts(pathname):
-            base_url = "https://goerli.etherscan.io/address/{}"
-            reward_supply = NU.from_nunits(self.token_agent.get_balance(self.staking_agent.contract_address))
-            components = html.Div([html.H4('Contracts'),
-
-                                   html.Tr([
-                                       html.A(f'{self.token_agent.contract_name} {self.token_agent.contract_address}',
-                                              id="token-contract-address",
-                                              href=base_url.format(self.token_agent.contract_address)),
-                                       html.Span(f'{self.token_agent.contract.version}')
-                                   ]),
-
-                                   html.Tr([
-                                       html.A(
-                                           f'{self.staking_agent.contract_name} {self.staking_agent.contract_address}',
-                                           id="staking-contract-address",
-                                           href=base_url.format(self.staking_agent.contract_address)),
-                                       html.Span(f'{self.staking_agent.contract.version}'),
-                                       html.Span(f'{reward_supply}')
-                                   ]),
-
-                                   html.Tr([
-                                       html.A(
-                                           f'{self.policy_agent.contract_name} {self.policy_agent.contract_address}',
-                                           id="policy-contract-address",
-                                           href=base_url.format(self.policy_agent.contract_address)),
-                                       html.Span(f'{self.policy_agent.contract.version}'),
-                                       html.Span(f'{NU.from_nunits(self.token_agent.get_balance(self.policy_agent.contract_address))}')
-                                   ]),
-
-                                   html.Tr([
-                                       html.A(f'{self.adjudicator_agent.contract_name} {self.adjudicator_agent.contract_address}',
-                                              id="adjudicator-contract-address",
-                                              href=base_url.format(self.adjudicator_agent.contract_address)),
-                                       html.Span(f'{self.adjudicator_agent.contract.version}'),
-                                       html.Span(f'{NU.from_nunits(self.token_agent.get_balance(self.adjudicator_agent.contract_address))}')
-                                   ])
-
-                                   ], id='contract-names')
-            return components
+            agents = (self.token_agent, self.staking_agent, self.policy_agent, self.adjudicator_agent)
+            rows = [make_contract_row(agent) for agent in agents]
+            _components = html.Div([html.H4('Contracts'), *rows], id='contract-names')
+            return _components
 
         @dash_app.callback(Output('staked-tokens', 'children'),
                            [Input('minute-interval', 'n_intervals')],

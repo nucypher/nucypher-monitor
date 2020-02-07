@@ -13,6 +13,7 @@ from maya import MayaDT
 from twisted.internet import task, reactor
 from twisted.logger import Logger
 
+from monitor.utils import collector
 from nucypher.blockchain.economics import TokenEconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
@@ -177,6 +178,7 @@ class Crawler(Learner):
         self.staking_agent = ContractAgency.get_agent(StakingEscrowAgent, registry=self.registry)
 
         # Crawler Tasks
+        self.__collection_round = 0
         self.__collecting_nodes = False  # thread tracking
         self.__collecting_stats = False
         self._node_details_task = task.LoopingCall(self._learn_about_nodes)
@@ -227,6 +229,7 @@ class Crawler(Learner):
     def stats(self) -> dict:
         return self._stats
 
+    @collector(label="Projected Stake and Stakers")
     def _measure_future_locked_tokens(self, periods: int = 365):
         period_range = range(1, periods + 1)
         token_counter = dict()
@@ -235,16 +238,17 @@ class Crawler(Learner):
             token_counter[day] = (float(NU.from_nunits(tokens).to_tokens()), len(stakers))
         return dict(token_counter)
 
-    def _measure_top_stakers(self):
+    @collector(label="Top Stakes")
+    def _measure_top_stakers(self) -> dict:
         _, stakers = self.staking_agent.get_all_active_stakers(periods=1)
         data = dict()
-        for staker_info in stakers:
-            # TODO: remove once nucypher: #1611 is merged
-            staker_address = to_checksum_address(staker_info[0].to_bytes(20, 'big'))
-            data[staker_address] = float(NU.from_nunits(staker_info[1]).to_tokens())
+        for staker, stake in stakers:
+            staker_address = to_checksum_address(staker)
+            data[staker_address] = float(NU.from_nunits(stake).to_tokens())
         data = dict(sorted(data.items(), key=lambda s: s[1], reverse=True))
         return data
 
+    @collector(label="Staker Confirmation Status")
     def _measure_staker_activity(self) -> dict:
         confirmed, pending, inactive = self.staking_agent.partition_stakers_by_activity()
         stakers = dict()
@@ -253,6 +257,7 @@ class Crawler(Learner):
         stakers['inactive'] = len(inactive)
         return stakers
 
+    @collector(label="Time Until Next Period")
     def _measure_time_remaining(self) -> str:
         current_period = self.staking_agent.get_current_period()
         economics = TokenEconomicsFactory.get_economics(registry=self.registry)
@@ -260,6 +265,7 @@ class Crawler(Learner):
         remaining = str(next_period - maya.now())
         return remaining
 
+    @collector(label="Known Nodes")
     def measure_known_nodes(self):
 
         #
@@ -267,11 +273,11 @@ class Crawler(Learner):
         #
 
         current_period = self.staking_agent.get_current_period()
-        color_codex = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
-                       0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
-                       current_period: ('#525ae3', 'Idle'),  # Never confirmed
-                       BlockchainInterface.NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
-                       }
+        buckets = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
+                   0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
+                   current_period: ('#525ae3', 'Idle'),  # Never confirmed
+                   BlockchainInterface.NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
+                   }
 
         shortest_uptime, newborn = float('inf'), None
         longest_uptime, uptime_king = 0, None
@@ -287,7 +293,7 @@ class Crawler(Learner):
         for staker_address in known_nodes:
 
             #
-            # Missing Confirmations Scraping
+            # Confirmation Status Scraping
             #
 
             last_confirmed_period = self.staking_agent.get_last_active_period(staker_address)
@@ -297,7 +303,7 @@ class Crawler(Learner):
                 # missing_confirmations = BlockchainInterface.NULL_ADDRESS
                 continue  # TODO: Skip this DetachedWorker and do not display it
             try:
-                color, status_message = color_codex[missing_confirmations]
+                color, status_message = buckets[missing_confirmations]
             except KeyError:
                 color, status_message = 'red', f'Unconfirmed'
             node_status = {'status': status_message, 'missed_confirmations': missing_confirmations, 'color': color}
@@ -328,22 +334,26 @@ class Crawler(Learner):
             known_nodes[staker_address]['status'] = node_status
             known_nodes[staker_address]['uptime'] = natural_uptime
             payload[status_message.lower()].append(known_nodes[staker_address])
-        known_nodes[newborn]['newborn'] = True
-        known_nodes[uptime_king]['uptime_king'] = True
+
+        # There are not always winners...
+        if newborn:
+            known_nodes[newborn]['newborn'] = True
+        if uptime_king:
+            known_nodes[uptime_king]['uptime_king'] = True
         return payload
 
     def _collect_stats(self, threaded: bool = True) -> None:
         # TODO: Handle faulty connection to provider (requests.exceptions.ReadTimeout)
         if threaded:
             if self.__collecting_stats:
-                click.echo("Skipping Round - Metrics collection thread is already running", color="blue")  # TODO
                 self.log.debug("Skipping Round - Metrics collection thread is already running")
                 return
             return reactor.callInThread(self._collect_stats, threaded=False)
+        self.__collection_round += 1
         self.__collecting_stats = True
 
         start = maya.now()
-        click.echo("Starting new scraping round.", color='blue')  # TODO
+        click.secho(f"Scraping Round #{self.__collection_round} ========================", color='blue')
         self.log.info("Collecting Statistics...")
 
         #
@@ -353,17 +363,22 @@ class Crawler(Learner):
         # Time
         block_time = self.staking_agent.blockchain.client.w3.eth.getBlock('latest').timestamp  # epoch
         current_period = self.staking_agent.get_current_period()
+        click.secho("✓ ... Current Period", color='blue')
         time_remaining = self._measure_time_remaining()
 
         # Nodes
         teacher = self._crawler_client.get_current_teacher_checksum()
         states = self._crawler_client.get_previous_states_metadata()
+
         known_nodes = self.measure_known_nodes()
+
         activity = self._measure_staker_activity()
 
         # Stake
         future_locked_tokens = self._measure_future_locked_tokens()
         global_locked_tokens = self.staking_agent.get_global_locked_tokens()
+        click.secho("✓ ... Global Network Locked Tokens", color='blue')
+
         top_stakers = self._measure_top_stakers()
 
         #
@@ -387,10 +402,11 @@ class Crawler(Learner):
         done = maya.now()
         delta = done - start
         self.__collecting_stats = False
-
         click.echo(f"Scraping round completed (duration {delta}).", color='yellow')  # TODO: Make optional, use emitter, or remove
+        click.echo("==========================================")
         self.log.debug(f"Collected new metrics took {delta}.")
 
+    @collector(label="Known Node Details")
     def _learn_about_nodes(self, threaded: bool = True):
         if threaded:
             if self.__collecting_nodes:
@@ -482,7 +498,7 @@ class Crawler(Learner):
         else:
             self.log.critical(f'Unhandled error: {cleaned_traceback}')
 
-    def start(self):
+    def start(self, eager: bool = False):
         """Start the crawler if not already running"""
         if not self.is_running:
             self.log.info('Starting Crawler...')
@@ -499,8 +515,8 @@ class Crawler(Learner):
                 # self.crawler_influx_client = CrawlerInfluxClient()
 
             # start tasks
-            collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=False)
-            node_learner_deferred = self._node_details_task.start(interval=self._refresh_rate, now=False)
+            collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=eager)
+            node_learner_deferred = self._node_details_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks
             node_learner_deferred.addErrback(self._handle_errors)

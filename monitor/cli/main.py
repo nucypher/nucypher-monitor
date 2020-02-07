@@ -5,7 +5,7 @@ from flask import Flask
 from hendrix.deploy.tls import HendrixDeployTLS
 from twisted.internet import reactor
 
-from monitor.cli._utils import _get_registry, _get_self_signed_hosting_power
+from monitor.cli._utils import _get_registry, _get_self_signed_hosting_power, _get_deployer
 from monitor.crawler import Crawler
 from monitor.dashboard import Dashboard
 from nucypher.blockchain.eth.networks import NetworksInventory
@@ -50,6 +50,7 @@ def monitor():
 @click.option('--influx-port', help="InfluxDB network port", type=NETWORK_PORT, default=8086)
 @click.option('--http-port', help="Crawler HTTP port for JSON endpoint", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the crawler", is_flag=True)
+@click.option('--eager', help="Start learning and scraping before starting up other services", is_flag=True, default=False)
 def crawl(general_config,
           teacher_uri,
           registry_filepath,
@@ -60,7 +61,8 @@ def crawl(general_config,
           influx_host,
           influx_port,
           http_port,
-          dry_run):
+          dry_run,
+          eager):
     """
     Gather NuCypher network information.
     """
@@ -85,7 +87,7 @@ def crawl(general_config,
                       network_middleware=RestMiddleware(),
                       known_nodes=teacher_nodes,
                       registry=registry,
-                      start_learning_now=False,
+                      start_learning_now=eager,
                       learn_on_same_thread=learn_on_launch,
                       influx_host=influx_host,
                       influx_port=influx_port)
@@ -97,7 +99,7 @@ def crawl(general_config,
     message = f"Running Nucypher Crawler JSON endpoint at http://localhost:{http_port}/stats"
     emitter.message(message, color='green', bold=True)
     if not dry_run:
-        crawler.start()
+        crawler.start(eager=eager)
         reactor.run()
 
 
@@ -150,7 +152,8 @@ def dashboard(general_config,
 
     rest_app = Flask("monitor-dashboard")
     if general_config.debug:
-        os.environ['FLASK_ENV'] ='development'  # TODO: Review layer
+        os.environ['FLASK_ENV'] = 'development'
+
     Dashboard(flask_server=rest_app,
               route_url='/',
               registry=registry,
@@ -163,20 +166,21 @@ def dashboard(general_config,
     #
     # Server
     #
-    # TODO: Move to utility  function
-    if tls_key_filepath and certificate_filepath:
-        deployer = HendrixDeployTLS("start",
-                                    key=tls_key_filepath,
-                                    cert=certificate_filepath,
-                                    options={"wsgi": rest_app, "https_port": http_port})
-    else:
-        tls_hosting_power = _get_self_signed_hosting_power(host=host)
-        deployer = tls_hosting_power.get_deployer(rest_app=rest_app, port=http_port)
 
+    deployer = _get_deployer(rest_app=rest_app,
+                             host=host,
+                             port=http_port,
+                             certificate_filepath=certificate_filepath,
+                             tls_key_filepath=tls_key_filepath)
+
+    # Pre-Launch Info
+    emitter.message(f"Network: {network.capitalize()}", color='blue')
+    emitter.message(f"Crawler: {crawler_host}:{crawler_port}", color='blue')
+    emitter.message(f"InfluxDB: {influx_host}:{influx_port}", color='blue')
+    emitter.message(f"Provider: {provider_uri}", color='blue')
     if not dry_run:
-        emitter.message(f"Network: {network.capitalize()}", color='blue')
-        emitter.message(f"Crawler: {crawler_host}:{crawler_port}", color='blue')
-        emitter.message(f"InfluxDB: {influx_host}:{influx_port}", color='blue')
-        emitter.message(f"Provider: {provider_uri}", color='blue')
         emitter.message(f"Running Monitor Dashboard - https://{host}:{http_port}", color='green', bold=True)
-        deployer.run()
+        try:
+            deployer.run()  # <--- Blocking
+        finally:
+            click.secho("Shutting Down")

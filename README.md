@@ -6,13 +6,13 @@ The NuCypher Monitor collects data about the [NuCypher Network](https://github.c
 and displays this information in a UI via the `Dashboard`.
 
 
-### Installation
+### Standard Installation
 
 ```bash
-$ pip install -e . -r requirements.txt
+$ pip install . -r requirements.txt
 ```
 
-##### Install additional development packages
+##### Development Installation
 ```bash
 $ pip install -e . -r dev-requirements.txt
 ```
@@ -49,21 +49,69 @@ Commands:
 1. Run InfluxDB
 ```bash
 $ sudo influxd
+
+
+ 8888888           .d888 888                   8888888b.  888888b.
+   888            d88P"  888                   888  "Y88b 888  "88b
+   888            888    888                   888    888 888  .88P
+   888   88888b.  888888 888 888  888 888  888 888    888 8888888K.
+   888   888 "88b 888    888 888  888  Y8bd8P' 888    888 888  "Y88b
+   888   888  888 888    888 888  888   X88K   888    888 888    888
+   888   888  888 888    888 Y88b 888 .d8""8b. 888  .d88P 888   d88P
+ 8888888 888  888 888    888  "Y88888 888  888 8888888P"  8888888P"
+
+2020-01-29T19:07:09.671836Z	info	InfluxDB starting	{"log_id": "0Kdg2Tul000", "version": "1.7.8", "branch": "1.7", "commit": "ff383cdc0420217e3460dabe17db54f8557d95b6"}
+...
+
 ```
 
 2. Run Geth node as a Web3 node provider (or use Infura)
 ```bash
 $ geth --goerli --nousb
+
+INFO [01-29|11:06:06.816] Maximum peer count                       ETH=50 LES=0 total=50
+...
+INFO [01-29|11:06:09.046] Started P2P networking                   self=enode://1eb7c99106888c206583abc63fc58da1c202965b32486115575d27e03aba0e0c1be433f0a7060da3ecc95afbbce845a7d3df703307d94fe328602c3d105daf36@127.0.0.1:30303
+INFO [01-29|11:06:09.048] IPC endpoint opened                      url=/home/k/.ethereum/goerli/geth.ipc
 ```
 
 3. Run the `Crawler`
 ```bash
-$ nucypher-monitor crawl --provider <YOUR_WEB3_PROVIDER_URI>
+$ nucypher-monitor crawl --provider <YOUR_WEB3_PROVIDER_URI> --network <NETWOROK NAME>
+
+|     |___ ___|_| |_ ___ ___ 
+| | | | . |   | |  _| . |  _|
+|_|_|_|___|_|_|_|_| |___|_|  
+
+========= Crawler =========
+
+Connecting to preferred teacher nodes...
+Network: Cassandra
+InfluxDB: 0.0.0.0:8086
+Provider: ...
+Refresh Rate: 60s
+Running Nucypher Crawler JSON endpoint at http://localhost:9555/stats
 ```
 
 4. Run the `Dashboard`
 ```bash
-$ nucypher-monitor dashboard --provider <YOUR WEB3 PROVIDER URI>
+
+$ nucypher-monitor dashboard --provider <YOUR WEB3 PROVIDER URI> --network <NETWOROK NAME>
+
+ _____         _ _           
+|     |___ ___|_| |_ ___ ___ 
+| | | | . |   | |  _| . |  _|
+|_|_|_|___|_|_|_|_| |___|_|  
+
+========= Dashboard =========
+
+Network: Cassandra
+Crawler: localhost:9555
+InfluxDB: localhost:8086
+Provider: ...
+Running Monitor Dashboard - https://127.0.0.1:12500
+
+
 ```
 
 5. The `Dashboard` UI is available at https://127.0.0.1:12500.
@@ -84,6 +132,11 @@ export WEB3_PROVIDER_URI=<YOUR WEB3 PROVIDER URI>
 2. Run Docker Compose
 ```bash
 docker-compose -f deploy/docker-compose.yml up
+```
+
+3. View Docker compose logs
+```bash
+
 ```
 
 3. The `Dashboard` UI is available on port 12500.
