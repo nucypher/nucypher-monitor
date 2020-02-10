@@ -11,7 +11,7 @@ from nucypher.blockchain.eth.token import NU
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 NODE_TABLE_COLUMNS_PROPERTIES = {
-    'Status': dict(name=NODE_TABLE_COLUMNS[0], id=NODE_TABLE_COLUMNS[0], editable=False),
+    'Status': dict(name=NODE_TABLE_COLUMNS[0], id=NODE_TABLE_COLUMNS[0], editable=False, presentation='markdown'),
     'Checksum': dict(name=NODE_TABLE_COLUMNS[1], id=NODE_TABLE_COLUMNS[1], editable=False, type='text', presentation='markdown'),
     'Nickname': dict(name=NODE_TABLE_COLUMNS[2], id=NODE_TABLE_COLUMNS[2], editable=False, type='text', presentation='markdown'),
     'Uptime': dict(name=NODE_TABLE_COLUMNS[3], id=NODE_TABLE_COLUMNS[3], editable=False),
@@ -19,6 +19,13 @@ NODE_TABLE_COLUMNS_PROPERTIES = {
     'Fleet State': dict(name=NODE_TABLE_COLUMNS[5], id=NODE_TABLE_COLUMNS[5], editable=False),
 }
 NODE_TABLE_PAGE_SIZE = 100
+
+STATUS_IMAGE_PATHS = {
+    'Confirmed': '/assets/status_confirmed.png',
+    'Idle': '/assets/status_idle.png',
+    'Pending': '/assets/status_pending.png',
+    'Unconfirmed': '/assets/status_unconfirmed.png',
+}
 
 
 # Note: Unused entries will be ignored
@@ -90,30 +97,16 @@ def previous_states(states: List[dict]) -> html.Div:
     ], className='row')
 
 
-def generate_node_status_icon(status: dict) -> html.Td:
-    # TODO: daq loading issue with dash >1.5.0
-    # https://community.plot.ly/t/solved-intermittent-dash-dependency-exception-dash-daq-is-registered-but-the-path-requested-is-not-valid/31563
-    status_message, color, missed = status['status'], status['color'], status['missed_confirmations']
-    status_cell = daq.Indicator(id='Status',
-                                color=color,
-                                value=True,
-                                size=10)  # pixels
-
-    if missed > 0:
-        status_message = f"{missed} missed confirmations"
-    status = html.Td(status_cell, className='node-status-indicator', title=status_message)
-    return status
-
-
 def generate_node_row(node_info: dict) -> dict:
     staker_address = node_info['staker_address']
     etherscan_url = ETHERSCAN_URL_TEMPLATE.format(staker_address)
 
     slang_last_seen = get_last_seen(node_info)
 
-    #status = generate_node_status_icon()
+    status = node_info['status']['status']
+    status_image_path = STATUS_IMAGE_PATHS[status]
     node_row = {
-        NODE_TABLE_COLUMNS[0]: node_info['status']['status'],
+        NODE_TABLE_COLUMNS[0]: f'![{status}]({status_image_path})',
         NODE_TABLE_COLUMNS[1]: f'[{staker_address[:10]}...]({etherscan_url})',
         NODE_TABLE_COLUMNS[2]: f'[{node_info["nickname"]}]({NODE_STATUS_URL_TEMPLATE.format(node_info["rest_url"])})',
         NODE_TABLE_COLUMNS[3]: node_info['uptime'],
@@ -166,6 +159,13 @@ def nodes_table(nodes) -> (html.Table, List):
                                              'column_id': 'Nickname'
                                          },
                                          'width': '30%'
+                                     },
+                                     {
+                                         'if': {
+                                             'column_id': 'Status'
+                                         },
+                                         'vertical-align': 'center',
+                                         'width': '5%'
                                      },
                                  ],
                                  style_data_conditional=[
