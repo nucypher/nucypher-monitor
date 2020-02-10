@@ -20,6 +20,7 @@ th {
     /*flex: 1;*/
 }
 
+/*
 td {
     padding: 12px 15px;
     text-align: left;
@@ -30,6 +31,7 @@ td {
     border-bottom: none;
     text-overflow: ellipsis;
 }
+*/
 
 label, legend {
     display: block;
@@ -200,18 +202,18 @@ h5 {
     margin-bottom: 1em;
 }
 
-#node-table {
+.node-table {
     width: 100%;
     display: flex;
     flex-direction: column;
     margin-bottom: 2em;
 }
 
-
+/*
 .node-row td {
     width: 100%;
 }
-
+*/
 
 .small {
     float: left;

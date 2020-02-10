@@ -122,8 +122,8 @@ class Dashboard:
                            [State('cached-crawler-stats', 'children')])
         def known_nodes(pathname, n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
-            table = components.known_nodes(nodes_dict=data['node_details'])
-            return table
+            node_tables = components.known_nodes(nodes_dict=data['node_details'])
+            return node_tables
 
         @dash_app.callback(Output('active-stakers', 'children'),
                            [Input('minute-interval', 'n_intervals')],

@@ -2,7 +2,7 @@ from typing import List
 
 import dash_daq as daq
 import dash_html_components as html
-from constant_sorrow.constants import UNKNOWN_FLEET_STATE
+import dash_table
 from maya import MayaDT
 from pendulum.parsing import ParserError
 
@@ -10,6 +10,15 @@ import nucypher
 from nucypher.blockchain.eth.token import NU
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
+NODE_TABLE_COLUMNS_PROPERTIES = {
+    'Status': dict(name=NODE_TABLE_COLUMNS[0], id=NODE_TABLE_COLUMNS[0], editable=False),
+    'Checksum': dict(name=NODE_TABLE_COLUMNS[1], id=NODE_TABLE_COLUMNS[1], editable=False, type='text', presentation='markdown'),
+    'Nickname': dict(name=NODE_TABLE_COLUMNS[2], id=NODE_TABLE_COLUMNS[2], editable=False, type='text', presentation='markdown'),
+    'Uptime': dict(name=NODE_TABLE_COLUMNS[3], id=NODE_TABLE_COLUMNS[3], editable=False),
+    'Last Seen': dict(name=NODE_TABLE_COLUMNS[4], id=NODE_TABLE_COLUMNS[4], editable=False),
+    'Fleet State': dict(name=NODE_TABLE_COLUMNS[5], id=NODE_TABLE_COLUMNS[5], editable=False),
+}
+NODE_TABLE_PAGE_SIZE = 100
 
 
 # Note: Unused entries will be ignored
@@ -24,6 +33,8 @@ BUCKET_DESCRIPTIONS = {
 
 
 ETHERSCAN_URL_TEMPLATE = "https://goerli.etherscan.io/address/{}"
+
+NODE_STATUS_URL_TEMPLATE = "https://{}/status"
 
 
 def header() -> html.Div:
@@ -95,44 +106,23 @@ def generate_node_status_icon(status: dict) -> html.Td:
 
 
 def generate_node_row(node_info: dict) -> dict:
-
-    identity = html.Td(children=html.Div([
-        html.A(node_info['nickname'],
-               href=f'https://{node_info["rest_url"]}/status',
-               target='_blank')
-    ]), className='node-nickname')
-
-    # Fleet State
-    fleet_state_div = []
-    fleet_state_icon = node_info['fleet_state_icon']
-    if fleet_state_icon is not UNKNOWN_FLEET_STATE:
-        icon_list = node_info['fleet_state_icon']
-        fleet_state_div = icon_list
-    fleet_state = html.Td([html.Div(fleet_state_div)])
-
     staker_address = node_info['staker_address']
-    etherscan_url = f'https://goerli.etherscan.io/address/{node_info["staker_address"]}'
+    etherscan_url = ETHERSCAN_URL_TEMPLATE.format(staker_address)
 
     slang_last_seen = get_last_seen(node_info)
 
-    status = generate_node_status_icon(node_info['status'])
-
-    # Uptime
-    king = 'uptime-king' if node_info.get('uptime_king') else ''
-    baby = 'newborn' if node_info.get('newborn') else ''
-    king_or_baby = king or baby
-    uptime_cell = html.Td(node_info['uptime'], className='uptime-cell', id=king_or_baby, title=king_or_baby)
-    components = {
-        'Status': status,
-        'Checksum': html.Td(html.A(f'{staker_address[:10]}...', href=etherscan_url, target='_blank'), className='node-address'),
-        'Nickname': identity,
-        'Uptime': uptime_cell,
-        'Last Seen': html.Td([slang_last_seen]),
-        'Fleet State': fleet_state,
+    #status = generate_node_status_icon()
+    node_row = {
+        NODE_TABLE_COLUMNS[0]: node_info['status']['status'],
+        NODE_TABLE_COLUMNS[1]: f'[{staker_address[:10]}...]({etherscan_url})',
+        NODE_TABLE_COLUMNS[2]: f'[{node_info["nickname"]}]({NODE_STATUS_URL_TEMPLATE.format(node_info["rest_url"])})',
+        NODE_TABLE_COLUMNS[3]: node_info['uptime'],
+        NODE_TABLE_COLUMNS[4]: slang_last_seen,
+        NODE_TABLE_COLUMNS[5]: node_info['fleet_state_icon'],
         #'Peers ': html.Td(node_info['peers']),  # TODO
     }
 
-    return components
+    return node_row
 
 
 def get_last_seen(node_info):
@@ -144,46 +134,43 @@ def get_last_seen(node_info):
     return slang_last_seen
 
 
-def nodes_table(nodes, display_unconnected_nodes: bool = True) -> (html.Table, List):
-    style_dict = {'overflowY': 'scroll'}
-
-    rows = []
+def nodes_table(nodes) -> (html.Table, List):
+    rows = list()
     for index, node_info in enumerate(nodes):
-        row = list()
-
         # Fill columns
         components = generate_node_row(node_info=node_info)
-        for col in NODE_TABLE_COLUMNS:
-            cell = components[col]
-            row.append(cell)
+        rows.append(components)
 
-        # Handle In-line Row Styles
-        row_class = 'connected-to-node'
-        if 'No Connection' in get_last_seen(node_info):
-            if display_unconnected_nodes:
-                row_class = 'no-connection-to-node'
-            else:
-                continue
+    table = dash_table.DataTable(columns=[NODE_TABLE_COLUMNS_PROPERTIES[col] for col in NODE_TABLE_COLUMNS],
+                                 data=rows,
+                                 fixed_rows=dict(headers=True),
+                                 filter_action='native',
+                                 page_current=0,
+                                 page_size=NODE_TABLE_PAGE_SIZE,
+                                 page_action='native',
+                                 style_cell={
+                                      'overflow': 'hidden',
+                                      'textOverflow': 'ellipsis',
+                                      'maxWidth': 0,
+                                      'background-color': 'rgba(0,0,0,0)',
+                                      'border-color': 'slategrey'
+                                 })
 
-        # Aggregate
-        rows.append(html.Tr(row, style=style_dict, className=f'node-row {row_class}'))
-    table = html.Table(rows, id='node-table')
     return table
 
 
 def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
-    components = dict()
+    components = []
     buckets = {'active': sorted([*nodes_dict['confirmed'], *nodes_dict['pending']], key=lambda n: n['timestamp']),
                'idle': nodes_dict['idle'],
                'inactive': nodes_dict['unconfirmed']}
     for label, nodes in list(buckets.items()):
-        component = nodes_list_section(label, nodes, display_unconnected_nodes=True)
-        components[label] = component
-    return list(components.values())
+        component = nodes_list_section(label, nodes)
+        components.append(component)
+    return components
 
 
-def nodes_list_section(label, nodes, display_unconnected_nodes: bool = True):
-    table = nodes_table(nodes, display_unconnected_nodes=display_unconnected_nodes)
+def nodes_list_section(label, nodes):
     try:
         label_description = BUCKET_DESCRIPTIONS[label]
     except KeyError:
@@ -198,9 +185,12 @@ def nodes_list_section(label, nodes, display_unconnected_nodes: bool = True):
             html.Span(label_description, className='tooltiptext')], className='tooltip')
         ], className='label-and-tooltip')
 
+    table = nodes_table(nodes)
+
     component = html.Div([
-        html.Hr(),
-        tooltip,
-        html.Div([table])
-    ], id=f"{label}-list")
+        html.Div([
+            html.Hr(),
+            tooltip,
+        ], id=f"{label}-list"),
+        table])
     return component
