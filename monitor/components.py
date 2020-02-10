@@ -143,19 +143,39 @@ def nodes_table(nodes) -> (html.Table, List):
 
     table = dash_table.DataTable(columns=[NODE_TABLE_COLUMNS_PROPERTIES[col] for col in NODE_TABLE_COLUMNS],
                                  data=rows,
-                                 fixed_rows=dict(headers=True),
+                                 fixed_rows=dict(headers=True, data=0),
                                  filter_action='native',
                                  page_current=0,
                                  page_size=NODE_TABLE_PAGE_SIZE,
                                  page_action='native',
+                                 style_as_list_view=True,
                                  style_cell={
                                       'overflow': 'hidden',
                                       'textOverflow': 'ellipsis',
                                       'maxWidth': 0,
                                       'background-color': 'rgba(0,0,0,0)',
-                                      'border-color': 'slategrey'
-                                 })
-
+                                      'text-align': 'left',
+                                      'font-size': '1.2rem'
+                                 },
+                                 style_header={
+                                     'font-style': 'bold'
+                                 },
+                                 style_cell_conditional=[
+                                     {  # nickname column should try to fit entire name
+                                         'if': {
+                                             'column_id': 'Nickname'
+                                         },
+                                         'width': '30%'
+                                     },
+                                 ],
+                                 style_data_conditional=[
+                                     {  # no connection to node styling
+                                         'if': {
+                                             'filter_query': '{Last Seen} eq "No Connection to Node"'
+                                         },
+                                         'opacity': 0.5
+                                     },
+                                 ])
     return table
 
 
