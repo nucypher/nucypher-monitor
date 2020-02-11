@@ -245,9 +245,10 @@ def nodes_list_section(label, nodes):
     table = nodes_table(nodes)
 
     component = html.Div([
-        html.Div([
-            html.Hr(),
-            tooltip,
-        ], id=f"{label}-list"),
-        table])
+            html.Div([
+                html.Hr(),
+                tooltip,
+            ], id=f"{label}-list"),
+            html.Div([table], className='node-table')
+        ])
     return component
