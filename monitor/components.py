@@ -1,6 +1,5 @@
 from typing import List
 
-import dash_daq as daq
 import dash_html_components as html
 import dash_table
 from maya import MayaDT
@@ -18,13 +17,13 @@ NODE_TABLE_COLUMNS_PROPERTIES = {
     'Last Seen': dict(name=NODE_TABLE_COLUMNS[4], id=NODE_TABLE_COLUMNS[4], editable=False),
     'Fleet State': dict(name=NODE_TABLE_COLUMNS[5], id=NODE_TABLE_COLUMNS[5], editable=False),
 }
-NODE_TABLE_PAGE_SIZE = 100
+NODE_TABLE_PAGE_SIZE = 80
 
 STATUS_IMAGE_PATHS = {
-    'Confirmed': '/assets/status_confirmed.png',
-    'Idle': '/assets/status_idle.png',
-    'Pending': '/assets/status_pending.png',
-    'Unconfirmed': '/assets/status_unconfirmed.png',
+    'Confirmed': '/assets/status_confirmed.png',  # green
+    'Idle': '/assets/status_idle.png',  # 525ae3
+    'Pending': '/assets/status_pending.png',  # e0b32d
+    'Unconfirmed': '/assets/status_unconfirmed.png',  # red
 }
 
 
@@ -129,43 +128,81 @@ def get_last_seen(node_info):
 
 def nodes_table(nodes) -> (html.Table, List):
     rows = list()
+    king_index = -1
+    newborn_index = -1
     for index, node_info in enumerate(nodes):
         # Fill columns
         components = generate_node_row(node_info=node_info)
         rows.append(components)
+        if node_info.get('uptime_king'):
+            king_index = index
+        elif node_info.get('newborn'):
+            newborn_index = index
+
+    style_table = dict()
+    if len(rows) > 25:
+        # TODO: this should be simpler once fixed in dash: https://github.com/plotly/dash-table/issues/646
+        style_table['minHeight'] = '100vh'
+        style_table['height'] = '100vh'
+        style_table['maxHeight'] = '100vh'
 
     table = dash_table.DataTable(columns=[NODE_TABLE_COLUMNS_PROPERTIES[col] for col in NODE_TABLE_COLUMNS],
                                  data=rows,
                                  fixed_rows=dict(headers=True, data=0),
                                  filter_action='native',
-                                 page_current=0,
                                  page_size=NODE_TABLE_PAGE_SIZE,
                                  page_action='native',
                                  style_as_list_view=True,
+                                 style_table=style_table,
+                                 style_header={
+                                     'font-weight': 'bold',
+                                     'border-bottom': '1px solid #E1E1E1'
+                                 },
+                                 style_filter={
+                                     'font-size': '1.5rem',
+                                     'background-color': 'yellow',
+                                     'text-align': 'left',
+                                 },
                                  style_cell={
                                       'overflow': 'hidden',
                                       'textOverflow': 'ellipsis',
                                       'maxWidth': 0,
                                       'background-color': 'rgba(0,0,0,0)',
                                       'text-align': 'left',
-                                      'font-size': '1.2rem'
-                                 },
-                                 style_header={
-                                     'font-style': 'bold'
+                                      'font-size': '1.2rem',
+                                      'border-bottom': '1px solid #2B2B2B',
+                                      'vertical-align': 'center'
                                  },
                                  style_cell_conditional=[
-                                     {  # nickname column should try to fit entire name
+                                     {  # nickname column - should make best effort to fit entire name
                                          'if': {
                                              'column_id': 'Nickname'
                                          },
                                          'width': '30%'
                                      },
-                                     {
+                                     {  # status column - try to keep relatively small
                                          'if': {
                                              'column_id': 'Status'
                                          },
-                                         'vertical-align': 'center',
                                          'width': '5%'
+                                     },
+                                     {  # highlight king
+                                         'if': {
+                                             'column_id': 'Uptime',
+                                             'row_index': king_index
+                                         },
+                                         'color': 'rgb(169, 162, 101)',
+                                         'font-size': '1.2em',
+                                         'font-weight': 900
+                                     },
+                                     {  # highlight baby
+                                         'if': {
+                                             'column_id': 'Uptime',
+                                             'row_index': newborn_index  # TODO: not working (maybe because of paging)
+                                         },
+                                         'color': 'rgb(141, 78, 171)',
+                                         'font-size': '1.2em',
+                                         'font-weight': 900
                                      },
                                  ],
                                  style_data_conditional=[
@@ -173,7 +210,7 @@ def nodes_table(nodes) -> (html.Table, List):
                                          'if': {
                                              'filter_query': '{Last Seen} eq "No Connection to Node"'
                                          },
-                                         'opacity': 0.5
+                                         'opacity': 0.45
                                      },
                                  ])
     return table

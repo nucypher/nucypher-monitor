@@ -420,41 +420,9 @@ h5 {
     color: #767676;
 }
 
-#newborn {
-    color: rgb(141, 78, 171);
-    font-size: 1.2em;
-    font-weight: 900;
-}
-
-
-#uptime-king {
-    /*content: "♔";*/
-    color: rgb(169, 162, 101);
-    font-size: 1.2em;
-    font-weight: 900;
-}
-
-.uptime-cell {
-    display: flex;
-}
-
 .nodes-list-description {
     font-style: italic;
 }
-
-#unconnected-list .node-row {
-    background-color: rgba(255, 0, 0, .5);
-    color: white;
-}
-
-#unconnected-list a {
-    color: white;
-}
-
-.no-connection-to-node {
-    opacity: 0.45;
-}
-
 
 .label-and-tooltip {
     display: flex;
