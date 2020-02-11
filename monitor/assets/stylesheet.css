@@ -20,19 +20,6 @@ th {
     /*flex: 1;*/
 }
 
-/*
-td {
-    padding: 12px 15px;
-    text-align: left;
-    flex: 1;
-    display: flex;
-    flex-direction: row;
-    justify-content: start;
-    border-bottom: none;
-    text-overflow: ellipsis;
-}
-*/
-
 label, legend {
     display: block;
     margin: 0.25vh;
@@ -339,6 +326,35 @@ h5 {
     display: flex;
     flex-direction: column;
     margin-bottom: 2em;
+}
+
+.node-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0;
+    background-color: rgb(0, 0, 0) !important;
+    text-align: left !important;
+    font-size: 1.2rem;
+    border-bottom: 1px solid #2B2B2B !important;
+    vertical-align: center !important;
+}
+
+.node-table th {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    border-bottom: 1px solid #E1E1E1 !important;
+    font-size: 1.2rem !important;
+    text-align: left !important;
+    font-weight: bold !important;
+    background-color: rgb(0, 0, 0) !important;
+}
+
+.node-table input:not([type=radio]):not([type=checkbox]) {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    background-color: yellow !important;
+    color: rgb(0, 0, 0) !important;
+    text-align: left !important;
 }
 
 .node-table tr:hover {

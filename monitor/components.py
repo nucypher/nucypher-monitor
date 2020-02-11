@@ -146,6 +146,7 @@ def nodes_table(nodes) -> (html.Table, List):
         style_table['height'] = '100vh'
         style_table['maxHeight'] = '100vh'
 
+    # static properties of table are overriden (!important) via stylesheet.css (.node-table class css entries)
     table = dash_table.DataTable(columns=[NODE_TABLE_COLUMNS_PROPERTIES[col] for col in NODE_TABLE_COLUMNS],
                                  data=rows,
                                  fixed_rows=dict(headers=True, data=0),
@@ -154,25 +155,6 @@ def nodes_table(nodes) -> (html.Table, List):
                                  page_action='native',
                                  style_as_list_view=True,
                                  style_table=style_table,
-                                 style_header={
-                                     'font-weight': 'bold',
-                                     'border-bottom': '1px solid #E1E1E1'
-                                 },
-                                 style_filter={
-                                     'font-size': '1.5rem',
-                                     'background-color': 'yellow',
-                                     'text-align': 'left',
-                                 },
-                                 style_cell={
-                                      'overflow': 'hidden',
-                                      'textOverflow': 'ellipsis',
-                                      'maxWidth': 0,
-                                      'background-color': 'rgba(0,0,0,0)',
-                                      'text-align': 'left',
-                                      'font-size': '1.2rem',
-                                      'border-bottom': '1px solid #2B2B2B',
-                                      'vertical-align': 'center'
-                                 },
                                  style_cell_conditional=[
                                      {  # nickname column - should make best effort to fit entire name
                                          'if': {
