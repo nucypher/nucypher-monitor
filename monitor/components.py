@@ -128,16 +128,16 @@ def get_last_seen(node_info):
 
 def nodes_table(nodes) -> (html.Table, List):
     rows = list()
-    king_index = -1
-    newborn_index = -1
+    # king_index = -1
+    # newborn_index = -1
     for index, node_info in enumerate(nodes):
         # Fill columns
         components = generate_node_row(node_info=node_info)
         rows.append(components)
-        if node_info.get('uptime_king'):
-            king_index = index
-        elif node_info.get('newborn'):
-            newborn_index = index
+        # if node_info.get('uptime_king'):
+        #     king_index = index
+        # elif node_info.get('newborn'):
+        #     newborn_index = index
 
     style_table = dict()
     if len(rows) > 25:
@@ -186,24 +186,24 @@ def nodes_table(nodes) -> (html.Table, List):
                                          },
                                          'width': '5%'
                                      },
-                                     {  # highlight king
-                                         'if': {
-                                             'column_id': 'Uptime',
-                                             'row_index': king_index
-                                         },
-                                         'color': 'rgb(169, 162, 101)',
-                                         'font-size': '1.2em',
-                                         'font-weight': 900
-                                     },
-                                     {  # highlight baby
-                                         'if': {
-                                             'column_id': 'Uptime',
-                                             'row_index': newborn_index  # TODO: not working (maybe because of paging)
-                                         },
-                                         'color': 'rgb(141, 78, 171)',
-                                         'font-size': '1.2em',
-                                         'font-weight': 900
-                                     },
+                                     # {  # highlight king
+                                     #     'if': {
+                                     #         'column_id': 'Uptime',
+                                     #         'row_index': king_index
+                                     #     },
+                                     #     'color': 'rgb(169, 162, 101)',
+                                     #     'font-size': '1.2em',
+                                     #     'font-weight': 900
+                                     # },
+                                     # {  # highlight baby
+                                     #     'if': {
+                                     #         'column_id': 'Uptime',
+                                     #         'row_index': newborn_index  # TODO: not working (maybe because of paging)
+                                     #     },
+                                     #     'color': 'rgb(141, 78, 171)',
+                                     #     'font-size': '1.2em',
+                                     #     'font-weight': 900
+                                     # },
                                  ],
                                  style_data_conditional=[
                                      {  # no connection to node styling
