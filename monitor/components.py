@@ -20,10 +20,10 @@ NODE_TABLE_COLUMNS_PROPERTIES = {
 NODE_TABLE_PAGE_SIZE = 80
 
 STATUS_IMAGE_PATHS = {
-    'Confirmed': '/assets/status_confirmed.png',  # green
-    'Idle': '/assets/status_idle.png',  # 525ae3
-    'Pending': '/assets/status_pending.png',  # e0b32d
-    'Unconfirmed': '/assets/status_unconfirmed.png',  # red
+    'Confirmed': '/assets/status/status_confirmed.png',  # green
+    'Idle': '/assets/status/status_idle.png',  # 525ae3
+    'Pending': '/assets/status/status_pending.png',  # e0b32d
+    'Unconfirmed': '/assets/status/status_unconfirmed.png',  # red
 }
 
 
@@ -33,7 +33,7 @@ BUCKET_DESCRIPTIONS = {
     'confirmed': "Nodes that confirmed activity for the next period",
     'pending': "Nodes that previously confirmed activity for the current period but not for the next period",
     'idle': "Nodes that have never confirmed.",
-    'inactive': "Nodes that previously confirmed activity but missed multiple periods since then.",
+    'inactive': "Nodes that previously confirmed activity but have missed multiple periods since then.",
     'unconnected': "Nodes that the monitor has not connected to - can be temporary while learning about the network (nodes should NOT remain here)",
 }
 
@@ -220,9 +220,10 @@ def nodes_list_section(label, nodes):
     tooltip = html.Div([
         html.H4(f'{label.capitalize()} Nodes ({total_nodes})'),
         html.Div([
-            html.Img(src='/assets/info.png', className='info-icon'),
-            html.Span(label_description, className='tooltiptext')], className='tooltip')
-        ], className='label-and-tooltip')
+            html.Img(src='/assets/status/status_info.png', className='info-icon'),
+            html.Span(label_description, className='tooltiptext')
+        ], className='tooltip')
+    ], className='label-and-tooltip')
 
     table = nodes_table(nodes)
 

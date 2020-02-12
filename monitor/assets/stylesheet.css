@@ -336,7 +336,7 @@ h5 {
     text-align: left !important;
     font-size: 1.2rem;
     border-bottom: 1px solid #2B2B2B !important;
-    vertical-align: center !important;
+    vertical-align: middle !important;
 }
 
 .node-table th {
@@ -347,6 +347,11 @@ h5 {
     text-align: left !important;
     font-weight: bold !important;
     background-color: rgb(0, 0, 0) !important;
+}
+
+.node-table input:not([type=radio]):not([type=checkbox]).current-page {
+    padding: 10px 1px !important;
+    text-align: center !important;
 }
 
 .node-table input:not([type=radio]):not([type=checkbox]) {
@@ -370,14 +375,12 @@ h5 {
     font-family: monospace;
 }
 
+/* status images in table */
 .node-table img {
     vertical-align: middle;
+    width: 15px;
+    height: 15px;
 }
-
-.node-table .current-page {
-    padding: 10px 1px;
-}
-
 
 .nucypher-button {
     display: none;
@@ -445,7 +448,8 @@ h5 {
 .info-icon {
     padding-top: 0.85vh;
     margin-left: .75vw;
-    height: 33px;
+    height: 25px;
+    width: auto;
     opacity: 0.75;
 }
 
