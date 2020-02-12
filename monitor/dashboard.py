@@ -70,7 +70,7 @@ class Dashboard:
 
         # GeoLocation
         self.ip2loc = IP2Location.IP2Location()
-        self.ip2loc.open(path.join(settings.ASSETS_PATH, 'IP2LOCATION-LITE-DB5.BIN'))
+        self.ip2loc.open(path.join(settings.ASSETS_PATH, 'geolocation', 'IP2LOCATION-LITE-DB5.BIN'))
 
     def make_request(self):
         url = f'http://{self.crawler_host}:{self.crawler_port}/{Crawler.METRICS_ENDPOINT}'
