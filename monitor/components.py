@@ -1,8 +1,7 @@
 from typing import List
 
-import dash_daq as daq
 import dash_html_components as html
-from constant_sorrow.constants import UNKNOWN_FLEET_STATE
+import dash_table
 from maya import MayaDT
 from pendulum.parsing import ParserError
 
@@ -10,6 +9,22 @@ import nucypher
 from nucypher.blockchain.eth.token import NU
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
+NODE_TABLE_COLUMNS_PROPERTIES = {
+    'Status': dict(name=NODE_TABLE_COLUMNS[0], id=NODE_TABLE_COLUMNS[0], editable=False, presentation='markdown'),
+    'Checksum': dict(name=NODE_TABLE_COLUMNS[1], id=NODE_TABLE_COLUMNS[1], editable=False, type='text', presentation='markdown'),
+    'Nickname': dict(name=NODE_TABLE_COLUMNS[2], id=NODE_TABLE_COLUMNS[2], editable=False, type='text', presentation='markdown'),
+    'Uptime': dict(name=NODE_TABLE_COLUMNS[3], id=NODE_TABLE_COLUMNS[3], editable=False),
+    'Last Seen': dict(name=NODE_TABLE_COLUMNS[4], id=NODE_TABLE_COLUMNS[4], editable=False),
+    'Fleet State': dict(name=NODE_TABLE_COLUMNS[5], id=NODE_TABLE_COLUMNS[5], editable=False),
+}
+NODE_TABLE_PAGE_SIZE = 80
+
+STATUS_IMAGE_PATHS = {
+    'Confirmed': '/assets/status/status_confirmed.png',  # green
+    'Idle': '/assets/status/status_idle.png',  # 525ae3
+    'Pending': '/assets/status/status_pending.png',  # e0b32d
+    'Unconfirmed': '/assets/status/status_unconfirmed.png',  # red
+}
 
 
 # Note: Unused entries will be ignored
@@ -18,12 +33,14 @@ BUCKET_DESCRIPTIONS = {
     'confirmed': "Nodes that confirmed activity for the next period",
     'pending': "Nodes that previously confirmed activity for the current period but not for the next period",
     'idle': "Nodes that have never confirmed.",
-    'inactive': "Nodes that previously confirmed activity but missed multiple periods since then.",
+    'inactive': "Nodes that previously confirmed activity but have missed multiple periods since then.",
     'unconnected': "Nodes that the monitor has not connected to - can be temporary while learning about the network (nodes should NOT remain here)",
 }
 
 
 ETHERSCAN_URL_TEMPLATE = "https://goerli.etherscan.io/address/{}"
+
+NODE_STATUS_URL_TEMPLATE = "https://{}/status"
 
 
 def header() -> html.Div:
@@ -79,60 +96,25 @@ def previous_states(states: List[dict]) -> html.Div:
     ], className='row')
 
 
-def generate_node_status_icon(status: dict) -> html.Td:
-    # TODO: daq loading issue with dash >1.5.0
-    # https://community.plot.ly/t/solved-intermittent-dash-dependency-exception-dash-daq-is-registered-but-the-path-requested-is-not-valid/31563
-    status_message, color, missed = status['status'], status['color'], status['missed_confirmations']
-    status_cell = daq.Indicator(id='Status',
-                                color=color,
-                                value=True,
-                                size=10)  # pixels
-
-    if missed > 0:
-        status_message = f"{missed} missed confirmations"
-    status = html.Td(status_cell, className='node-status-indicator', title=status_message)
-    return status
-
-
 def generate_node_row(node_info: dict) -> dict:
-
-    identity = html.Td(children=html.Div([
-        html.A(node_info['nickname'],
-               href=f'https://{node_info["rest_url"]}/status',
-               target='_blank')
-    ]), className='node-nickname')
-
-    # Fleet State
-    fleet_state_div = []
-    fleet_state_icon = node_info['fleet_state_icon']
-    if fleet_state_icon is not UNKNOWN_FLEET_STATE:
-        icon_list = node_info['fleet_state_icon']
-        fleet_state_div = icon_list
-    fleet_state = html.Td([html.Div(fleet_state_div)])
-
     staker_address = node_info['staker_address']
-    etherscan_url = f'https://goerli.etherscan.io/address/{node_info["staker_address"]}'
+    etherscan_url = ETHERSCAN_URL_TEMPLATE.format(staker_address)
 
     slang_last_seen = get_last_seen(node_info)
 
-    status = generate_node_status_icon(node_info['status'])
-
-    # Uptime
-    king = 'uptime-king' if node_info.get('uptime_king') else ''
-    baby = 'newborn' if node_info.get('newborn') else ''
-    king_or_baby = king or baby
-    uptime_cell = html.Td(node_info['uptime'], className='uptime-cell', id=king_or_baby, title=king_or_baby)
-    components = {
-        'Status': status,
-        'Checksum': html.Td(html.A(f'{staker_address[:10]}...', href=etherscan_url, target='_blank'), className='node-address'),
-        'Nickname': identity,
-        'Uptime': uptime_cell,
-        'Last Seen': html.Td([slang_last_seen]),
-        'Fleet State': fleet_state,
+    status = node_info['status']['status']
+    status_image_path = STATUS_IMAGE_PATHS[status]
+    node_row = {
+        NODE_TABLE_COLUMNS[0]: f'![{status}]({status_image_path})',
+        NODE_TABLE_COLUMNS[1]: f'[{staker_address[:10]}...]({etherscan_url})',
+        NODE_TABLE_COLUMNS[2]: f'[{node_info["nickname"]}]({NODE_STATUS_URL_TEMPLATE.format(node_info["rest_url"])})',
+        NODE_TABLE_COLUMNS[3]: node_info['uptime'],
+        NODE_TABLE_COLUMNS[4]: slang_last_seen,
+        NODE_TABLE_COLUMNS[5]: node_info['fleet_state_icon'],
         #'Peers ': html.Td(node_info['peers']),  # TODO
     }
 
-    return components
+    return node_row
 
 
 def get_last_seen(node_info):
@@ -144,46 +126,91 @@ def get_last_seen(node_info):
     return slang_last_seen
 
 
-def nodes_table(nodes, display_unconnected_nodes: bool = True) -> (html.Table, List):
-    style_dict = {'overflowY': 'scroll'}
+def nodes_table(nodes) -> (html.Table, List):
+    rows = list()
 
-    rows = []
+    king_nickname = ''
+    newborn_nickname = ''
     for index, node_info in enumerate(nodes):
-        row = list()
-
         # Fill columns
         components = generate_node_row(node_info=node_info)
-        for col in NODE_TABLE_COLUMNS:
-            cell = components[col]
-            row.append(cell)
+        rows.append(components)
+        if node_info.get('uptime_king'):
+            king_nickname = components['Nickname']
+        elif node_info.get('newborn'):
+            newborn_nickname = components['Nickname']
 
-        # Handle In-line Row Styles
-        row_class = 'connected-to-node'
-        if 'No Connection' in get_last_seen(node_info):
-            if display_unconnected_nodes:
-                row_class = 'no-connection-to-node'
-            else:
-                continue
+    style_table = dict()
+    if len(rows) > 25:
+        # TODO: this should be simpler once fixed in dash: https://github.com/plotly/dash-table/issues/646
+        style_table['minHeight'] = '100vh'
+        style_table['height'] = '100vh'
+        style_table['maxHeight'] = '100vh'
 
-        # Aggregate
-        rows.append(html.Tr(row, style=style_dict, className=f'node-row {row_class}'))
-    table = html.Table(rows, id='node-table')
+    # static properties of table are overriden (!important) via stylesheet.css (.node-table class css entries)
+    table = dash_table.DataTable(columns=[NODE_TABLE_COLUMNS_PROPERTIES[col] for col in NODE_TABLE_COLUMNS],
+                                 data=rows,
+                                 fixed_rows=dict(headers=True, data=0),
+                                 filter_action='native',
+                                 page_size=NODE_TABLE_PAGE_SIZE,
+                                 page_action='native',
+                                 style_as_list_view=True,
+                                 style_table=style_table,
+                                 style_cell_conditional=[
+                                     {  # nickname column - should make best effort to fit entire name
+                                         'if': {
+                                             'column_id': 'Nickname'
+                                         },
+                                         'width': '30%'
+                                     },
+                                     {  # status column - try to keep relatively small
+                                         'if': {
+                                             'column_id': 'Status'
+                                         },
+                                         'width': '5%'
+                                     }
+                                 ],
+                                 style_data_conditional=[
+                                     {  # no connection to node styling
+                                         'if': {
+                                             'filter_query': '{Last Seen} eq "No Connection to Node"'
+                                         },
+                                         'opacity': 0.45
+                                     },
+                                     {  # highlight king
+                                         'if': {
+                                             'column_id': 'Uptime',
+                                             'filter_query': f'{{Nickname}} eq "{king_nickname}"'
+                                         },
+                                         'color': 'rgb(169, 162, 101)',
+                                         'font-size': '1.2em',
+                                         'font-weight': 900
+                                     },
+                                     {  # highlight baby
+                                         'if': {
+                                             'column_id': 'Uptime',
+                                             'filter_query': f'{{Nickname}} eq "{newborn_nickname}"'
+                                         },
+                                         'color': 'rgb(141, 78, 171)',
+                                         'font-size': '1.2em',
+                                         'font-weight': 900
+                                     },
+                                 ])
     return table
 
 
 def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
-    components = dict()
+    components = []
     buckets = {'active': sorted([*nodes_dict['confirmed'], *nodes_dict['pending']], key=lambda n: n['timestamp']),
                'idle': nodes_dict['idle'],
                'inactive': nodes_dict['unconfirmed']}
     for label, nodes in list(buckets.items()):
-        component = nodes_list_section(label, nodes, display_unconnected_nodes=True)
-        components[label] = component
-    return list(components.values())
+        component = nodes_list_section(label, nodes)
+        components.append(component)
+    return components
 
 
-def nodes_list_section(label, nodes, display_unconnected_nodes: bool = True):
-    table = nodes_table(nodes, display_unconnected_nodes=display_unconnected_nodes)
+def nodes_list_section(label, nodes):
     try:
         label_description = BUCKET_DESCRIPTIONS[label]
     except KeyError:
@@ -194,13 +221,18 @@ def nodes_list_section(label, nodes, display_unconnected_nodes: bool = True):
     tooltip = html.Div([
         html.H4(f'{label.capitalize()} Nodes ({total_nodes})'),
         html.Div([
-            html.Img(src='/assets/info.png', className='info-icon'),
-            html.Span(label_description, className='tooltiptext')], className='tooltip')
-        ], className='label-and-tooltip')
+            html.Img(src='/assets/status/status_info.png', className='info-icon'),
+            html.Span(label_description, className='tooltiptext')
+        ], className='tooltip')
+    ], className='label-and-tooltip')
+
+    table = nodes_table(nodes)
 
     component = html.Div([
-        html.Hr(),
-        tooltip,
-        html.Div([table])
-    ], id=f"{label}-list")
+            html.Div([
+                html.Hr(),
+                tooltip,
+            ], id=f"{label}-list"),
+            html.Div([table], className='node-table')
+        ])
     return component

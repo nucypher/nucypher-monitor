@@ -70,7 +70,7 @@ class Dashboard:
 
         # GeoLocation
         self.ip2loc = IP2Location.IP2Location()
-        self.ip2loc.open(path.join(settings.ASSETS_PATH, 'IP2LOCATION-LITE-DB5.BIN'))
+        self.ip2loc.open(path.join(settings.ASSETS_PATH, 'geolocation', 'IP2LOCATION-LITE-DB5.BIN'))
 
     def make_request(self):
         url = f'http://{self.crawler_host}:{self.crawler_port}/{Crawler.METRICS_ENDPOINT}'
@@ -122,8 +122,8 @@ class Dashboard:
                            [State('cached-crawler-stats', 'children')])
         def known_nodes(pathname, n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
-            table = components.known_nodes(nodes_dict=data['node_details'])
-            return table
+            node_tables = components.known_nodes(nodes_dict=data['node_details'])
+            return node_tables
 
         @dash_app.callback(Output('active-stakers', 'children'),
                            [Input('minute-interval', 'n_intervals')],

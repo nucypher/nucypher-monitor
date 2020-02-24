@@ -20,17 +20,6 @@ th {
     /*flex: 1;*/
 }
 
-td {
-    padding: 12px 15px;
-    text-align: left;
-    flex: 1;
-    display: flex;
-    flex-direction: row;
-    justify-content: start;
-    border-bottom: none;
-    text-overflow: ellipsis;
-}
-
 label, legend {
     display: block;
     margin: 0.25vh;
@@ -200,19 +189,6 @@ h5 {
     margin-bottom: 1em;
 }
 
-#node-table {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 2em;
-}
-
-
-.node-row td {
-    width: 100%;
-}
-
-
 .small {
     float: left;
     width: 100%;
@@ -345,27 +321,67 @@ h5 {
     width: 100%;
 }
 
-
-.node-row {
-    -webkit-font-smoothing: antialiased;
-    box-shadow: rgb(229, 229, 229) 0 0 1px;
-    border: 1px solid #000000;
-    padding-left: 1rem;
-    margin: 0;
+.node-table {
+    width: 100%;
     display: flex;
-    flex-direction: row;
-    justify-content: flex-start;
-    align-items: center;
-    overflow: hidden !important;
-    height: 2.5em;
-    text-overflow: ellipsis;
-    font-size: 1.2rem;
+    flex-direction: column;
+    margin-bottom: 2em;
 }
 
-.node-row:hover {
+.node-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 0;
+    background-color: rgb(0, 0, 0) !important;
+    text-align: left !important;
+    font-size: 1.2rem;
+    border-bottom: 1px solid #2B2B2B !important;
+    vertical-align: middle !important;
+}
+
+.node-table th {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    border-bottom: 1px solid #E1E1E1 !important;
+    font-size: 1.2rem !important;
+    text-align: left !important;
+    font-weight: bold !important;
+    background-color: rgb(0, 0, 0) !important;
+}
+
+.node-table input:not([type=radio]):not([type=checkbox]).current-page {
+    padding: 10px 1px !important;
+    text-align: center !important;
+    background-color: white !important;
+}
+
+.node-table input:not([type=radio]):not([type=checkbox]) {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    background-color: yellow !important;
+    color: rgb(0, 0, 0) !important;
+    text-align: left !important;
+}
+
+.node-table tr:hover {
+    background-color: rgb(0, 0, 0) !important;
     box-shadow: rgb(220, 220, 220) 0 0 10px;
 }
 
+.node-table p {
+    margin: 0;
+}
+
+.node-table a {
+    font-family: monospace;
+}
+
+/* status images in table */
+.node-table img {
+    vertical-align: middle;
+    width: 15px;
+    height: 15px;
+}
 
 .nucypher-button {
     display: none;
@@ -418,41 +434,9 @@ h5 {
     color: #767676;
 }
 
-#newborn {
-    color: rgb(141, 78, 171);
-    font-size: 1.2em;
-    font-weight: 900;
-}
-
-
-#uptime-king {
-    /*content: "♔";*/
-    color: rgb(169, 162, 101);
-    font-size: 1.2em;
-    font-weight: 900;
-}
-
-.uptime-cell {
-    display: flex;
-}
-
 .nodes-list-description {
     font-style: italic;
 }
-
-#unconnected-list .node-row {
-    background-color: rgba(255, 0, 0, .5);
-    color: white;
-}
-
-#unconnected-list a {
-    color: white;
-}
-
-.no-connection-to-node {
-    opacity: 0.45;
-}
-
 
 .label-and-tooltip {
     display: flex;
@@ -465,7 +449,8 @@ h5 {
 .info-icon {
     padding-top: 0.85vh;
     margin-left: .75vw;
-    height: 33px;
+    height: 25px;
+    width: auto;
     opacity: 0.75;
 }
 
