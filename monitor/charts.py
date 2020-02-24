@@ -42,13 +42,14 @@ def historical_work_orders_line_chart(data: dict):
 
 def stakers_breakdown_pie_chart(data):
     staker_breakdown = list(data.values())
-    colors = ['#FAE755', '#74C371', '#3E0751']  # colors from Viridis colorscale
+    colors = ['green', 'red', '#e0b32d']  # [active, inactive, pending] (sorted labels)
     fig = go.Figure(
         data=[
             go.Pie(
                 labels=list(data.keys()),
                 values=staker_breakdown,
                 textinfo='value',
+                sort=False,  # sort by labels
                 name='Stakers',
                 marker=dict(colors=colors,
                             line=dict(width=2))
