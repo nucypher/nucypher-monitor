@@ -49,12 +49,17 @@ GRAPHS = html.Div([
             html.Div(id='contracts'),
             html.Div(id='staker-breakdown'),
             # html.Div(id='prev-work-orders-graph'),  # TODO
+            html.Div(id='nodes-geolocation-graph'),
             html.Div(id='top-stakers-graph'),
             html.Div(id='locked-stake-graph'),
             html.Div(id='prev-states'),
         ], id='widgets')
 
-CONTENT = html.Div([html.Div([STATS, GRAPHS, html.Div([html.Div(id='known-nodes')])])], id='main')
+KNOWN_NODES = html.Div([
+            html.Div(id='known-nodes')
+        ])
+
+CONTENT = html.Div([html.Div([STATS, GRAPHS, KNOWN_NODES])], id='main')
 
 # Hidden div inside the app that stores previously decrypted heartbeats
 HIDDEN_DIV = html.Div(id='cached-crawler-stats', style={'display': 'none'})
