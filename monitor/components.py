@@ -42,6 +42,9 @@ ETHERSCAN_URL_TEMPLATE = "https://goerli.etherscan.io/address/{}"
 
 NODE_STATUS_URL_TEMPLATE = "https://{}/status"
 
+NO_CONNECTION_TO_NODE = "No Connection to Node"
+NOT_YET_CONNECTED_TO_NODE = "Not Yet Connected to Node"
+
 
 def header() -> html.Div:
     return html.Div([html.Div(f'v{nucypher.__version__}', id='version')], className="logo-widget")
@@ -123,6 +126,10 @@ def get_last_seen(node_info):
     except ParserError:
         # Show whatever we have anyways
         slang_last_seen = str(node_info['last_seen'])
+
+    if slang_last_seen == NO_CONNECTION_TO_NODE:
+        slang_last_seen = NOT_YET_CONNECTED_TO_NODE
+
     return slang_last_seen
 
 
@@ -173,7 +180,7 @@ def nodes_table(nodes) -> (html.Table, List):
                                  style_data_conditional=[
                                      {  # no connection to node styling
                                          'if': {
-                                             'filter_query': '{Last Seen} eq "No Connection to Node"'
+                                             'filter_query': f'{{Last Seen}} eq "{NOT_YET_CONNECTED_TO_NODE}"'
                                          },
                                          'opacity': 0.45
                                      },
