@@ -14,7 +14,7 @@ from twisted.internet import task, reactor
 from twisted.logger import Logger
 
 from monitor.utils import collector
-from nucypher.blockchain.economics import TokenEconomicsFactory
+from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
     StakingEscrowAgent,
@@ -141,7 +141,7 @@ class Crawler(Learner):
                  *args, **kwargs):
 
         # Settings
-        self.federated_only = False  # Nope - for compatibility with Leaner TODO # nucypher/466
+        self.federated_only = False  # Nope - for compatibility with Learner TODO # nucypher/466
         Teacher.set_federated_mode(False)
 
         self.registry = registry or InMemoryContractRegistry.from_latest_publication()
@@ -260,7 +260,7 @@ class Crawler(Learner):
     @collector(label="Time Until Next Period")
     def _measure_time_remaining(self) -> str:
         current_period = self.staking_agent.get_current_period()
-        economics = TokenEconomicsFactory.get_economics(registry=self.registry)
+        economics = EconomicsFactory.get_economics(registry=self.registry)
         next_period = datetime_at_period(period=current_period+1, seconds_per_period=economics.seconds_per_period)
         remaining = str(next_period - maya.now())
         return remaining
@@ -434,7 +434,7 @@ class Crawler(Learner):
             staked_nu_tokens = float(NU.from_nunits(stake).to_tokens())
             locked_nu_tokens = float(NU.from_nunits(agent.get_locked_tokens(staker_address=staker_address)).to_tokens())
 
-            economics = TokenEconomicsFactory.get_economics(registry=self.registry)
+            economics = EconomicsFactory.get_economics(registry=self.registry)
             stakes = StakeList(checksum_address=staker_address, registry=self.registry)
             stakes.refresh()
 
