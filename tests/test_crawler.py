@@ -419,7 +419,7 @@ def test_crawler_learn_about_teacher(new_influx_db, get_agent, tempfile_path):
     assert not crawler.is_running
 
 
-@patch.object(monitor.crawler.TokenEconomicsFactory, 'get_economics', autospec=True)
+@patch.object(monitor.crawler.EconomicsFactory, 'get_economics', autospec=True)
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 @patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, tempfile_path):
