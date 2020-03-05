@@ -2,18 +2,18 @@ import os
 
 import click
 from flask import Flask
-from hendrix.deploy.tls import HendrixDeployTLS
-from twisted.internet import reactor
-
-from monitor.cli._utils import _get_registry, _get_self_signed_hosting_power, _get_deployer
-from monitor.crawler import Crawler
-from monitor.dashboard import Dashboard
+from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
 from nucypher.blockchain.eth.networks import NetworksInventory
 from nucypher.cli import actions
 from nucypher.cli.config import group_general_config
 from nucypher.cli.painting import echo_version
 from nucypher.cli.types import NETWORK_PORT, EXISTING_READABLE_FILE
 from nucypher.network.middleware import RestMiddleware
+from twisted.internet import reactor
+
+from monitor.cli._utils import _get_registry, _get_deployer
+from monitor.crawler import Crawler
+from monitor.dashboard import Dashboard
 
 CRAWLER = "Crawler"
 DASHBOARD = "Dashboard"
@@ -51,6 +51,7 @@ def monitor():
 @click.option('--http-port', help="Crawler HTTP port for JSON endpoint", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the crawler", is_flag=True)
 @click.option('--eager', help="Start learning and scraping before starting up other services", is_flag=True, default=False)
+@click.option('--poa', help="Inject POA middleware", is_flag=True, default=None)
 def crawl(general_config,
           teacher_uri,
           registry_filepath,
@@ -62,7 +63,9 @@ def crawl(general_config,
           influx_port,
           http_port,
           dry_run,
-          eager):
+          eager,
+          poa,
+          ):
     """
     Gather NuCypher network information.
     """
@@ -72,7 +75,9 @@ def crawl(general_config,
     emitter.clear()
     emitter.banner(MONITOR_BANNER.format(CRAWLER))
 
-    registry = _get_registry(provider_uri, registry_filepath, network)
+    # Setup
+    BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri, poa=poa)
+    registry = _get_registry(registry_filepath, network)
 
     # Teacher Ursula
     teacher_uris = [teacher_uri] if teacher_uri else None
@@ -117,6 +122,7 @@ def crawl(general_config,
 @click.option('--crawler-host', help="Crawler's HTTP host address", type=click.STRING, default='localhost')
 @click.option('--crawler-port', help="Crawler's HTTP port serving JSON", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the dashboard", is_flag=True)
+@click.option('--poa', help="Inject POA middleware", is_flag=True, default=None)
 def dashboard(general_config,
               host,
               http_port,
@@ -130,6 +136,7 @@ def dashboard(general_config,
               crawler_host,
               crawler_port,
               dry_run,
+              poa,
               ):
     """
     Run UI dashboard of NuCypher network.
@@ -141,7 +148,8 @@ def dashboard(general_config,
     emitter.banner(MONITOR_BANNER.format(DASHBOARD))
 
     # Setup
-    registry = _get_registry(provider_uri, registry_filepath, network)
+    BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri, poa=poa)
+    registry = _get_registry(registry_filepath, network)
 
     #
     # WSGI Service

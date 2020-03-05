@@ -1,14 +1,13 @@
 from cryptography.hazmat.primitives.asymmetric import ec
 from hendrix.deploy.tls import HendrixDeployTLS
 
-from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, LocalContractRegistry
 from nucypher.keystore.keypairs import HostingKeypair
 from nucypher.network.server import TLSHostingPower
 
 
-def _get_registry(provider_uri, registry_filepath, network):
-    BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri)
+def _get_registry(registry_filepath, network):
+
     if registry_filepath:
         registry = LocalContractRegistry.from_latest_publication(network=network)
     else:
