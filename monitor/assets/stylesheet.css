@@ -39,6 +39,11 @@ hr {
     display: flex;
     text-align: center;
     padding: 1vh;
+    font-weight: bold;
+    color: red;
+    white-space: pre-wrap;
+    align-items: center;
+    justify-content: center;
 }
 
 ._dash-loading-callback {
