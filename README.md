@@ -76,8 +76,11 @@ INFO [01-29|11:06:09.048] IPC endpoint opened                      url=/home/k/.
 ```
 
 3. Run the `Crawler`
+
+    **NOTE: If using a POA network, e.g. Goerli, then the `--poa` flag should be specified**
+    
 ```bash
-$ nucypher-monitor crawl --provider <YOUR_WEB3_PROVIDER_URI> --network <NETWOROK NAME>
+$ nucypher-monitor crawl --provider <YOUR_WEB3_PROVIDER_URI> --network <NETWORK NAME>
 
 |     |___ ___|_| |_ ___ ___ 
 | | | | . |   | |  _| . |  _|
@@ -94,9 +97,12 @@ Running Nucypher Crawler JSON endpoint at http://localhost:9555/stats
 ```
 
 4. Run the `Dashboard`
+
+    **NOTE: If using a POA network, e.g. Goerli, then the `--poa` flag should be specified**
+    
 ```bash
 
-$ nucypher-monitor dashboard --provider <YOUR WEB3 PROVIDER URI> --network <NETWOROK NAME>
+$ nucypher-monitor dashboard --provider <YOUR WEB3 PROVIDER URI> --network <NETWORK NAME>
 
  _____         _ _           
 |     |___ ___|_| |_ ___ ___ 
@@ -121,7 +127,9 @@ Running Monitor Dashboard - https://127.0.0.1:12500
 
 Docker Compose will start InfluxDB, Crawler, and Dashboard containers, and no installation of the monitor is required.
 
-1. Set Web3 Provider URI environment variable
+1. Set required environment variables
+
+* Web3 Provider URI environment variable
 
     **NOTE: local ipc is not supported when running via Docker**
 
@@ -129,14 +137,33 @@ Docker Compose will start InfluxDB, Crawler, and Dashboard containers, and no in
 export WEB3_PROVIDER_URI=<YOUR WEB3 PROVIDER URI>
 ```
 
+* Network Name environment variable
+```bash
+export NUCYPHER_NETWORK=<NETWORK NAME>
+```
+
 2. Run Docker Compose
 ```bash
 docker-compose -f deploy/docker-compose.yml up
 ```
 
-3. View Docker compose logs
+Alternatively, you can run the services individually
 ```bash
-
+docker-compose -f deploy/docker-compose.yml up -d influxdb
+docker-compose -f deploy/docker-compose.yml up -d crawler
+docker-compose -f deploy/docker-compose.yml up -d web
 ```
 
-3. The `Dashboard` UI is available on port 12500.
+**NOTE: If the `--poa` flag is required, the services should be run individually, and the `--poa` flag appended to the `crawler` and `web` commands**
+
+3. View Docker compose logs
+```bash
+docker-compose -f deploy/docker-compose.yml logs -f
+```
+
+Alternatively, to view logs for a specific service
+```bash
+docker-compose -f deploy/docker-compose.yml logs -f <SERVICE_NAME>
+```
+
+4. The `Dashboard` UI is available on port 12500.
