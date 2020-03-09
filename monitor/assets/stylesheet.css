@@ -363,7 +363,7 @@ h5 {
 .node-table input:not([type=radio]):not([type=checkbox]) {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    background-color: yellow !important;
+    background-color: slategrey !important;
     color: rgb(0, 0, 0) !important;
     text-align: left !important;
 }
