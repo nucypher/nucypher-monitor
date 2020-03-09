@@ -135,6 +135,7 @@ def get_last_seen(node_info):
 
 def nodes_table(nodes) -> (html.Table, List):
     rows = list()
+    table_tooltip_data = list()
 
     king_nickname = ''
     newborn_nickname = ''
@@ -147,6 +148,11 @@ def nodes_table(nodes) -> (html.Table, List):
         elif node_info.get('newborn'):
             newborn_nickname = components['Nickname']
 
+        if node_info['status']['status'] == 'Unconfirmed':
+            # add to tooltip
+            missed_confirmations = node_info['status']['missed_confirmations']
+            table_tooltip_data.append({NODE_TABLE_COLUMNS[0]: f"{missed_confirmations} missed configurations"})
+
     style_table = dict()
     if len(rows) > 25:
         # TODO: this should be simpler once fixed in dash: https://github.com/plotly/dash-table/issues/646
@@ -154,7 +160,7 @@ def nodes_table(nodes) -> (html.Table, List):
         style_table['height'] = '100vh'
         style_table['maxHeight'] = '100vh'
 
-    # static properties of table are overriden (!important) via stylesheet.css (.node-table class css entries)
+    # static properties of table are overridden (!important) via stylesheet.css (.node-table class css entries)
     table = dash_table.DataTable(columns=[NODE_TABLE_COLUMNS_PROPERTIES[col] for col in NODE_TABLE_COLUMNS],
                                  data=rows,
                                  fixed_rows=dict(headers=True, data=0),
@@ -163,6 +169,7 @@ def nodes_table(nodes) -> (html.Table, List):
                                  page_action='native',
                                  style_as_list_view=True,
                                  style_table=style_table,
+                                 tooltip_data=table_tooltip_data,
                                  style_cell_conditional=[
                                      {  # nickname column - should make best effort to fit entire name
                                          'if': {
