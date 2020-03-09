@@ -141,19 +141,6 @@ h5 {
 }
 
 
-.node-status-indicator {
-    flex-grow: 0;
-}
-
-.status-indicator {
-    padding-left: 1em !important;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 6em;
-}
-
-
 .symbols {
     float: left;
     width: 100%;
@@ -228,19 +215,8 @@ h5 {
     justify-content: space-between;
 }
 
-#prev-locked-graph {
-    width: 98%;
-}
-
-
 #locked-stake {
     width: 100%;
-}
-
-/*#prev-locked-stake-graph[data-dash-is-loading] {}*/
-
-#locked-graph {
-    width: 98%;
 }
 
 #locked-stake-graph {

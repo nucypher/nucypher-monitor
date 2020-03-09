@@ -190,7 +190,7 @@ def nodes_geolocation_map(nodes_dict: dict, ip2loc: IP2Location):
     graph = dcc.Graph(figure=fig,
                       id='nodes-geolocation',
                       config=GRAPH_CONFIG,
-                      style={'width': '100%'})
+                      style={'width': '100%', 'height': 750})
     return graph
 
 
