@@ -215,9 +215,10 @@ def nodes_table(nodes) -> (html.Table, List):
 
 def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
     components = []
-    buckets = {'active': sorted([*nodes_dict['confirmed'], *nodes_dict['pending']], key=lambda n: n['timestamp']),
-               'idle': nodes_dict['idle'],
-               'inactive': nodes_dict['unconfirmed']}
+    buckets = {'active': sorted([*nodes_dict.get('confirmed', []), *nodes_dict.get('pending', [])],
+                                key=lambda n: n['timestamp']),
+               'idle': nodes_dict.get('idle', []),
+               'inactive': nodes_dict.get('unconfirmed', [])}
     for label, nodes in list(buckets.items()):
         component = nodes_list_section(label, nodes)
         components.append(component)
