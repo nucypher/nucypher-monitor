@@ -164,7 +164,7 @@ def nodes_geolocation_map(nodes_dict: dict, ip2loc: IP2Location):
             showlegend=False,
             geo=dict(
                 scope='world',
-                showframe=True,
+                showframe=False,
                 projection={'type': 'equirectangular'},
                 showcountries=True,
                 countrycolor='darkslategrey',
@@ -175,16 +175,23 @@ def nodes_geolocation_map(nodes_dict: dict, ip2loc: IP2Location):
                 showlakes=False,
                 bgcolor='rgba(0,0,0,0)',
             ),
-            font=dict(
-                family='monospace',
-                size=11,
-                color='slategrey'
-            ),
+            # font=dict(
+            #     family='monospace',
+            #     size=11,
+            #     color='slategrey'
+            # ),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             autosize=True,
             width=None,
             height=None,
+            margin=dict(
+                l=1,
+                r=1,
+                b=1,
+                t=1,
+                pad=0
+            )
         ))
 
     graph = dcc.Graph(figure=fig,

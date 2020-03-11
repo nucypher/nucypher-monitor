@@ -50,6 +50,10 @@ hr {
     display: none;
 }
 
+.dash-spreadsheet.dash-freeze-top {
+    max-height: none !important;
+}
+
 #react-entry-point {
     display: flex;
     width: 99%;
@@ -221,6 +225,7 @@ h5 {
 
 #locked-stake-graph {
     flex-basis: 100%;
+    height: 100%;
 }
 
 #prev-stakers-graph {
@@ -242,6 +247,7 @@ h5 {
 
 #top-stakers-graph {
     flex-basis: 100%;
+    height: 100%;
 }
 
 #top-stakers {
@@ -313,7 +319,6 @@ h5 {
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 0;
-    background-color: rgb(0, 0, 0) !important;
     text-align: left !important;
     font-size: 1.2rem;
     border-bottom: 1px solid #2B2B2B !important;
@@ -327,7 +332,6 @@ h5 {
     font-size: 1.2rem !important;
     text-align: left !important;
     font-weight: bold !important;
-    background-color: rgb(0, 0, 0) !important;
 }
 
 .node-table input:not([type=radio]):not([type=checkbox]).current-page {
@@ -369,13 +373,13 @@ h5 {
 }
 
 #contracts {
-    flex-basis: 100%;
+    flex-basis: 0;
 }
 
 #contract-names {
     display: flex;
     flex-direction: column;
-    width: 100%;
+    width: 96%;
 }
 
 
@@ -463,3 +467,6 @@ h5 {
     visibility: visible;
 }
 
+#nodes-geolocation-graph {
+    flex-basis: 0;
+}
