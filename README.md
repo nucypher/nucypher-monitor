@@ -154,7 +154,7 @@ docker-compose -f deploy/docker-compose.yml up -d crawler
 docker-compose -f deploy/docker-compose.yml up -d web
 ```
 
-**NOTE: If the `--poa` flag is required, the services should be run individually, and the `--poa` flag appended to the `crawler` and `web` commands**
+**NOTE: If the `--poa` flag is required, the `deploy/docker-compose.yml` file should be modified to append the `--poa` flag to the `command` entries for the `crawler` and `web` services**
 
 3. View Docker compose logs
 ```bash
