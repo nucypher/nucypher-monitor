@@ -117,10 +117,24 @@ class Dashboard:
             states = data['prev_states']
             return components.previous_states(states=states)
 
-        @dash_app.callback(Output('known-nodes', 'children'),
-                           [Input('url', 'pathname'), Input('minute-interval', 'n_intervals')],
+        @dash_app.callback(Output('network-info-content', 'children'),
+                           [Input('url', 'pathname'),
+                            Input('minute-interval', 'n_intervals'),
+                            Input('network-info-tabs', 'value')],
                            [State('cached-crawler-stats', 'children')])
-        def known_nodes(pathname, n, latest_crawler_stats):
+        def network_info_tab_content(pathname, n, current_tab, latest_crawler_stats):
+            if current_tab == 'node-details':
+                return known_nodes(latest_crawler_stats=latest_crawler_stats)
+            else:
+                return events()
+
+        def events():
+            prior_periods = 365
+            events_data = self.influx_client.get_historical_events(days=prior_periods)
+            events_table = components.events_table(events_data)
+            return events_table
+
+        def known_nodes(latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
             node_tables = components.known_nodes(nodes_dict=data['node_details'])
             return node_tables
