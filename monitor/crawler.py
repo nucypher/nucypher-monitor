@@ -127,6 +127,7 @@ class Crawler(Learner):
                           'contract_name="{contract_name}",' \
                           'contract_address="{contract_address}",' \
                           'event_name="{event_name}",' \
+                          'block_number={block_number}i,' \
                           'args="{args}" ' \
                           '{timestamp}'
 
@@ -460,6 +461,7 @@ class Crawler(Learner):
                             contract_name=agent.contract_name,
                             contract_address=agent.contract_address,
                             event_name=event_name,
+                            block_number=record.block_number,
                             args=args,
                             timestamp=blockchain_client.w3.eth.getBlock(record.block_number).timestamp,
                         ))
@@ -587,6 +589,11 @@ class Crawler(Learner):
             # start tasks
             node_learner_deferred = self._node_details_task.start(interval=self._refresh_rate, now=eager)
             collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=eager)
+
+            # get known last event block
+            block_number_result = list(self._influx_client.query(f'SELECT MAX(block_number) from {self.EVENT_MEASUREMENT}').get_points())
+            for result in block_number_result:
+                self.__events_from_block = result['max']
             events_deferred = self._events_collection_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks

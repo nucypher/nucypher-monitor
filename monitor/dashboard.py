@@ -129,7 +129,7 @@ class Dashboard:
                 return events()
 
         def events():
-            prior_periods = 365
+            prior_periods = 365  # TODO adjust later (the retention for the db is 5w - so anything longer is useless)
             events_data = self.influx_client.get_historical_events(days=prior_periods)
             events_table = components.events_table(events_data)
             return events_table
