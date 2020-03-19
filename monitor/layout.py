@@ -2,8 +2,8 @@ import dash_core_components as dcc
 import dash_html_components as html
 
 # NOTE: changing this to an empty string is enough to remove the pinned message.
-PINNED_MESSAGE_TEXT = 'This page is under active development: bugs and inaccuracies may be present.  '\
-                      'New issues can be filed at https://github.com/nucypher/nucypher-monitor/issues/.'\
+PINNED_MESSAGE_TEXT = 'This page is under active development with frequent updates: bugs/inaccuracies may be present.\n' \
+                       'New issues can be filed at https://github.com/nucypher/nucypher-monitor/issues/.'
 
 MINUTE_REFRESH_RATE = 60 * 1000
 DAILY_REFRESH_RATE = MINUTE_REFRESH_RATE * 60 * 24
@@ -24,7 +24,7 @@ HIDDEN_BUTTONS = html.Div([
 ])
 
 if PINNED_MESSAGE_TEXT:
-    PINNED_MESSAGE = html.Div(PINNED_MESSAGE_TEXT, id='pinned-message')
+    PINNED_MESSAGE = html.Div([html.P(PINNED_MESSAGE_TEXT)], id='pinned-message')
 else:
     PINNED_MESSAGE = ''
 

@@ -39,6 +39,11 @@ hr {
     display: flex;
     text-align: center;
     padding: 1vh;
+    font-weight: bold;
+    color: red;
+    white-space: pre-wrap;
+    align-items: center;
+    justify-content: center;
 }
 
 ._dash-loading-callback {
@@ -136,19 +141,6 @@ h5 {
 }
 
 
-.node-status-indicator {
-    flex-grow: 0;
-}
-
-.status-indicator {
-    padding-left: 1em !important;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 6em;
-}
-
-
 .symbols {
     float: left;
     width: 100%;
@@ -223,19 +215,8 @@ h5 {
     justify-content: space-between;
 }
 
-#prev-locked-graph {
-    width: 98%;
-}
-
-
 #locked-stake {
     width: 100%;
-}
-
-/*#prev-locked-stake-graph[data-dash-is-loading] {}*/
-
-#locked-graph {
-    width: 98%;
 }
 
 #locked-stake-graph {
@@ -358,7 +339,7 @@ h5 {
 .node-table input:not([type=radio]):not([type=checkbox]) {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
-    background-color: yellow !important;
+    background-color: slategrey !important;
     color: rgb(0, 0, 0) !important;
     text-align: left !important;
 }
