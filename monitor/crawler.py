@@ -591,9 +591,7 @@ class Crawler(Learner):
             collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=eager)
 
             # get known last event block
-            block_number_result = list(self._influx_client.query(f'SELECT MAX(block_number) from {self.EVENT_MEASUREMENT}').get_points())
-            for result in block_number_result:
-                self.__events_from_block = result['max']
+            self.__events_from_block = self._get_last_known_blocknumber()
             events_deferred = self._events_collection_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks
@@ -625,3 +623,12 @@ class Crawler(Learner):
     def is_running(self):
         """Returns True if currently running, False otherwise"""
         return self._node_details_task.running
+
+    def _get_last_known_blocknumber(self):
+        last_known_blocknumber = 0
+        blocknumber_result = list(
+            self._influx_client.query(f'SELECT MAX(block_number) from {self.EVENT_MEASUREMENT}').get_points())
+        if len(blocknumber_result) > 0:
+            last_known_blocknumber = blocknumber_result[0]['max']
+
+        return last_known_blocknumber
