@@ -231,7 +231,7 @@ class Dashboard:
             return graph
 
         @dash_app.callback(Output('nodes-geolocation-graph', 'children'),
-                           [Input('daily-interval', 'n_intervals')],
+                           [Input('minute-interval', 'n_intervals')],
                            [State('cached-crawler-stats', 'children')])
         def nodes_geographical_locations(n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)

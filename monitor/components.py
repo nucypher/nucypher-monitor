@@ -279,7 +279,8 @@ def events_table(events: List) -> html.Div:
                                  page_action='native',
                                  style_as_list_view=True,
                                  style_table=style_table,
-                                 style_data={'height': 'auto'},
+                                 style_header={'backgroundColor': 'rgb(30, 30, 30)'},
+                                 style_cell={'backgroundColor': 'rgb(33, 33, 36)'},
                                  style_cell_conditional=[
                                      {  # args column - should wrap if needed
                                          'if': {
@@ -291,7 +292,11 @@ def events_table(events: List) -> html.Div:
                                  ])
     return html.Div([
         html.Div([
-            html.H4('Noteworthy Events'),
+            html.H4(f'Notable Events ({len(event_rows)})'),
+            html.Div([
+                html.Img(src='/assets/status/status_info.png', className='info-icon'),
+                html.Span("Noteworthy events emitted by network contracts", className='tooltiptext')
+            ], className='tooltip')
         ], className='label-and-tooltip'),
         html.Div([table], className='info-table')
     ])

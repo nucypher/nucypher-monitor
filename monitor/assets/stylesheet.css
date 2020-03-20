@@ -420,7 +420,7 @@ h5 {
 .network-info-tabs-parent {
     border-top-left-radius: 7px;
     background-color: black;
-    border-bottom: 7px solid #4774A1;
+    border-bottom: 2px solid #4774A1;
 }
 
 #network-info-tabs .tab {
@@ -447,12 +447,12 @@ h5 {
     background-color: #4774A1 !important;
     font-weight: bold !important;
     border: 7px solid #4774A1 !important;
+    border-bottom: 0px;
 }
 
 #network-info-content {
     background-color: rgb(0,0,0);
     border: 7px solid #4774A1;
-    border-top: 0;
 }
 
 .nodes-list-description {
