@@ -262,7 +262,7 @@ def nodes_list_section(label, nodes):
     return component
 
 
-def events_table(events: List) -> html.Div:
+def events_table(events: List, days: int) -> html.Div:
     style_table = {'minHeight': '100%',
                    'height': '100%',
                    'maxHeight': 'none'}
@@ -295,7 +295,7 @@ def events_table(events: List) -> html.Div:
             html.H4(f'Notable Events ({len(event_rows)})'),
             html.Div([
                 html.Img(src='/assets/status/status_info.png', className='info-icon'),
-                html.Span("Noteworthy events emitted by network contracts", className='tooltiptext')
+                html.Span(f"Noteworthy events emitted by network contracts (last {days} days)", className='tooltiptext')
             ], className='tooltip')
         ], className='label-and-tooltip'),
         html.Div([table], className='info-table')

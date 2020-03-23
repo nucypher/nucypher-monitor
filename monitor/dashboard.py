@@ -129,9 +129,9 @@ class Dashboard:
                 return events()
 
         def events():
-            prior_periods = 365  # TODO adjust later (the retention for the db is 5w - so anything longer is useless)
+            prior_periods = 30  # TODO more thought? (note: retention for the db is 5w - so anything longer is useless)
             events_data = self.influx_client.get_historical_events(days=prior_periods)
-            events_table = components.events_table(events_data)
+            events_table = components.events_table(events_data, days=prior_periods)
             return events_table
 
         def known_nodes(latest_crawler_stats):
