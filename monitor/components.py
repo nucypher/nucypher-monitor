@@ -153,12 +153,9 @@ def nodes_table(nodes) -> (html.Table, List):
             missed_confirmations = node_info['status']['missed_confirmations']
             table_tooltip_data.append({NODE_TABLE_COLUMNS[0]: f"{missed_confirmations} missed configurations"})
 
-    style_table = dict()
-    if len(rows) > 25:
-        # TODO: this should be simpler once fixed in dash: https://github.com/plotly/dash-table/issues/646
-        style_table['minHeight'] = '100vh'
-        style_table['height'] = '100vh'
-        style_table['maxHeight'] = '100vh'
+    style_table = {'minHeight': '100%',
+                   'height': '100%',
+                   'maxHeight': 'none'}
 
     # static properties of table are overridden (!important) via stylesheet.css (.node-table class css entries)
     table = dash_table.DataTable(columns=[NODE_TABLE_COLUMNS_PROPERTIES[col] for col in NODE_TABLE_COLUMNS],
@@ -170,6 +167,8 @@ def nodes_table(nodes) -> (html.Table, List):
                                  style_as_list_view=True,
                                  style_table=style_table,
                                  tooltip_data=table_tooltip_data,
+                                 style_header={'backgroundColor': 'rgb(30, 30, 30)'},
+                                 style_cell={'backgroundColor': 'rgb(33, 33, 36)'},
                                  style_cell_conditional=[
                                      {  # nickname column - should make best effort to fit entire name
                                          'if': {
@@ -189,7 +188,7 @@ def nodes_table(nodes) -> (html.Table, List):
                                          'if': {
                                              'filter_query': f'{{Last Seen}} eq "{NOT_YET_CONNECTED_TO_NODE}"'
                                          },
-                                         'opacity': 0.45
+                                         # 'opacity': 0.45
                                      },
                                      {  # highlight king
                                          'if': {
