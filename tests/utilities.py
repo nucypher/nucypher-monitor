@@ -78,7 +78,7 @@ def create_specific_mock_node(generate_certificate: bool = False,
     work_orders_list.__len__.return_value = num_work_orders
     node.work_orders.return_value = work_orders_list
 
-    node.abridged_node_details.side_effect = Teacher.abridged_node_details
+    node.node_details.side_effect = Teacher.node_details
 
     return node
 
@@ -100,6 +100,10 @@ def create_specific_mock_state(nickname: str = 'Blue Knight Teal Club',
                                color: str = 'blue',
                                updated: maya.MayaDT = maya.now()):
     metadata = [(dict(hex=color_hex, color=color), symbol)]
+
+    # 0 out microseconds since it causes issues converting from rfc2822 and rfc3339
+    updated = updated.subtract(microseconds=updated.datetime().microsecond)
+
     state = MagicMock(nickname=nickname, metadata=metadata, updated=updated)
     return state
 
