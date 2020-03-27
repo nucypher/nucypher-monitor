@@ -43,7 +43,7 @@ def historical_work_orders_line_chart(data: dict):
 
 def stakers_breakdown_pie_chart(data):
     staker_breakdown = list(data.values())
-    colors = ['green', 'red', '#e0b32d']  # [active, inactive, pending] (sorted labels)
+    colors = ['green', 'rgb(112, 127, 144)', '#e0b32d']  # [active, inactive, pending] (sorted labels)
     fig = go.Figure(
         data=[
             go.Pie(
@@ -96,7 +96,7 @@ def top_stakers_chart(data: dict):
             values=treemap_values,
             textinfo='none',
             hovertemplate="<b>%{label} </b> <br> Stake Size: %{value:,.2f} NU<br> % of Network: %{percentRoot:.3% %}",
-            marker=go.treemap.Marker(colors=list(data.keys()), colorscale='Viridis', line={"width": 2}),
+            marker=go.treemap.Marker(colors=list(data.keys()), colorscale='Viridis', line={"width": 1}),
             pathbar=dict(visible=False),
         ),
         layout=go.Layout(
@@ -117,7 +117,8 @@ def top_stakers_chart(data: dict):
     graph = dcc.Graph(figure=fig,
                       id='top-stakers',
                       config=GRAPH_CONFIG,
-                      style={'width': '100%'})
+                      style={'width': '100%', 'height': '100%'}
+                      )
     return graph
 
 
