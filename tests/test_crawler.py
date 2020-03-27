@@ -234,20 +234,18 @@ def configure_mock_staking_agent(staking_agent, tokens, current_period, initial_
     staking_agent.get_last_active_period.return_value = last_active_period
 
 
-@pytest.mark.skip()
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 def test_crawler_init(get_agent):
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler()
+    crawler = create_crawler(dont_set_teacher=True)
 
     # crawler not yet started
     assert not crawler.is_running
 
 
-@pytest.mark.skip()
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 @patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_stop_before_start(new_influx_db, get_agent):
@@ -257,7 +255,7 @@ def test_crawler_stop_before_start(new_influx_db, get_agent):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler()
+    crawler = create_crawler(dont_set_teacher=True)
 
     crawler.stop()
 
@@ -266,7 +264,7 @@ def test_crawler_stop_before_start(new_influx_db, get_agent):
     assert not crawler.is_running
 
 
-@pytest.mark.skip()
+@pytest.mark.skip("stopping a started crawler is not stopping the thread; ctrl-c needed")
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 @patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_start_then_stop(new_influx_db, get_agent):
@@ -276,7 +274,7 @@ def test_crawler_start_then_stop(new_influx_db, get_agent):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler()
+    crawler = create_crawler(dont_set_teacher=True)
     try:
         crawler.start()
         assert crawler.is_running
@@ -288,14 +286,13 @@ def test_crawler_start_then_stop(new_influx_db, get_agent):
     assert not crawler.is_running
 
 
-@pytest.mark.skip()
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 def test_crawler_start_no_influx_db_connection(get_agent):
     staking_agent = MagicMock(spec=StakingEscrowAgent, autospec=True)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler()
+    crawler = create_crawler(dont_set_teacher=True)
     try:
         with pytest.raises(ConnectionError):
             crawler.start()
@@ -303,7 +300,7 @@ def test_crawler_start_no_influx_db_connection(get_agent):
         crawler.stop()
 
 
-@pytest.mark.skip()
+@pytest.mark.skip("stopping a started crawler is not stopping the thread; ctrl-c needed")
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 @patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
@@ -316,7 +313,7 @@ def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler()
+    crawler = create_crawler(dont_set_teacher=True)
     try:
         crawler.start()
         assert crawler.is_running
@@ -334,7 +331,7 @@ def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
     assert not crawler.is_running
 
 
-@pytest.mark.skip()
+@pytest.mark.skip("stopping a started crawler is not stopping the thread; ctrl-c needed")
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 @patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
@@ -347,7 +344,7 @@ def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler()
+    crawler = create_crawler(dont_set_teacher=True)
     try:
         crawler.start()
         assert crawler.is_running
@@ -365,7 +362,7 @@ def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
     assert not crawler.is_running
 
 
-@pytest.mark.skip()
+@pytest.mark.skip("stopping a started crawler is not stopping the thread; ctrl-c needed")
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 @patch('monitor.crawler.InfluxDBClient', autospec=True)
 def test_crawler_learn_no_teacher(new_influx_db, get_agent, tempfile_path):
