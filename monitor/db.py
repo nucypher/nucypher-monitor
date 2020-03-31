@@ -157,6 +157,14 @@ class CrawlerInfluxClient:
 
         return work_orders_dict
 
+    def get_historical_events(self, days: int) -> List:
+        range_begin, range_end = self._get_range_bookends(days)
+        results = list(self._client.query(f"SELECT * FROM {Crawler.EVENT_MEASUREMENT} WHERE "
+                                          f"time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
+                                          f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
+                                          f"ORDER BY time DESC").get_points())  # decreasing order
+        return results
+
     def close(self):
         self._client.close()
 

@@ -10,6 +10,7 @@ from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
+from nucypher.blockchain.eth.events import EventRecord
 from twisted.internet import task, reactor
 from twisted.logger import Logger
 
@@ -18,7 +19,8 @@ from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
     StakingEscrowAgent,
-)
+    AdjudicatorAgent,
+    PolicyManagerAgent)
 from nucypher.blockchain.eth.interfaces import BlockchainInterface
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
 from nucypher.blockchain.eth.token import StakeList, NU
@@ -111,14 +113,23 @@ class Crawler(Learner):
     # +-----------+--------+-+---------+-+---------+
     NODE_MEASUREMENT = 'crawler_node_info'
     NODE_LINE_PROTOCOL = '{measurement},staker_address={staker_address} ' \
-                                      'worker_address="{worker_address}",' \
-                                      'start_date={start_date},' \
-                                      'end_date={end_date},' \
-                                      'stake={stake},' \
-                                      'locked_stake={locked_stake},' \
-                                      'current_period={current_period}i,' \
-                                      'last_confirmed_period={last_confirmed_period}i ' \
-                                  '{timestamp}'
+                         'worker_address="{worker_address}",' \
+                         'start_date={start_date},' \
+                         'end_date={end_date},' \
+                         'stake={stake},' \
+                         'locked_stake={locked_stake},' \
+                         'current_period={current_period}i,' \
+                         'last_confirmed_period={last_confirmed_period}i ' \
+                         '{timestamp}'
+
+    EVENT_MEASUREMENT = 'crawler_event_info'
+    EVENT_LINE_PROTOCOL = '{measurement},txhash={txhash} ' \
+                          'contract_name="{contract_name}",' \
+                          'contract_address="{contract_address}",' \
+                          'event_name="{event_name}",' \
+                          'block_number={block_number}i,' \
+                          'args="{args}" ' \
+                          '{timestamp}'
 
     INFLUX_DB_NAME = 'network'
     INFLUX_RETENTION_POLICY_NAME = 'network_info_retention'
@@ -129,6 +140,12 @@ class Crawler(Learner):
 
     METRICS_ENDPOINT = 'stats'
     DEFAULT_CRAWLER_HTTP_PORT = 9555
+
+    ERROR_EVENTS = {
+        StakingEscrowAgent: ['Slashed'],
+        AdjudicatorAgent: ['IncorrectCFragVerdict'],
+        PolicyManagerAgent: ['NodeBrokenState'],
+    }
 
     def __init__(self,
                  influx_host: str,
@@ -181,8 +198,12 @@ class Crawler(Learner):
         self.__collection_round = 0
         self.__collecting_nodes = False  # thread tracking
         self.__collecting_stats = False
+        self.__events_from_block = 0  # from the beginning
+        self.__collecting_events = False
+
         self._node_details_task = task.LoopingCall(self._learn_about_nodes)
         self._stats_collection_task = task.LoopingCall(self._collect_stats, threaded=True)
+        self._events_collection_task = task.LoopingCall(self._collect_events)
 
         # JSON Endpoint
         self._crawler_http_port = crawler_http_port
@@ -406,11 +427,62 @@ class Crawler(Learner):
         click.echo("==========================================")
         self.log.debug(f"Collected new metrics took {delta}.")
 
+    @collector(label="Network Event Details")
+    def _collect_events(self, threaded: bool = True):
+        if threaded:
+            if self.__collecting_events:
+                self.log.debug("Skipping Round - Events collection thread is already running")
+                return
+            return reactor.callInThread(self._collect_events, threaded=False)
+        self.__collecting_events = True
+
+        blockchain_client = self.staking_agent.blockchain.client
+        latest_block = blockchain_client.w3.eth.getBlock('latest')
+        from_block = self.__events_from_block
+
+        block_time = latest_block.timestamp  # precision in seconds
+        current_period = self.staking_agent.get_current_period()
+
+        events_list = list()
+        for agent_class, event_names in self.ERROR_EVENTS.items():
+            agent = ContractAgency.get_agent(agent_class, registry=self.registry)
+            for event_name in event_names:
+                events = [agent.contract.events[event_name]]
+                for event in events:
+                    event_filter = event.createFilter(fromBlock=from_block,
+                                                      toBlock=latest_block.number)
+                    entries = event_filter.get_all_entries()
+                    for event_record in entries:
+                        record = EventRecord(event_record)
+                        args = ", ".join(f"{k}:{v}" for k, v in record.args.items())
+                        events_list.append(self.EVENT_LINE_PROTOCOL.format(
+                            measurement=self.EVENT_MEASUREMENT,
+                            txhash=record.transaction_hash,
+                            contract_name=agent.contract_name,
+                            contract_address=agent.contract_address,
+                            event_name=event_name,
+                            block_number=record.block_number,
+                            args=args,
+                            timestamp=blockchain_client.w3.eth.getBlock(record.block_number).timestamp,
+                        ))
+
+        success = self._influx_client.write_points(events_list,
+                                                   database=self.INFLUX_DB_NAME,
+                                                   time_precision='s',
+                                                   batch_size=10000,
+                                                   protocol='line')
+        self.__events_from_block = latest_block.number
+        self.__collecting_events = False
+        if not success:
+            # TODO: What do we do here - Event hook for alerting?
+            self.log.warn(f'Unable to write events to database {self.INFLUX_DB_NAME} at '
+                          f'{MayaDT(epoch=block_time)} | Period {current_period} starting from block {from_block}')
+
     @collector(label="Known Node Details")
     def _learn_about_nodes(self, threaded: bool = True):
         if threaded:
             if self.__collecting_nodes:
-                self.log.debug("Skipping Round - Metrics collection thread is already running")
+                self.log.debug("Skipping Round - Nodes collection thread is already running")
                 return
             return reactor.callInThread(self._learn_about_nodes, threaded=False)
         self.__collecting_nodes = True
@@ -474,7 +546,7 @@ class Crawler(Learner):
         self.__collecting_nodes = False
         if not success:
             # TODO: What do we do here - Event hook for alerting?
-            self.log.warn(f'Unable to write to database {self.INFLUX_DB_NAME} at '
+            self.log.warn(f'Unable to write node information to database {self.INFLUX_DB_NAME} at '
                           f'{MayaDT(epoch=block_time)} | Period {current_period}')
 
     def make_flask_server(self):
@@ -515,12 +587,17 @@ class Crawler(Learner):
                 # self.crawler_influx_client = CrawlerInfluxClient()
 
             # start tasks
-            collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=eager)
             node_learner_deferred = self._node_details_task.start(interval=self._refresh_rate, now=eager)
+            collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=eager)
+
+            # get known last event block
+            self.__events_from_block = self._get_last_known_blocknumber()
+            events_deferred = self._events_collection_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks
             node_learner_deferred.addErrback(self._handle_errors)
             collection_deferred.addErrback(self._handle_errors)
+            events_deferred.addErrback(self._handle_errors)
 
             # Start up
             self.start_learning_loop(now=False)
@@ -535,6 +612,8 @@ class Crawler(Learner):
 
             # stop tasks
             self._node_details_task.stop()
+            self._events_collection_task.stop()
+            self._stats_collection_task.stop()
 
             if self._influx_client is not None:
                 self._influx_client.close()
@@ -544,3 +623,12 @@ class Crawler(Learner):
     def is_running(self):
         """Returns True if currently running, False otherwise"""
         return self._node_details_task.running
+
+    def _get_last_known_blocknumber(self):
+        last_known_blocknumber = 0
+        blocknumber_result = list(
+            self._influx_client.query(f'SELECT MAX(block_number) from {self.EVENT_MEASUREMENT}').get_points())
+        if len(blocknumber_result) > 0:
+            last_known_blocknumber = blocknumber_result[0]['max']
+
+        return last_known_blocknumber

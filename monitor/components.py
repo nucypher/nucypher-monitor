@@ -19,6 +19,16 @@ NODE_TABLE_COLUMNS_PROPERTIES = {
 }
 NODE_TABLE_PAGE_SIZE = 80
 
+EVENT_TABLE_COLUMNS = ['Timestamp', 'Contract Name', 'Event Name', 'Arguments', 'Tx Hash']
+EVENT_TABLE_COLUMNS_PROPERTIES = {
+    'Timestamp': dict(name=EVENT_TABLE_COLUMNS[0], id=EVENT_TABLE_COLUMNS[0], editable=False),
+    'Contract Name': dict(name=EVENT_TABLE_COLUMNS[1], id=EVENT_TABLE_COLUMNS[1], editable=False, type='text', presentation='markdown'),
+    'Event Name': dict(name=EVENT_TABLE_COLUMNS[2], id=EVENT_TABLE_COLUMNS[2], editable=False),
+    'Arguments': dict(name=EVENT_TABLE_COLUMNS[3], id=EVENT_TABLE_COLUMNS[3], editable=False),
+    'Tx Hash': dict(name=EVENT_TABLE_COLUMNS[4], id=EVENT_TABLE_COLUMNS[4], editable=False, type='text', presentation='markdown'),
+}
+EVENT_TABLE_PAGE_SIZE = 80
+
 STATUS_IMAGE_PATHS = {
     'Confirmed': '/assets/status/status_confirmed.png',  # green
     'Idle': '/assets/status/status_idle.png',  # 525ae3
@@ -38,7 +48,8 @@ BUCKET_DESCRIPTIONS = {
 }
 
 
-ETHERSCAN_URL_TEMPLATE = "https://goerli.etherscan.io/address/{}"
+ETHERSCAN_URL_ADDRESS_TEMPLATE = "https://goerli.etherscan.io/address/{}"
+ETHERSCAN_URL_TX_TEMPLATE = "https://goerli.etherscan.io/tx/{}"
 
 NODE_STATUS_URL_TEMPLATE = "https://{}/status"
 
@@ -54,7 +65,7 @@ def make_contract_row(agent, balance: NU = None):
     cells = [
         html.A(f'{agent.contract_name} {agent.contract_address} ({agent.contract.version})',
                id=f"{agent.contract_name}-contract-address",
-               href=ETHERSCAN_URL_TEMPLATE.format(agent.contract_address)),
+               href=ETHERSCAN_URL_ADDRESS_TEMPLATE.format(agent.contract_address)),
     ]
 
     if balance is not None:
@@ -101,7 +112,7 @@ def previous_states(states: List[dict]) -> html.Div:
 
 def generate_node_row(node_info: dict) -> dict:
     staker_address = node_info['staker_address']
-    etherscan_url = ETHERSCAN_URL_TEMPLATE.format(staker_address)
+    etherscan_url = ETHERSCAN_URL_ADDRESS_TEMPLATE.format(staker_address)
 
     slang_last_seen = get_last_seen(node_info)
 
@@ -133,7 +144,7 @@ def get_last_seen(node_info):
     return slang_last_seen
 
 
-def nodes_table(nodes) -> (html.Table, List):
+def nodes_table(nodes) -> dash_table.DataTable:
     rows = list()
     table_tooltip_data = list()
 
@@ -244,9 +255,62 @@ def nodes_list_section(label, nodes):
 
     component = html.Div([
             html.Div([
-                html.Hr(),
                 tooltip,
             ], id=f"{label}-list"),
-            html.Div([table], className='node-table')
+            html.Div([table], className='info-table')
         ])
     return component
+
+
+def events_table(events: List, days: int) -> html.Div:
+    style_table = {'minHeight': '100%',
+                   'height': '100%',
+                   'maxHeight': 'none'}
+
+    event_rows = list()
+    for event_info in events:
+        event_rows.append(generate_event_row(event_info))
+
+    table = dash_table.DataTable(columns=[EVENT_TABLE_COLUMNS_PROPERTIES[col] for col in EVENT_TABLE_COLUMNS],
+                                 data=event_rows,
+                                 fixed_rows=dict(headers=True, data=0),
+                                 filter_action='native',
+                                 page_size=EVENT_TABLE_PAGE_SIZE,
+                                 page_action='native',
+                                 style_as_list_view=True,
+                                 style_table=style_table,
+                                 style_header={'backgroundColor': 'rgb(30, 30, 30)'},
+                                 style_cell={'backgroundColor': 'rgb(33, 33, 36)'},
+                                 style_cell_conditional=[
+                                     {  # args column - should wrap if needed
+                                         'if': {
+                                             'column_id': 'Arguments'
+                                         },
+                                         'width': '30%',
+                                         'whiteSpace': 'normal',
+                                     }
+                                 ])
+    return html.Div([
+        html.Div([
+            html.H4(f'Notable Events ({len(event_rows)})'),
+            html.Div([
+                html.Img(src='/assets/status/status_info.png', className='info-icon'),
+                html.Span(f"Noteworthy events emitted by network contracts (last {days} days)", className='tooltiptext')
+            ], className='tooltip')
+        ], className='label-and-tooltip'),
+        html.Div([table], className='info-table')
+    ])
+
+
+def generate_event_row(event_info: dict) -> dict:
+    tx_hash = event_info['txhash']
+
+    event_row = {
+        EVENT_TABLE_COLUMNS[0]: event_info['time'],
+        EVENT_TABLE_COLUMNS[1]: f'[{event_info["contract_name"]}]({ETHERSCAN_URL_ADDRESS_TEMPLATE.format(event_info["contract_address"])})',
+        EVENT_TABLE_COLUMNS[2]: event_info['event_name'],
+        EVENT_TABLE_COLUMNS[3]: event_info['args'],
+        EVENT_TABLE_COLUMNS[4]: f'[{tx_hash[:12]}...]({ETHERSCAN_URL_TX_TEMPLATE.format(tx_hash)})',
+    }
+
+    return event_row

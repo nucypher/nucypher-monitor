@@ -308,14 +308,14 @@ h5 {
     width: 100%;
 }
 
-.node-table {
+.info-table {
     width: 100%;
     display: flex;
     flex-direction: column;
     margin-bottom: 2em;
 }
 
-.node-table td {
+.info-table td {
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 0;
@@ -325,7 +325,7 @@ h5 {
     vertical-align: middle !important;
 }
 
-.node-table th {
+.info-table th {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     border-bottom: 1px solid #E1E1E1 !important;
@@ -334,13 +334,13 @@ h5 {
     font-weight: bold !important;
 }
 
-.node-table input:not([type=radio]):not([type=checkbox]).current-page {
+.info-table input:not([type=radio]):not([type=checkbox]).current-page {
     padding: 10px 1px !important;
     text-align: center !important;
     background-color: white !important;
 }
 
-.node-table input:not([type=radio]):not([type=checkbox]) {
+.info-table input:not([type=radio]):not([type=checkbox]) {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     background-color: #b1b8bf !important;
@@ -350,21 +350,21 @@ h5 {
     text-align: left !important;
 }
 
-.node-table tr:hover {
+.info-table tr:hover {
     background-color: rgb(0, 0, 0) !important;
     box-shadow: rgb(220, 220, 220) 0 0 10px;
 }
 
-.node-table p {
+.info-table p {
     margin: 0;
 }
 
-.node-table a {
+.info-table a {
     font-family: monospace;
 }
 
 /* status images in table */
-.node-table img {
+.info-table img {
     vertical-align: middle;
     width: 15px;
     height: 15px;
@@ -417,8 +417,42 @@ h5 {
     color: #fff;
 }
 
-#known-nodes {
-    color: #767676;
+.network-info-tabs-parent {
+    border-top-left-radius: 7px;
+    background-color: black;
+    border-bottom: 2px solid #4774A1;
+}
+
+#network-info-tabs .tab {
+    background-color: #212124;
+}
+
+.network-info-tab {
+    color: #484848;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-top: 7px solid transparent !important;
+    border-left: 0px !important;
+    border-right: 0px !important;
+    border-bottom: 0px !important;
+    background-color: black;
+    padding: 12px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.network-info-tab--selected {
+    color: #f9f9f9 !important;
+    background-color: #4774A1 !important;
+    font-weight: bold !important;
+    border: 7px solid #4774A1 !important;
+    border-bottom: 0px;
+}
+
+#network-info-content {
+    background-color: rgb(0,0,0);
+    border: 7px solid #4774A1;
 }
 
 .nodes-list-description {

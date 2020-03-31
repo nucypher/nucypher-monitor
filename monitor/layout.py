@@ -55,11 +55,19 @@ GRAPHS = html.Div([
             html.Div(id='prev-states'),
         ], id='widgets')
 
-KNOWN_NODES = html.Div([
-            html.Div(id='known-nodes')
-        ])
+NETWORK_INFO_TABS = html.Div([
+    html.H4('Network Information'),
+    dcc.Tabs(id='network-info-tabs',
+             parent_className='network-info-tabs-parent',
+             children=[
+                 dcc.Tab(label='Nodes', value='node-details', className='network-info-tab', selected_className='network-info-tab--selected'),
+                 dcc.Tab(label='Issues/Events', value='event-details', className='network-info-tab', selected_className='network-info-tab--selected'),
+             ],
+             value='node-details'),
+    html.Div(id='network-info-content')
+])
 
-CONTENT = html.Div([html.Div([STATS, GRAPHS, KNOWN_NODES])], id='main')
+CONTENT = html.Div([html.Div([STATS, GRAPHS, NETWORK_INFO_TABS])], id='main')
 
 # Hidden div inside the app that stores previously decrypted heartbeats
 HIDDEN_DIV = html.Div(id='cached-crawler-stats', style={'display': 'none'})
