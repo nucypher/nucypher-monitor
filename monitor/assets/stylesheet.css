@@ -95,8 +95,6 @@ hr {
 
 #stats > div, #widgets > div {
     border: 1px solid #2b2b2b;
-    /* text-align: center; */
-    display: flex;
     justify-content: center;
     flex-direction: column;
     align-items: start;
@@ -220,12 +218,9 @@ h5 {
 }
 
 #locked-stake {
-    width: 100%;
 }
 
 #locked-stake-graph {
-    flex-basis: 100%;
-    height: 100%;
 }
 
 #prev-stakers-graph {
@@ -237,21 +232,15 @@ h5 {
 }
 
 #staker-breakdown {
-    flex-basis: 0;
 }
 
 #staker-breakdown-graph {
-    width: 100%;
-    height: 100%;
 }
 
 #top-stakers-graph {
-    flex-basis: 100%;
-    height: 100%;
 }
 
 #top-stakers {
-    width: 100%;
 }
 
 #state-table {
@@ -305,6 +294,7 @@ h5 {
 }
 
 #prev-states {
+    flex-basis: 100%;
     width: 100%;
 }
 
@@ -375,7 +365,6 @@ h5 {
 }
 
 #contracts {
-    flex-basis: 0;
 }
 
 #contract-names {
@@ -451,8 +440,6 @@ h5 {
 }
 
 #network-info-content {
-    background-color: rgb(0,0,0);
-    border: 7px solid #4774A1;
 }
 
 .nodes-list-description {
@@ -464,6 +451,7 @@ h5 {
     flex-direction: row;
     justify-content: flex-start;
     padding: 0;
+    background-color: #161719;
 }
 
 
@@ -503,6 +491,9 @@ h5 {
     visibility: visible;
 }
 
+#nodes-geolocation {
+    height: 100%;
+}
+
 #nodes-geolocation-graph {
-    flex-basis: 0;
 }
