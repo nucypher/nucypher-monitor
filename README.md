@@ -89,7 +89,7 @@ $ nucypher-monitor crawl --provider <YOUR_WEB3_PROVIDER_URI> --network <NETWORK 
 ========= Crawler =========
 
 Connecting to preferred teacher nodes...
-Network: Cassandra
+Network: <NETWORK NAME>
 InfluxDB: 0.0.0.0:8086
 Provider: ...
 Refresh Rate: 60s
@@ -111,7 +111,7 @@ $ nucypher-monitor dashboard --provider <YOUR WEB3 PROVIDER URI> --network <NETW
 
 ========= Dashboard =========
 
-Network: Cassandra
+Network: <NETWORK NAME>
 Crawler: localhost:9555
 InfluxDB: localhost:8086
 Provider: ...
