@@ -162,7 +162,7 @@ def nodes_table(nodes) -> dash_table.DataTable:
         if node_info['status']['status'] == 'Unconfirmed':
             # add to tooltip
             missed_confirmations = node_info['status']['missed_confirmations']
-            table_tooltip_data.append({NODE_TABLE_COLUMNS[0]: f"{missed_confirmations} missed configurations"})
+            table_tooltip_data.append({NODE_TABLE_COLUMNS[0]: f"{missed_confirmations} missed confirmations"})
 
     style_table = {'minHeight': '100%',
                    'height': '100%',

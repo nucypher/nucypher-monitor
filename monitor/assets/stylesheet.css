@@ -360,6 +360,15 @@ h5 {
     height: 15px;
 }
 
+.info-table .dash-tooltip {
+    border: 1px solid #5e5e5e !important;
+    border-radius: 1px !important;
+}
+
+.info-table .dash-table-tooltip {
+    background-color: #212124 !important;
+}
+
 .nucypher-button {
     display: none;
 }
