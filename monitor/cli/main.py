@@ -29,7 +29,7 @@ MONITOR_BANNER = r"""
 
 
 DEFAULT_PROVIDER = f'file://{os.path.expanduser("~")}/.ethereum/goerli/geth.ipc'
-DEFAULT_TEACHER = 'https://discover.nucypher.network:9151'
+DEFAULT_TEACHER = 'https://gemini.nucypher.network:9151'
 
 
 @click.group()

@@ -205,7 +205,7 @@ def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, dont_set_teacher:
     teacher_nodes = None
     if not dont_set_teacher:
         teacher_nodes = actions.load_seednodes(None,  # TODO: Needs emitter
-                                               teacher_uris=['https://discover.nucypher.network:9151'],  # TODO: Needs Cleanup
+                                               teacher_uris=['https://gemini.nucypher.network:9151'],  # TODO: Needs Cleanup
                                                min_stake=0,
                                                federated_only=False,
                                                network_domains={'goerli'},  # TODO: Needs Cleanup
