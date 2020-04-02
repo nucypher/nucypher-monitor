@@ -1,1 +1,2 @@
-include README.md monitor/assets/*
+include README.md
+recursive-include monitor/assets *
