@@ -176,11 +176,6 @@ def nodes_geolocation_map(nodes_dict: dict, ip2loc: IP2Location):
                 showlakes=False,
                 bgcolor='rgba(0,0,0,0)',
             ),
-            # font=dict(
-            #     family='monospace',
-            #     size=11,
-            #     color='slategrey'
-            # ),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             autosize=True,
@@ -206,20 +201,25 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
     future_periods = len(future_locked_tokens)
     now = maya.now()
 
-    nodes_history = list(node_history.values())
-
     # eg. Jan-23-2020
     date_format = '%b-%d-%Y'
 
+    # past data
     past_period_range = [d.strftime(date_format) for d in past_locked_tokens.keys()]
-    future_period_range = list((now+maya.timedelta(days=p)).datetime().strftime(date_format) for p in range(1, future_periods + 1))
-    period_range = past_period_range + future_period_range
-
     past_token_values = [float(v) for v in past_locked_tokens.values()]
+    historical_num_nodes = list(node_history.values())
+
+    # future data
+    future_period_range = list((now+maya.timedelta(days=p)).datetime().strftime(date_format) for p in range(1, future_periods + 1))
     future_locked_tokens, future_num_stakers = map(list, zip(*future_locked_tokens.values()))
+
+    # combined data
+    period_range = past_period_range + future_period_range
     locked_tokens = past_token_values + future_locked_tokens
 
     x_coord_today = now.datetime().strftime(date_format)
+    max_locked_tokens = max(locked_tokens)
+    y_coord_today = max_locked_tokens * 1.1 if max_locked_tokens > 0 else 1  # force a non-zero value
 
     plots = [
 
@@ -242,7 +242,7 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
         go.Scatter(
             mode='lines+markers',
             x=past_period_range,
-            y=nodes_history,
+            y=historical_num_nodes,
             name='Past Stakers',
             yaxis='y2',
             xaxis='x',
@@ -261,7 +261,7 @@ def future_locked_tokens_bar_chart(future_locked_tokens: dict, past_locked_token
         # Today Vertical Line
         go.Scatter(
             x=[x_coord_today, x_coord_today],
-            y=[0, max(locked_tokens) * 1.1],  # point slightly above actual max
+            y=[0, y_coord_today],  # point slightly above actual max
             name='',
             text=['', 'Today'],
             mode='lines+text',
