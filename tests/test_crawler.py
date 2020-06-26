@@ -9,13 +9,12 @@ from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
 from nucypher.blockchain.eth.utils import datetime_to_period
 from nucypher.cli import actions
-from nucypher.config.storages import SQLiteForgetfulNodeStorage
 from nucypher.network.middleware import RestMiddleware
 from nucypher.network.nodes import FleetStateTracker
 
 import monitor
 from monitor.cli.main import DEFAULT_TEACHER
-from monitor.crawler import CrawlerNodeStorage, Crawler
+from monitor.crawler import CrawlerNodeStorage, Crawler, SQLiteForgetfulNodeStorage
 from monitor.db import CrawlerStorageClient
 from tests.utilities import (
     create_random_mock_node,
