@@ -4,11 +4,11 @@ import click
 from flask import Flask
 from nucypher.blockchain.eth.interfaces import BlockchainInterfaceFactory
 from nucypher.blockchain.eth.networks import NetworksInventory
-from nucypher.cli import actions
 from nucypher.cli.config import group_general_config
-from nucypher.cli.painting import echo_version
+from nucypher.cli.painting.help import echo_version
 from nucypher.cli.types import NETWORK_PORT, EXISTING_READABLE_FILE
 from nucypher.network.middleware import RestMiddleware
+from nucypher.utilities.seednodes import load_seednodes
 from twisted.internet import reactor
 
 from monitor.cli._utils import _get_registry, _get_deployer
@@ -81,12 +81,12 @@ def crawl(general_config,
 
     # Teacher Ursula
     teacher_uris = [teacher_uri] if teacher_uri else None
-    teacher_nodes = actions.load_seednodes(emitter,
-                                           teacher_uris=teacher_uris,
-                                           min_stake=min_stake,
-                                           federated_only=False,
-                                           network_domains={network} if network else None,
-                                           network_middleware=RestMiddleware())
+    teacher_nodes = load_seednodes(emitter,
+                                   teacher_uris=teacher_uris,
+                                   min_stake=min_stake,
+                                   federated_only=False,
+                                   network_domains={network} if network else None,
+                                   network_middleware=RestMiddleware())
 
     crawler = Crawler(domains={network} if network else None,
                       network_middleware=RestMiddleware(),
