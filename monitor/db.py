@@ -109,9 +109,8 @@ class CrawlerInfluxClient:
         locked_tokens_dict = OrderedDict()
         for r in results:
             locked_stake = r['sum']
-            if locked_stake:
-                # Dash accepts datetime objects for graphs
-                locked_tokens_dict[MayaDT.from_rfc3339(r['time']).datetime()] = locked_stake
+            # Dash accepts datetime objects for graphs
+            locked_tokens_dict[MayaDT.from_rfc3339(r['time']).datetime()] = locked_stake if locked_stake else 0
 
         return locked_tokens_dict
 
@@ -132,9 +131,8 @@ class CrawlerInfluxClient:
         num_stakers_dict = OrderedDict()
         for r in results:
             locked_stake = r['count']
-            if locked_stake:
-                # Dash accepts datetime objects for graphs
-                num_stakers_dict[MayaDT.from_rfc3339(r['time']).datetime()] = locked_stake
+            # Dash accepts datetime objects for graphs
+            num_stakers_dict[MayaDT.from_rfc3339(r['time']).datetime()] = locked_stake if locked_stake else 0
 
         return num_stakers_dict
 
@@ -152,8 +150,7 @@ class CrawlerInfluxClient:
         work_orders_dict = OrderedDict()
         for r in results:
             num_work_orders = r['sum']
-            if num_work_orders:
-                work_orders_dict[MayaDT.from_rfc3339(r['time']).datetime()] = num_work_orders
+            work_orders_dict[MayaDT.from_rfc3339(r['time']).datetime()] = num_work_orders if num_work_orders else 0
 
         return work_orders_dict
 
