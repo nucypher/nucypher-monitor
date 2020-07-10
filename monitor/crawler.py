@@ -6,11 +6,11 @@ import os
 import requests
 import sqlite3
 from constant_sorrow.constants import NOT_STAKING
-from eth_utils import to_checksum_address
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
+from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.events import EventRecord
 from twisted.internet import task, reactor
 from twisted.logger import Logger
@@ -24,7 +24,6 @@ from nucypher.blockchain.eth.agents import (
     AdjudicatorAgent,
     PolicyManagerAgent)
 from nucypher.blockchain.eth.decorators import validate_checksum_address
-from nucypher.blockchain.eth.interfaces import BlockchainInterface
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
 from nucypher.blockchain.eth.token import StakeList, NU
 from nucypher.blockchain.eth.utils import datetime_at_period
@@ -343,11 +342,7 @@ class Crawler(Learner):
     @collector(label="Top Stakes")
     def _measure_top_stakers(self) -> dict:
         _, stakers = self.staking_agent.get_all_active_stakers(periods=1)
-        data = dict()
-        for staker, stake in stakers:
-            staker_address = to_checksum_address(staker)
-            data[staker_address] = float(NU.from_nunits(stake).to_tokens())
-        data = dict(sorted(data.items(), key=lambda s: s[1], reverse=True))
+        data = dict(sorted(stakers.items(), key=lambda s: s[1], reverse=True))
         return data
 
     @collector(label="Staker Confirmation Status")
@@ -378,7 +373,7 @@ class Crawler(Learner):
         buckets = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
                    0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
                    current_period: ('#525ae3', 'Idle'),  # Never confirmed
-                   BlockchainInterface.NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
+                   NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
                    }
 
         shortest_uptime, newborn = float('inf'), None
@@ -398,11 +393,11 @@ class Crawler(Learner):
             # Confirmation Status Scraping
             #
 
-            last_confirmed_period = self.staking_agent.get_last_active_period(staker_address)
+            last_confirmed_period = self.staking_agent.get_last_committed_period(staker_address)
             missing_confirmations = current_period - last_confirmed_period
             worker = self.staking_agent.get_worker_from_staker(staker_address)
-            if worker == BlockchainInterface.NULL_ADDRESS:
-                # missing_confirmations = BlockchainInterface.NULL_ADDRESS
+            if worker == NULL_ADDRESS:
+                # missing_confirmations = NULL_ADDRESS
                 continue  # TODO: Skip this DetachedWorker and do not display it
             try:
                 color, status_message = buckets[missing_confirmations]
@@ -599,7 +594,7 @@ class Crawler(Learner):
             end_date = datetime_at_period(stakes.terminal_period, seconds_per_period=economics.seconds_per_period)
             end_date = end_date.datetime().timestamp()
 
-            last_confirmed_period = agent.get_last_active_period(staker_address)
+            last_confirmed_period = agent.get_last_committed_period(staker_address)
 
             num_work_orders = 0  # len(node.work_orders())  # TODO: Only works for is_me with datastore attached
 

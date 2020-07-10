@@ -231,7 +231,7 @@ def configure_mock_staking_agent(staking_agent, tokens, current_period, initial_
 
     staking_agent.get_current_period.return_value = current_period
     staking_agent.get_all_stakes.return_value = [(initial_period, terminal_period, tokens)]
-    staking_agent.get_last_active_period.return_value = last_active_period
+    staking_agent.get_last_committed_period.return_value = last_active_period
 
 
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
