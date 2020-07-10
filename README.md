@@ -142,6 +142,19 @@ export WEB3_PROVIDER_URI=<YOUR WEB3 PROVIDER URI>
 export NUCYPHER_NETWORK=<NETWORK NAME>
 ```
 
+* Let's Encrypt certificates location
+```bash
+export NUCYPHER_LETSENCRYPT_DIR=<DIRECTORY LOCATION>
+```
+You can create certificates for localhost using openssl command:
+```
+openssl req -x509 -out fullchain.pem -keyout key.pem \
+  -newkey rsa:2048 -nodes -sha256 \
+  -subj '/CN=localhost' -extensions EXT -config <( \
+   printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
+```
+
+
 2. Run Docker Compose
 ```bash
 docker-compose -f deploy/docker-compose.yml up
