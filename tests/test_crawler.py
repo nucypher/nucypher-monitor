@@ -13,7 +13,6 @@ from nucypher.network.middleware import RestMiddleware
 from nucypher.network.nodes import FleetStateTracker
 
 import monitor
-from monitor.cli.main import DEFAULT_TEACHER
 from monitor.crawler import CrawlerNodeStorage, Crawler, SQLiteForgetfulNodeStorage
 from monitor.db import CrawlerStorageClient
 from tests.utilities import (
@@ -205,7 +204,6 @@ def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, dont_set_teacher:
     teacher_nodes = None
     if not dont_set_teacher:
         teacher_nodes = actions.load_seednodes(None,  # TODO: Needs emitter
-                                               teacher_uris=[DEFAULT_TEACHER],  # TODO: Needs Cleanup
                                                min_stake=0,
                                                federated_only=False,
                                                network_domains={'gemini'},  # TODO: Needs Cleanup
