@@ -8,6 +8,8 @@ from pendulum.parsing import ParserError
 import nucypher
 from nucypher.blockchain.eth.token import NU
 
+from monitor.utils import get_etherscan_url, EtherscanURLType
+
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 NODE_TABLE_COLUMNS_PROPERTIES = {
     'Status': dict(name=NODE_TABLE_COLUMNS[0], id=NODE_TABLE_COLUMNS[0], editable=False, presentation='markdown'),
@@ -47,10 +49,6 @@ BUCKET_DESCRIPTIONS = {
     'unconnected': "Nodes that the monitor has not connected to - can be temporary while learning about the network (nodes should NOT remain here)",
 }
 
-
-ETHERSCAN_URL_ADDRESS_TEMPLATE = "https://goerli.etherscan.io/address/{}"
-ETHERSCAN_URL_TX_TEMPLATE = "https://goerli.etherscan.io/tx/{}"
-
 NODE_STATUS_URL_TEMPLATE = "https://{}/status"
 
 NO_CONNECTION_TO_NODE = "No Connection to Node"
@@ -61,11 +59,11 @@ def header() -> html.Div:
     return html.Div([html.Div(f'v{nucypher.__version__}', id='version')], className="logo-widget")
 
 
-def make_contract_row(agent, balance: NU = None):
+def make_contract_row(network: str, agent , balance: NU = None):
     cells = [
         html.A(f'{agent.contract_name} {agent.contract_address} ({agent.contract.version})',
                id=f"{agent.contract_name}-contract-address",
-               href=ETHERSCAN_URL_ADDRESS_TEMPLATE.format(agent.contract_address)),
+               href=get_etherscan_url(network, EtherscanURLType.ADDRESS, agent.contract_address))
     ]
 
     if balance is not None:
@@ -110,9 +108,9 @@ def previous_states(states: List[dict]) -> html.Div:
     ], className='row')
 
 
-def generate_node_row(node_info: dict) -> dict:
+def generate_node_row(network: str, node_info: dict) -> dict:
     staker_address = node_info['staker_address']
-    etherscan_url = ETHERSCAN_URL_ADDRESS_TEMPLATE.format(staker_address)
+    etherscan_url = get_etherscan_url(network, EtherscanURLType.ADDRESS, staker_address)
 
     slang_last_seen = get_last_seen(node_info)
 
@@ -144,7 +142,7 @@ def get_last_seen(node_info):
     return slang_last_seen
 
 
-def nodes_table(nodes) -> dash_table.DataTable:
+def nodes_table(network: str, nodes: List) -> dash_table.DataTable:
     rows = list()
     table_tooltip_data = list()
 
@@ -152,7 +150,7 @@ def nodes_table(nodes) -> dash_table.DataTable:
     newborn_nickname = ''
     for index, node_info in enumerate(nodes):
         # Fill columns
-        components = generate_node_row(node_info=node_info)
+        components = generate_node_row(network=network, node_info=node_info)
         rows.append(components)
         if node_info.get('uptime_king'):
             king_nickname = components['Nickname']
@@ -223,19 +221,19 @@ def nodes_table(nodes) -> dash_table.DataTable:
     return table
 
 
-def known_nodes(nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
+def known_nodes(network: str, nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
     components = []
     buckets = {'active': sorted([*nodes_dict.get('confirmed', []), *nodes_dict.get('pending', [])],
                                 key=lambda n: n['timestamp']),
                'idle': nodes_dict.get('idle', []),
                'inactive': nodes_dict.get('unconfirmed', [])}
     for label, nodes in list(buckets.items()):
-        component = nodes_list_section(label, nodes)
+        component = nodes_list_section(network, label, nodes)
         components.append(component)
     return components
 
 
-def nodes_list_section(label, nodes):
+def nodes_list_section(network: str, label: str, nodes: List):
     try:
         label_description = BUCKET_DESCRIPTIONS[label]
     except KeyError:
@@ -251,7 +249,7 @@ def nodes_list_section(label, nodes):
         ], className='tooltip')
     ], className='label-and-tooltip')
 
-    table = nodes_table(nodes)
+    table = nodes_table(network, nodes)
 
     component = html.Div([
             html.Div([
@@ -262,14 +260,14 @@ def nodes_list_section(label, nodes):
     return component
 
 
-def events_table(events: List, days: int) -> html.Div:
+def events_table(network: str, events: List, days: int) -> html.Div:
     style_table = {'minHeight': '100%',
                    'height': '100%',
                    'maxHeight': 'none'}
 
     event_rows = list()
     for event_info in events:
-        event_rows.append(generate_event_row(event_info))
+        event_rows.append(generate_event_row(network=network, event_info=event_info))
 
     table = dash_table.DataTable(columns=[EVENT_TABLE_COLUMNS_PROPERTIES[col] for col in EVENT_TABLE_COLUMNS],
                                  data=event_rows,
@@ -302,15 +300,17 @@ def events_table(events: List, days: int) -> html.Div:
     ])
 
 
-def generate_event_row(event_info: dict) -> dict:
+def generate_event_row(network: str, event_info: dict) -> dict:
     tx_hash = event_info['txhash']
 
     event_row = {
         EVENT_TABLE_COLUMNS[0]: event_info['time'],
-        EVENT_TABLE_COLUMNS[1]: f'[{event_info["contract_name"]}]({ETHERSCAN_URL_ADDRESS_TEMPLATE.format(event_info["contract_address"])})',
+        EVENT_TABLE_COLUMNS[1]: f'[{event_info["contract_name"]}]'
+                                f'({get_etherscan_url(network, EtherscanURLType.ADDRESS, event_info["contract_address"])})',
         EVENT_TABLE_COLUMNS[2]: event_info['event_name'],
         EVENT_TABLE_COLUMNS[3]: event_info['args'],
-        EVENT_TABLE_COLUMNS[4]: f'[{tx_hash[:12]}...]({ETHERSCAN_URL_TX_TEMPLATE.format(tx_hash)})',
+        EVENT_TABLE_COLUMNS[4]: f'[{tx_hash[:12]}...]'
+                                f'({get_etherscan_url(network, EtherscanURLType.TRANSACTION, tx_hash)})',
     }
 
     return event_row
