@@ -131,12 +131,12 @@ class Dashboard:
         def events():
             prior_periods = 30  # TODO more thought? (note: retention for the db is 5w - so anything longer is useless)
             events_data = self.influx_client.get_historical_events(days=prior_periods)
-            events_table = components.events_table(events_data, days=prior_periods)
+            events_table = components.events_table(network=self.network, events=events_data, days=prior_periods)
             return events_table
 
         def known_nodes(latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
-            node_tables = components.known_nodes(nodes_dict=data['node_details'])
+            node_tables = components.known_nodes(network=self.network, nodes_dict=data['node_details'])
             return node_tables
 
         @dash_app.callback(Output('active-stakers', 'children'),
@@ -204,7 +204,7 @@ class Dashboard:
         @dash_app.callback(Output('contracts', 'children'), [Input('url', 'pathname')])  # on page-load
         def contracts(pathname):
             agents = (self.token_agent, self.staking_agent, self.policy_agent, self.adjudicator_agent)
-            rows = [make_contract_row(agent) for agent in agents]
+            rows = [make_contract_row(self.network, agent) for agent in agents]
             _components = html.Div([html.H4('Contracts'), *rows], id='contract-names')
             return _components
 

@@ -28,10 +28,6 @@ MONITOR_BANNER = r"""
 """
 
 
-DEFAULT_PROVIDER = f'file://{os.path.expanduser("~")}/.ethereum/goerli/geth.ipc'
-DEFAULT_TEACHER = 'https://gemini.nucypher.network:9151'
-
-
 @click.group()
 @click.option('--nucypher-version', help="Echo the nucypher version", is_flag=True, callback=echo_version, expose_value=False, is_eager=True)
 def monitor():
@@ -40,12 +36,12 @@ def monitor():
 
 @monitor.command()
 @group_general_config
-@click.option('--teacher', 'teacher_uri', help="An Ursula URI to start learning from (seednode)", type=click.STRING, default=DEFAULT_TEACHER)
+@click.option('--teacher', 'teacher_uri', help="An Ursula URI to start learning from (seednode)", type=click.STRING)
 @click.option('--registry-filepath', help="Custom contract registry filepath", type=EXISTING_READABLE_FILE)
 @click.option('--min-stake', help="The minimum stake the teacher must have to be a teacher", type=click.INT, default=0)
 @click.option('--network', help="Network Domain Name", type=click.Choice(choices=NetworksInventory.NETWORKS), required=True)
 @click.option('--learn-on-launch', help="Conduct first learning loop on main thread at launch.", is_flag=True)
-@click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
+@click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, required=True)
 @click.option('--influx-host', help="InfluxDB host URI", type=click.STRING, default='0.0.0.0')
 @click.option('--influx-port', help="InfluxDB network port", type=NETWORK_PORT, default=8086)
 @click.option('--http-port', help="Crawler HTTP port for JSON endpoint", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
@@ -115,7 +111,7 @@ def crawl(general_config,
 @click.option('--registry-filepath', help="Custom contract registry filepath", type=EXISTING_READABLE_FILE)
 @click.option('--certificate-filepath', help="Pre-signed TLS certificate filepath")
 @click.option('--tls-key-filepath', help="TLS private key filepath")
-@click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, default=DEFAULT_PROVIDER)
+@click.option('--provider', 'provider_uri', help="Blockchain provider's URI", type=click.STRING, required=True)
 @click.option('--network', help="Network Domain Name", type=click.Choice(choices=NetworksInventory.NETWORKS), required=True)
 @click.option('--influx-host', help="InfluxDB host URI", type=click.STRING)
 @click.option('--influx-port', help="InfluxDB network port", type=NETWORK_PORT, default=8086)
