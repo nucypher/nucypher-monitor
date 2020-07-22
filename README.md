@@ -9,7 +9,7 @@ and displays this information in a UI via the `Dashboard`.
 ### Standard Installation
 
 ```bash
-$ pip install . -r requirements.txt
+$ pip install -e . -r requirements.txt
 ```
 
 ##### Development Installation

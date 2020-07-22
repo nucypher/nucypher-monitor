@@ -1,18 +1,20 @@
-import os
 from collections import defaultdict
 
 import click
 import maya
+import os
 import requests
+import sqlite3
 from constant_sorrow.constants import NOT_STAKING
-from eth_utils import to_checksum_address
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
+from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.events import EventRecord
 from twisted.internet import task, reactor
 from twisted.logger import Logger
+from typing import Tuple
 
 from monitor.utils import collector
 from nucypher.blockchain.economics import EconomicsFactory
@@ -21,14 +23,92 @@ from nucypher.blockchain.eth.agents import (
     StakingEscrowAgent,
     AdjudicatorAgent,
     PolicyManagerAgent)
-from nucypher.blockchain.eth.interfaces import BlockchainInterface
+from nucypher.blockchain.eth.decorators import validate_checksum_address
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
 from nucypher.blockchain.eth.token import StakeList, NU
 from nucypher.blockchain.eth.utils import datetime_at_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
-from nucypher.config.storages import SQLiteForgetfulNodeStorage
+from nucypher.config.storages import ForgetfulNodeStorage
 from nucypher.network.nodes import FleetStateTracker, Teacher
 from nucypher.network.nodes import Learner
+
+
+class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
+    """
+    SQLite forgetful storage of node metadata
+    """
+    _name = 'sqlite'
+    DB_FILE_NAME = 'nodes.sqlite'
+    DEFAULT_DB_FILEPATH = os.path.join(DEFAULT_CONFIG_ROOT, DB_FILE_NAME)
+
+    NODE_DB_NAME = 'node_info'
+    NODE_DB_SCHEMA = [('staker_address', 'text primary key'), ('rest_url', 'text'), ('nickname', 'text'),
+                      ('timestamp', 'text'), ('last_seen', 'text'), ('fleet_state_icon', 'text')]
+
+    def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.db_filepath = db_filepath
+        self.db_conn = sqlite3.connect(self.db_filepath)
+        self.init_db_tables()
+
+    def __del__(self):
+        try:
+            self.db_conn.close()
+        finally:
+            if os.path.exists(self.db_filepath):
+                os.remove(self.db_filepath)
+
+    def store_node_metadata(self, node, filepath: str = None):
+        self.__write_node_metadata(node)
+        return super().store_node_metadata(node=node, filepath=filepath)
+
+    @validate_checksum_address
+    def remove(self,
+               checksum_address: str,
+               metadata: bool = True,
+               certificate: bool = True
+               ) -> Tuple[bool, str]:
+
+        if metadata is True:
+            with self.db_conn:
+                self.db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME} WHERE staker_address='{checksum_address}'")
+
+        return super().remove(checksum_address=checksum_address, metadata=metadata, certificate=certificate)
+
+    def clear(self, metadata: bool = True, certificates: bool = True) -> None:
+        if metadata is True:
+            with self.db_conn:
+                self.db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME}")
+
+        super().clear(metadata=metadata, certificates=certificates)
+
+    def initialize(self) -> bool:
+        if os.path.exists(self.db_filepath):
+            os.remove(self.db_filepath)
+        self.db_conn = sqlite3.connect(self.db_filepath)
+        self.init_db_tables()
+        return super().initialize()
+
+    def init_db_tables(self):
+        with self.db_conn:
+            # ensure tables are empty
+            self.db_conn.execute(f"DROP TABLE IF EXISTS {self.NODE_DB_NAME}")
+
+            # create fresh new node table (same column names as FleetStateTracker.abridged_nodes_details)
+            node_db_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.NODE_DB_SCHEMA)
+            self.db_conn.execute(f"CREATE TABLE {self.NODE_DB_NAME} ({node_db_schema})")
+
+    def __write_node_metadata(self, node):
+        node.mature()
+        node_dict = node.node_details(node=node)
+        db_row = (node_dict['staker_address'],
+                  node_dict['rest_url'],
+                  node_dict['nickname'],
+                  node_dict['timestamp'],
+                  node_dict['last_seen'],
+                  node_dict['fleet_state_icon'])
+        with self.db_conn:
+            self.db_conn.execute(f'REPLACE INTO {self.NODE_DB_NAME} VALUES(?,?,?,?,?,?)', db_row)
 
 
 class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
@@ -262,11 +342,7 @@ class Crawler(Learner):
     @collector(label="Top Stakes")
     def _measure_top_stakers(self) -> dict:
         _, stakers = self.staking_agent.get_all_active_stakers(periods=1)
-        data = dict()
-        for staker, stake in stakers:
-            staker_address = to_checksum_address(staker)
-            data[staker_address] = float(NU.from_nunits(stake).to_tokens())
-        data = dict(sorted(data.items(), key=lambda s: s[1], reverse=True))
+        data = dict(sorted(stakers.items(), key=lambda s: s[1], reverse=True))
         return data
 
     @collector(label="Staker Confirmation Status")
@@ -297,7 +373,7 @@ class Crawler(Learner):
         buckets = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
                    0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
                    current_period: ('#525ae3', 'Idle'),  # Never confirmed
-                   BlockchainInterface.NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
+                   NULL_ADDRESS: ('#d8d9da', 'Headless')  # Headless Staker (No Worker)
                    }
 
         shortest_uptime, newborn = float('inf'), None
@@ -317,11 +393,11 @@ class Crawler(Learner):
             # Confirmation Status Scraping
             #
 
-            last_confirmed_period = self.staking_agent.get_last_active_period(staker_address)
+            last_confirmed_period = self.staking_agent.get_last_committed_period(staker_address)
             missing_confirmations = current_period - last_confirmed_period
             worker = self.staking_agent.get_worker_from_staker(staker_address)
-            if worker == BlockchainInterface.NULL_ADDRESS:
-                # missing_confirmations = BlockchainInterface.NULL_ADDRESS
+            if worker == NULL_ADDRESS:
+                # missing_confirmations = NULL_ADDRESS
                 continue  # TODO: Skip this DetachedWorker and do not display it
             try:
                 color, status_message = buckets[missing_confirmations]
@@ -518,7 +594,7 @@ class Crawler(Learner):
             end_date = datetime_at_period(stakes.terminal_period, seconds_per_period=economics.seconds_per_period)
             end_date = end_date.datetime().timestamp()
 
-            last_confirmed_period = agent.get_last_active_period(staker_address)
+            last_confirmed_period = agent.get_last_committed_period(staker_address)
 
             num_work_orders = 0  # len(node.work_orders())  # TODO: Only works for is_me with datastore attached
 

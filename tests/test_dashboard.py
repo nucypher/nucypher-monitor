@@ -8,7 +8,7 @@ import nucypher
 import pytest
 from flask import Flask
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
-from nucypher.blockchain.eth.interfaces import BlockchainInterface
+from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.token import NU
 
 import monitor.dashboard
@@ -262,7 +262,7 @@ def create_mocked_staker_agent(partitioned_stakers: tuple,
 
     staking_agent.get_all_active_stakers.side_effect = _get_mock_all_active_stakers
 
-    staking_agent.get_last_active_period.side_effect = \
+    staking_agent.get_last_committed_period.side_effect = \
         lambda staker_address: last_confirmed_period_dict[staker_address]
 
     return staking_agent
@@ -294,7 +294,7 @@ def verify_state_data_in_table(state, state_table):
 
 
 def get_expected_status_text(current_period: int, last_confirmed_period: int, worker_address: str):
-    if worker_address == BlockchainInterface.NULL_ADDRESS:
+    if worker_address == NULL_ADDRESS:
         return 'Headless'
 
     missing_confirmations = current_period - last_confirmed_period

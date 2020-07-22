@@ -8,7 +8,7 @@ import maya
 from constant_sorrow.constants import UNKNOWN_FLEET_STATE
 from eth_utils.address import to_checksum_address
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
-from nucypher.blockchain.eth.interfaces import BlockchainInterface
+from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.registry import BaseContractRegistry
 from nucypher.datastore.keypairs import HostingKeypair
 from nucypher.network.nodes import Teacher
@@ -28,7 +28,7 @@ def create_random_mock_node(generate_certificate: bool = False):
 
     # some percentage of the time produce a NULL_ADDRESS
     if random.random() > 0.9:
-        worker_address = BlockchainInterface.NULL_ADDRESS
+        worker_address = NULL_ADDRESS
     else:
         worker_address = create_eth_address()
     timestamp = maya.now().subtract(hours=(random.randrange(0, 10)))
