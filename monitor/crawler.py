@@ -27,7 +27,7 @@ from nucypher.blockchain.eth.token import StakeList, NU
 from nucypher.blockchain.eth.utils import datetime_at_period, datetime_to_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import ForgetfulNodeStorage
-from nucypher.network.nodes import FleetStateTracker, Teacher
+from nucypher.network.nodes import FleetSensor, Teacher
 from nucypher.network.nodes import Learner
 from twisted.internet import task, reactor
 from twisted.logger import Logger
@@ -252,7 +252,8 @@ class Crawler(Learner):
         # TODO: Needs cleanup
         # Tracking
         node_storage = CrawlerNodeStorage(storage_filepath=node_storage_filepath)
-        class MonitoringTracker(FleetStateTracker):
+
+        class MonitoringTracker(FleetSensor):
             def record_fleet_state(self, *args, **kwargs):
                 new_state_or_none = super().record_fleet_state(*args, **kwargs)
                 if new_state_or_none:
@@ -261,7 +262,11 @@ class Crawler(Learner):
                     node_storage.store_state_metadata(state)
         self.tracker_class = MonitoringTracker
 
-        super().__init__(save_metadata=True, node_storage=node_storage, *args, **kwargs)
+        super().__init__(save_metadata=True,
+                         node_storage=node_storage,
+                         verify_node_bonding=False,
+                         *args, **kwargs)
+
         self.log = Logger(self.__class__.__name__)
         self.log.info(f"Storing node metadata in DB: {node_storage.db_filepath}")
         self.log.info(f"Storing blockchain metadata in DB: {influx_host}:{influx_port}")

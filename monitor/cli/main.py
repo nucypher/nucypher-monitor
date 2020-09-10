@@ -8,8 +8,9 @@ from nucypher.cli.config import group_general_config
 from nucypher.cli.painting.help import echo_version
 from nucypher.cli.types import NETWORK_PORT, EXISTING_READABLE_FILE
 from nucypher.network.middleware import RestMiddleware
-from nucypher.utilities.seednodes import load_seednodes
 from twisted.internet import reactor
+from nucypher.characters.lawful import Ursula
+
 
 from monitor.cli._utils import _get_registry, _get_deployer
 from monitor.crawler import Crawler
@@ -74,19 +75,20 @@ def crawl(general_config,
     # Setup
     BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri, poa=poa)
     registry = _get_registry(registry_filepath, network)
+    middleware = RestMiddleware()
 
     # Teacher Ursula
-    teacher_uris = [teacher_uri] if teacher_uri else None
-    teacher_nodes = load_seednodes(emitter,
-                                   teacher_uris=teacher_uris,
-                                   min_stake=min_stake,
-                                   federated_only=False,
-                                   network_domains={network} if network else None,
-                                   network_middleware=RestMiddleware())
+    sage_node = None
+    if teacher_uri:
+        sage_node = Ursula.from_teacher_uri(teacher_uri=teacher_uri,
+                                            min_stake=0,  # TODO: Where to get this?
+                                            federated_only=False,  # always False
+                                            network_middleware=middleware,
+                                            registry=registry)
 
     crawler = Crawler(domains={network} if network else None,
-                      network_middleware=RestMiddleware(),
-                      known_nodes=teacher_nodes,
+                      network_middleware=middleware,
+                      known_nodes=[sage_node] if teacher_uri else None,
                       registry=registry,
                       start_learning_now=eager,
                       learn_on_same_thread=learn_on_launch,
