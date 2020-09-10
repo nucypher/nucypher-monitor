@@ -15,7 +15,7 @@ flask = "*"
 hendrix = "*"
 twisted = "*"
 # Database
-influxdb = "*"
+influxdb = "<5.3.0"
 # CLI / Configuration
 maya = "*"
 click = ">=7.0"
