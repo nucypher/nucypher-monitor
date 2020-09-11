@@ -193,8 +193,8 @@ class Dashboard:
 
         @dash_app.callback(Output('domains', 'children'), [Input('url', 'pathname')])  # on page-load
         def domains(pathname):
-            domains = f'{self.network.capitalize()} | {self.staking_agent.blockchain.client.chain_name}'
-            return html.Div([html.H4('Network'), html.H5(domains, id="domain-value")])
+            network = f'{self.network.capitalize()} | {self.staking_agent.blockchain.client.chain_name}'
+            return html.Div([html.H4('Network'), html.H5(network, id="domain-value")])
 
         @dash_app.callback(Output('registry', 'children'), [Input('url', 'pathname')])  # on page-load
         def registry(pathname):

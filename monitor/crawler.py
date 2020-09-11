@@ -1,36 +1,38 @@
+import os
+import random
+import sqlite3
+import time
 from collections import defaultdict
+from typing import Tuple
 
 import click
 import maya
-import os
 import requests
-import sqlite3
 from constant_sorrow.constants import NOT_STAKING
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
-from nucypher.blockchain.eth.constants import NULL_ADDRESS
-from nucypher.blockchain.eth.events import EventRecord
-from twisted.internet import task, reactor
-from twisted.logger import Logger
-from typing import Tuple
-
-from monitor.utils import collector
 from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
     StakingEscrowAgent,
     AdjudicatorAgent,
     PolicyManagerAgent)
+from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.decorators import validate_checksum_address
+from nucypher.blockchain.eth.events import EventRecord
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
 from nucypher.blockchain.eth.token import StakeList, NU
-from nucypher.blockchain.eth.utils import datetime_at_period
+from nucypher.blockchain.eth.utils import datetime_at_period, datetime_to_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import ForgetfulNodeStorage
 from nucypher.network.nodes import FleetStateTracker, Teacher
 from nucypher.network.nodes import Learner
+from twisted.internet import task, reactor
+from twisted.logger import Logger
+
+from monitor.utils import collector
 
 
 class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
@@ -186,6 +188,7 @@ class Crawler(Learner):
 
     LEARNING_TIMEOUT = 10
     DEFAULT_REFRESH_RATE = 60  # seconds
+    REFRESH_RATE_WINDOW = 0.25
 
     # InfluxDB Line Protocol Format (note the spaces, commas):
     # +-----------+--------+-+---------+-+---------+
@@ -242,6 +245,7 @@ class Crawler(Learner):
         Teacher.set_federated_mode(False)
 
         self.registry = registry or InMemoryContractRegistry.from_latest_publication()
+        self.economics = EconomicsFactory.get_economics(registry=self.registry)
         self._refresh_rate = refresh_rate
         self._restart_on_error = restart_on_error
 
@@ -356,9 +360,8 @@ class Crawler(Learner):
 
     @collector(label="Time Until Next Period")
     def _measure_time_remaining(self) -> str:
-        current_period = self.staking_agent.get_current_period()
-        economics = EconomicsFactory.get_economics(registry=self.registry)
-        next_period = datetime_at_period(period=current_period+1, seconds_per_period=economics.seconds_per_period)
+        current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
+        next_period = datetime_at_period(period=current_period+1, seconds_per_period=self.economics.seconds_per_period)
         remaining = str(next_period - maya.now())
         return remaining
 
@@ -368,8 +371,7 @@ class Crawler(Learner):
         #
         # Setup
         #
-
-        current_period = self.staking_agent.get_current_period()
+        current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
         buckets = {-1: ('green', 'Confirmed'),           # Confirmed Next Period
                    0: ('#e0b32d', 'Pending'),            # Pending Confirmation of Next Period
                    current_period: ('#525ae3', 'Idle'),  # Never confirmed
@@ -458,8 +460,8 @@ class Crawler(Learner):
         #
 
         # Time
-        block_time = self.staking_agent.blockchain.client.w3.eth.getBlock('latest').timestamp  # epoch
-        current_period = self.staking_agent.get_current_period()
+        block_time = self.staking_agent.blockchain.client.get_blocktime()  # epoch
+        current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
         click.secho("✓ ... Current Period", color='blue')
         time_remaining = self._measure_time_remaining()
 
@@ -512,12 +514,14 @@ class Crawler(Learner):
             return reactor.callInThread(self._collect_events, threaded=False)
         self.__collecting_events = True
 
+
         blockchain_client = self.staking_agent.blockchain.client
-        latest_block = blockchain_client.w3.eth.getBlock('latest')
+        latest_block_number = blockchain_client.block_number
         from_block = self.__events_from_block
 
-        block_time = latest_block.timestamp  # precision in seconds
-        current_period = self.staking_agent.get_current_period()
+        #block_time = latest_block.timestamp  # precision in seconds
+
+        current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
 
         events_list = list()
         for agent_class, event_names in self.ERROR_EVENTS.items():
@@ -526,7 +530,7 @@ class Crawler(Learner):
                 events = [agent.contract.events[event_name]]
                 for event in events:
                     event_filter = event.createFilter(fromBlock=from_block,
-                                                      toBlock=latest_block.number)
+                                                      toBlock=latest_block_number)
                     entries = event_filter.get_all_entries()
                     for event_record in entries:
                         record = EventRecord(event_record)
@@ -547,12 +551,12 @@ class Crawler(Learner):
                                                    time_precision='s',
                                                    batch_size=10000,
                                                    protocol='line')
-        self.__events_from_block = latest_block.number
+        self.__events_from_block = latest_block_number
         self.__collecting_events = False
         if not success:
             # TODO: What do we do here - Event hook for alerting?
-            self.log.warn(f'Unable to write events to database {self.INFLUX_DB_NAME} at '
-                          f'{MayaDT(epoch=block_time)} | Period {current_period} starting from block {from_block}')
+            self.log.warn(f'Unable to write events to database {self.INFLUX_DB_NAME} '
+                          f'| Period {current_period} starting from block {from_block}')
 
     @collector(label="Known Node Details")
     def _learn_about_nodes(self, threaded: bool = True):
@@ -566,8 +570,8 @@ class Crawler(Learner):
         agent = self.staking_agent
         known_nodes = list(self.known_nodes)
 
-        block_time = agent.blockchain.client.w3.eth.getBlock('latest').timestamp  # precision in seconds
-        current_period = agent.get_current_period()
+        block_time = agent.blockchain.client.get_blocktime()  # precision in seconds
+        current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
 
         log = f'Processing {len(known_nodes)} nodes at {MayaDT(epoch=block_time)} | Period {current_period}'
         self.log.info(log)
@@ -663,11 +667,17 @@ class Crawler(Learner):
                 # self.crawler_influx_client = CrawlerInfluxClient()
 
             # start tasks
-            node_learner_deferred = self._node_details_task.start(interval=self._refresh_rate, now=eager)
-            collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate, now=eager)
+            node_learner_deferred = self._node_details_task.start(
+                interval=random.randint(int(self._refresh_rate * (1 - self.REFRESH_RATE_WINDOW)), self._refresh_rate),
+                now=eager)
+            time.sleep(random.randint(2, 10))  # random stagger start of task
+            collection_deferred = self._stats_collection_task.start(
+                interval=random.randint(self._refresh_rate, int(self._refresh_rate * (1 + self.REFRESH_RATE_WINDOW))),
+                now=eager)
 
             # get known last event block
             self.__events_from_block = self._get_last_known_blocknumber()
+            time.sleep(random.randint(2, 10))  # random stagger start of task
             events_deferred = self._events_collection_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks

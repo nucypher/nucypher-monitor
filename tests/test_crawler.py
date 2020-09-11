@@ -232,11 +232,15 @@ def configure_mock_staking_agent(staking_agent, tokens, current_period, initial_
     staking_agent.get_last_committed_period.return_value = last_active_period
 
 
+@patch.object(monitor.crawler.EconomicsFactory, 'get_economics', autospec=True)
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-def test_crawler_init(get_agent):
+def test_crawler_init(get_agent, get_economics):
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
+
+    token_economics = StandardTokenEconomics()
+    get_economics.return_value = token_economics
 
     crawler = create_crawler(dont_set_teacher=True)
 
@@ -244,14 +248,18 @@ def test_crawler_init(get_agent):
     assert not crawler.is_running
 
 
+@patch.object(monitor.crawler.EconomicsFactory, 'get_economics', autospec=True)
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
 @patch('monitor.crawler.InfluxDBClient', autospec=True)
-def test_crawler_stop_before_start(new_influx_db, get_agent):
+def test_crawler_stop_before_start(new_influx_db, get_agent, get_economics):
     mock_influxdb_client = new_influx_db.return_value
 
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
+
+    token_economics = StandardTokenEconomics()
+    get_economics.return_value = token_economics
 
     crawler = create_crawler(dont_set_teacher=True)
 
@@ -284,11 +292,15 @@ def test_crawler_start_then_stop(new_influx_db, get_agent):
     assert not crawler.is_running
 
 
+@patch.object(monitor.crawler.EconomicsFactory, 'get_economics', autospec=True)
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-def test_crawler_start_no_influx_db_connection(get_agent):
+def test_crawler_start_no_influx_db_connection(get_agent, get_economics):
     staking_agent = MagicMock(spec=StakingEscrowAgent, autospec=True)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
+
+    token_economics = StandardTokenEconomics()
+    get_economics.return_value = token_economics
 
     crawler = create_crawler(dont_set_teacher=True)
     try:
