@@ -1,30 +1,27 @@
+import os
+import random
+import sqlite3
 import time
 from collections import defaultdict
+from typing import Tuple
 
 import click
 import maya
-import os
 import requests
-import sqlite3
 from constant_sorrow.constants import NOT_STAKING
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
-from nucypher.blockchain.eth.constants import NULL_ADDRESS
-from nucypher.blockchain.eth.events import EventRecord
-from twisted.internet import task, reactor
-from twisted.logger import Logger
-from typing import Tuple
-
-from monitor.utils import collector
 from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
     StakingEscrowAgent,
     AdjudicatorAgent,
     PolicyManagerAgent)
+from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.decorators import validate_checksum_address
+from nucypher.blockchain.eth.events import EventRecord
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
 from nucypher.blockchain.eth.token import StakeList, NU
 from nucypher.blockchain.eth.utils import datetime_at_period, datetime_to_period
@@ -32,6 +29,10 @@ from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import ForgetfulNodeStorage
 from nucypher.network.nodes import FleetStateTracker, Teacher
 from nucypher.network.nodes import Learner
+from twisted.internet import task, reactor
+from twisted.logger import Logger
+
+from monitor.utils import collector
 
 
 class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
@@ -187,6 +188,7 @@ class Crawler(Learner):
 
     LEARNING_TIMEOUT = 10
     DEFAULT_REFRESH_RATE = 60  # seconds
+    REFRESH_RATE_WINDOW = 0.25
 
     # InfluxDB Line Protocol Format (note the spaces, commas):
     # +-----------+--------+-+---------+-+---------+
@@ -665,13 +667,17 @@ class Crawler(Learner):
                 # self.crawler_influx_client = CrawlerInfluxClient()
 
             # start tasks
-            node_learner_deferred = self._node_details_task.start(interval=self._refresh_rate - 15, now=eager)
-            time.sleep(4)
-            collection_deferred = self._stats_collection_task.start(interval=self._refresh_rate + 15, now=eager)
+            node_learner_deferred = self._node_details_task.start(
+                interval=random.randint(int(self._refresh_rate * (1 - self.REFRESH_RATE_WINDOW)), self._refresh_rate),
+                now=eager)
+            time.sleep(random.randint(2, 10))  # random stagger start of task
+            collection_deferred = self._stats_collection_task.start(
+                interval=random.randint(self._refresh_rate, int(self._refresh_rate * (1 + self.REFRESH_RATE_WINDOW))),
+                now=eager)
 
             # get known last event block
             self.__events_from_block = self._get_last_known_blocknumber()
-            time.sleep(4)
+            time.sleep(random.randint(2, 10))  # random stagger start of task
             events_deferred = self._events_collection_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks
