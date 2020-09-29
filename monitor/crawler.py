@@ -1,7 +1,6 @@
 import os
 import random
 import sqlite3
-import time
 from collections import defaultdict
 from typing import Tuple
 
@@ -13,6 +12,7 @@ from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
+from monitor.utils import collector, DelayedLoopingCall
 from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
@@ -29,10 +29,8 @@ from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import ForgetfulNodeStorage
 from nucypher.network.nodes import FleetSensor, Teacher
 from nucypher.network.nodes import Learner
-from twisted.internet import task, reactor
+from twisted.internet import reactor
 from twisted.logger import Logger
-
-from monitor.utils import collector
 
 
 class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
@@ -290,9 +288,13 @@ class Crawler(Learner):
         self.__events_from_block = 0  # from the beginning
         self.__collecting_events = False
 
-        self._node_details_task = task.LoopingCall(self._learn_about_nodes)
-        self._stats_collection_task = task.LoopingCall(self._collect_stats, threaded=True)
-        self._events_collection_task = task.LoopingCall(self._collect_events)
+        self._node_details_task = DelayedLoopingCall(f=self._learn_about_nodes,
+                                                     start_delay=random.randint(2, 15))  # random staggered start
+        self._stats_collection_task = DelayedLoopingCall(f=self._collect_stats,
+                                                         threaded=True,
+                                                         start_delay=random.randint(2, 15))  # random staggered start
+        self._events_collection_task = DelayedLoopingCall(f=self._collect_events,
+                                                          start_delay=random.randint(2, 15))  # random staggered start
 
         # JSON Endpoint
         self._crawler_http_port = crawler_http_port
@@ -675,14 +677,12 @@ class Crawler(Learner):
             node_learner_deferred = self._node_details_task.start(
                 interval=random.randint(int(self._refresh_rate * (1 - self.REFRESH_RATE_WINDOW)), self._refresh_rate),
                 now=eager)
-            time.sleep(random.randint(2, 10))  # random stagger start of task
             collection_deferred = self._stats_collection_task.start(
                 interval=random.randint(self._refresh_rate, int(self._refresh_rate * (1 + self.REFRESH_RATE_WINDOW))),
                 now=eager)
 
             # get known last event block
             self.__events_from_block = self._get_last_known_blocknumber()
-            time.sleep(random.randint(2, 10))  # random stagger start of task
             events_deferred = self._events_collection_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks

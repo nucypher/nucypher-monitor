@@ -2,6 +2,8 @@ import click
 import maya
 from enum import Enum
 from nucypher.blockchain.eth.networks import NetworksInventory
+from twisted.internet import defer
+from twisted.internet.task import LoopingCall
 
 
 def collector(label: str):
@@ -47,3 +49,27 @@ def get_etherscan_url(network: str, url_type: EtherscanURLType, address_or_tx_ha
     elif url_type == EtherscanURLType.TRANSACTION:
         # transaction
         return f"https://{url_chain_prefix}etherscan.io/tx/{address_or_tx_hash}"
+
+
+class DelayedLoopingCall(LoopingCall):
+    def __init__(self, start_delay: int = 0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.start_delay = start_delay
+
+    def start(self, interval, now=True):
+        assert not self.running, ("Tried to start an already running "
+                                  "LoopingCall.")
+        if interval < 0:
+            raise ValueError("interval must be >= 0")
+        self.running = True
+        # Loop might fail to start and then self._deferred will be cleared.
+        # This why the local C{deferred} variable is used.
+        deferred = self._deferred = defer.Deferred()
+        self.starttime = self.clock.seconds() + self.start_delay
+        self.interval = interval
+        self._runAtStart = now
+        if now:
+            self()
+        else:
+            self._scheduleFrom(self.starttime)
+        return deferred
