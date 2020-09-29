@@ -86,7 +86,7 @@ def crawl(general_config,
                                             network_middleware=middleware,
                                             registry=registry)
 
-    crawler = Crawler(domains={network} if network else None,
+    crawler = Crawler(domain=network if network else None,
                       network_middleware=middleware,
                       known_nodes=[sage_node] if teacher_uri else None,
                       registry=registry,

@@ -2,7 +2,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from hendrix.deploy.tls import HendrixDeployTLS
 
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, LocalContractRegistry
-from nucypher.datastore.keypairs import HostingKeypair
+from nucypher.crypto.keypairs import HostingKeypair
 from nucypher.network.server import TLSHostingPower
 
 

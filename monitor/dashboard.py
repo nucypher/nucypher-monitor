@@ -191,8 +191,8 @@ class Dashboard:
             data = {'next_period': slang}
             return html.Div([html.H4("Next Period"), html.H5(data['next_period'])])
 
-        @dash_app.callback(Output('domains', 'children'), [Input('url', 'pathname')])  # on page-load
-        def domains(pathname):
+        @dash_app.callback(Output('domain', 'children'), [Input('url', 'pathname')])  # on page-load
+        def domain(pathname):
             network = f'{self.network.capitalize()} | {self.staking_agent.blockchain.client.chain_name}'
             return html.Div([html.H4('Network'), html.H5(network, id="domain-value")])
 
