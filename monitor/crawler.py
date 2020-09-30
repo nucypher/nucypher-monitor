@@ -48,15 +48,11 @@ class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
     def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.db_filepath = db_filepath
-        self.db_conn = sqlite3.connect(self.db_filepath)
         self.init_db_tables()
 
     def __del__(self):
-        try:
-            self.db_conn.close()
-        finally:
-            if os.path.exists(self.db_filepath):
-                os.remove(self.db_filepath)
+        if os.path.exists(self.db_filepath):
+            os.remove(self.db_filepath)
 
     def store_node_metadata(self, node, filepath: str = None):
         self.__write_node_metadata(node)
@@ -70,33 +66,32 @@ class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
                ) -> Tuple[bool, str]:
 
         if metadata is True:
-            with self.db_conn:
-                self.db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME} WHERE staker_address='{checksum_address}'")
+            with sqlite3.connect(self.db_filepath) as db_conn:
+                db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME} WHERE staker_address='{checksum_address}'")
 
         return super().remove(checksum_address=checksum_address, metadata=metadata, certificate=certificate)
 
     def clear(self, metadata: bool = True, certificates: bool = True) -> None:
         if metadata is True:
-            with self.db_conn:
-                self.db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME}")
+            with sqlite3.connect(self.db_filepath) as db_conn:
+                db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME}")
 
         super().clear(metadata=metadata, certificates=certificates)
 
     def initialize(self) -> bool:
         if os.path.exists(self.db_filepath):
             os.remove(self.db_filepath)
-        self.db_conn = sqlite3.connect(self.db_filepath)
         self.init_db_tables()
         return super().initialize()
 
     def init_db_tables(self):
-        with self.db_conn:
+        with sqlite3.connect(self.db_filepath) as db_conn:
             # ensure tables are empty
-            self.db_conn.execute(f"DROP TABLE IF EXISTS {self.NODE_DB_NAME}")
+            db_conn.execute(f"DROP TABLE IF EXISTS {self.NODE_DB_NAME}")
 
             # create fresh new node table (same column names as FleetStateTracker.abridged_nodes_details)
             node_db_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.NODE_DB_SCHEMA)
-            self.db_conn.execute(f"CREATE TABLE {self.NODE_DB_NAME} ({node_db_schema})")
+            db_conn.execute(f"CREATE TABLE {self.NODE_DB_NAME} ({node_db_schema})")
 
     def __write_node_metadata(self, node):
         node.mature()
@@ -107,8 +102,8 @@ class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
                   node_dict['timestamp'],
                   node_dict['last_seen'],
                   node_dict['fleet_state_icon'])
-        with self.db_conn:
-            self.db_conn.execute(f'REPLACE INTO {self.NODE_DB_NAME} VALUES(?,?,?,?,?,?)', db_row)
+        with sqlite3.connect(self.db_filepath) as db_conn:
+            db_conn.execute(f'REPLACE INTO {self.NODE_DB_NAME} VALUES(?,?,?,?,?,?)', db_row)
 
 
 class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
@@ -132,27 +127,27 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
         super().__init__(db_filepath=storage_filepath, federated_only=False, *args, **kwargs)
 
     def init_db_tables(self):
-        with self.db_conn:
+        with sqlite3.connect(self.db_filepath) as db_conn:
 
             # ensure table is empty
             for table in [self.STATE_DB_NAME, self.TEACHER_DB_NAME]:
-                self.db_conn.execute(f"DROP TABLE IF EXISTS {table}")
+                db_conn.execute(f"DROP TABLE IF EXISTS {table}")
 
             # create fresh new state table (same column names as FleetStateTracker.abridged_state_details)
             state_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.STATE_DB_SCHEMA)
-            self.db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} ({state_schema})")
+            db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} ({state_schema})")
 
             # create new teacher table
             teacher_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.TEACHER_DB_SCHEMA)
-            self.db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} ({teacher_schema})")
+            db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} ({teacher_schema})")
         super().init_db_tables()
 
     def clear(self, metadata: bool = True, certificates: bool = True) -> None:
         if metadata is True:
-            with self.db_conn:
+            with sqlite3.connect(self.db_filepath) as db_conn:
                 # TODO Clear the states table here?
                 for table in [self.STATE_DB_NAME, self.TEACHER_DB_NAME]:
-                    self.db_conn.execute(f"DELETE FROM {table}")
+                    db_conn.execute(f"DELETE FROM {table}")
 
         super().clear(metadata=metadata, certificates=certificates)
 
@@ -166,13 +161,13 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
                   # convert to rfc3339 for ease of sqlite3 sorting; we lose millisecond precision, but meh!
                   MayaDT.from_rfc2822(state['updated']).rfc3339())
         sql = f'REPLACE INTO {self.STATE_DB_NAME} VALUES(?,?,?,?,?)'
-        with self.db_conn:
-            self.db_conn.execute(sql, db_row)
+        with sqlite3.connect(self.db_filepath) as db_conn:
+            db_conn.execute(sql, db_row)
 
     def store_current_teacher(self, teacher_checksum: str):
         sql = f'REPLACE INTO {self.TEACHER_DB_NAME} VALUES (?,?)'
-        with self.db_conn:
-            self.db_conn.execute(sql, (self.TEACHER_ID, teacher_checksum))
+        with sqlite3.connect(self.db_filepath) as db_conn:
+            db_conn.execute(sql, (self.TEACHER_ID, teacher_checksum))
 
 
 class Crawler(Learner):
