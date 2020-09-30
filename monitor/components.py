@@ -2,13 +2,11 @@ from typing import List
 
 import dash_html_components as html
 import dash_table
-from maya import MayaDT
-from pendulum.parsing import ParserError
-
 import nucypher
-from nucypher.blockchain.eth.token import NU
-
+from maya import MayaDT
 from monitor.utils import get_etherscan_url, EtherscanURLType
+from nucypher.blockchain.eth.token import NU
+from pendulum.parsing import ParserError
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 NODE_TABLE_COLUMNS_PROPERTIES = {
@@ -59,11 +57,13 @@ def header() -> html.Div:
     return html.Div([html.Div(f'v{nucypher.__version__}', id='version')], className="logo-widget")
 
 
-def make_contract_row(network: str, agent , balance: NU = None):
+def make_contract_row(network: str, agent, balance: NU = None):
+    contract_name = agent.contract_name
+    contract_address = agent.contract_address
     cells = [
-        html.A(f'{agent.contract_name} {agent.contract_address} ({agent.contract.version})',
-               id=f"{agent.contract_name}-contract-address",
-               href=get_etherscan_url(network, EtherscanURLType.ADDRESS, agent.contract_address))
+        html.A(f'{contract_name} {contract_address} ({agent.contract.version})',
+               id=f"{contract_name}-contract-address",
+               href=get_etherscan_url(network, EtherscanURLType.ADDRESS, contract_address))
     ]
 
     if balance is not None:

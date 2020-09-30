@@ -360,12 +360,15 @@ class Crawler(Learner):
         stakers['inactive'] = len(inactive)
         return stakers
 
-    @collector(label="Time Until Next Period")
-    def _measure_time_remaining(self) -> str:
+    @collector(label="Date/Time of Next Period")
+    def _measure_start_of_next_period(self) -> str:
+        """Returns iso8601 datetime of next period"""
         current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
-        next_period = datetime_at_period(period=current_period+1, seconds_per_period=self.economics.seconds_per_period)
-        remaining = str(next_period - maya.now())
-        return remaining
+        next_period = datetime_at_period(period=current_period+1,
+                                         seconds_per_period=self.economics.seconds_per_period,
+                                         start_of_period=True)
+
+        return next_period.iso8601()
 
     @collector(label="Known Nodes")
     def measure_known_nodes(self):
@@ -462,10 +465,12 @@ class Crawler(Learner):
         #
 
         # Time
-        block_time = self.staking_agent.blockchain.client.get_blocktime()  # epoch
+        block = self.staking_agent.blockchain.client.w3.eth.getBlock('latest')
+        block_number = block.number
+        block_time = block.timestamp # epoch
         current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
         click.secho("✓ ... Current Period", color='blue')
-        time_remaining = self._measure_time_remaining()
+        next_period = self._measure_start_of_next_period()
 
         # Nodes
         teacher = self._crawler_client.get_current_teacher_checksum()
@@ -486,9 +491,11 @@ class Crawler(Learner):
         # Write
         #
 
-        self._stats = {'blocktime': block_time,
+        self._stats = {'blocknumber': block_number,
+                       'blocktime': block_time,
+
                        'current_period': current_period,
-                       'next_period': time_remaining,
+                       'next_period': next_period,
 
                        'prev_states': states,
                        'current_teacher': teacher,
