@@ -1,8 +1,13 @@
 import os
+import sqlite3
 from unittest.mock import MagicMock, patch
 
 import maya
+import monitor
 import pytest
+from monitor.crawler import CrawlerNodeStorage, Crawler, SQLiteForgetfulNodeStorage
+from monitor.db import CrawlerStorageClient
+from nucypher.acumen.perception import FleetSensor
 from nucypher.blockchain.economics import StandardTokenEconomics
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
@@ -10,11 +15,6 @@ from nucypher.blockchain.eth.token import NU
 from nucypher.blockchain.eth.utils import datetime_to_period
 from nucypher.cli import actions
 from nucypher.network.middleware import RestMiddleware
-from nucypher.network.nodes import FleetStateTracker
-
-import monitor
-from monitor.crawler import CrawlerNodeStorage, Crawler, SQLiteForgetfulNodeStorage
-from monitor.db import CrawlerStorageClient
 from tests.utilities import (
     create_random_mock_node,
     create_specific_mock_node,
@@ -28,6 +28,17 @@ DB_TABLES = [CrawlerNodeStorage.NODE_DB_NAME, CrawlerNodeStorage.STATE_DB_NAME, 
 #
 # CrawlerNodeStorage tests.
 #
+@pytest.fixture(scope='function')
+def sqlite_connection(monkeypatch):
+    db_conn = sqlite3.connect(IN_MEMORY_FILEPATH)
+
+    def patch_connect(*args, **kwargs):
+        return db_conn
+
+    monkeypatch.setattr(sqlite3, 'connect', patch_connect)
+    yield db_conn
+    db_conn.close()
+
 
 def test_storage_init():
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
@@ -36,20 +47,20 @@ def test_storage_init():
     assert CrawlerNodeStorage._name != SQLiteForgetfulNodeStorage._name
 
 
-def test_storage_db_table_init():
+def test_storage_db_table_init(sqlite_connection):
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
-    verify_all_db_tables_exist(node_storage.db_conn)
+    verify_all_db_tables_exist(sqlite_connection)
 
 
-def test_storage_initialize():
+def test_storage_initialize(sqlite_connection):
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     node_storage.initialize()  # re-initialize
-    verify_all_db_tables_exist(node_storage.db_conn)
+    verify_all_db_tables_exist(sqlite_connection)
 
 
-def test_storage_store_node_metadata():
+def test_storage_store_node_metadata(sqlite_connection):
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     node = create_specific_mock_node()
@@ -57,7 +68,7 @@ def test_storage_store_node_metadata():
     # Store node data
     node_storage.store_node_metadata(node=node)
 
-    result = node_storage.db_conn.execute(f"SELECT * FROM {CrawlerNodeStorage.NODE_DB_NAME}").fetchall()
+    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerNodeStorage.NODE_DB_NAME}").fetchall()
     assert len(result) == 1
     for row in result:
         verify_mock_node_matches(node, row)
@@ -69,21 +80,21 @@ def test_storage_store_node_metadata():
 
     # ensure same item gets updated
     node_storage.store_node_metadata(node=updated_node)
-    result = node_storage.db_conn.execute(f"SELECT * FROM {CrawlerNodeStorage.NODE_DB_NAME}").fetchall()
+    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerNodeStorage.NODE_DB_NAME}").fetchall()
     assert len(result) == 1  # node data is updated not added
     for row in result:
         verify_mock_node_matches(updated_node, row)
 
 
-def test_storage_store_state_metadata():
+def test_storage_store_state_metadata(sqlite_connection):
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     state = create_specific_mock_state()
 
     # Store state data
-    node_storage.store_state_metadata(state=FleetStateTracker.abridged_state_details(state))
+    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(state))
 
-    result = node_storage.db_conn.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME}").fetchall()
+    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME}").fetchall()
     assert len(result) == 1
     for row in result:
         verify_mock_state_matches_row(state, row)
@@ -94,28 +105,28 @@ def test_storage_store_state_metadata():
     new_color_hex = '4F3D21'
     symbol = '%'
     updated_state = create_specific_mock_state(updated=new_now, color=new_color, color_hex=new_color_hex, symbol=symbol)
-    node_storage.store_state_metadata(state=FleetStateTracker.abridged_state_details(updated_state))
+    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(updated_state))
 
     # ensure same item gets updated
-    result = node_storage.db_conn.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME}").fetchall()
+    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME}").fetchall()
     assert len(result) == 1  # state data is updated not added
     for row in result:
         verify_mock_state_matches_row(updated_state, row)
 
 
-def test_storage_store_current_retrieval():
+def test_storage_store_current_retrieval(sqlite_connection):
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     teacher_checksum = '0x123456789'
     node_storage.store_current_teacher(teacher_checksum=teacher_checksum)
     # check current teacher
-    verify_current_teacher(node_storage.db_conn, teacher_checksum)
+    verify_current_teacher(sqlite_connection, teacher_checksum)
 
     # update current teacher
     updated_teacher_checksum = '0x987654321'
     node_storage.store_current_teacher(teacher_checksum=updated_teacher_checksum)
     # check current teacher
-    verify_current_teacher(node_storage.db_conn, updated_teacher_checksum)
+    verify_current_teacher(sqlite_connection, updated_teacher_checksum)
 
 
 def test_storage_deletion(tempfile_path):
@@ -127,30 +138,30 @@ def test_storage_deletion(tempfile_path):
     assert not os.path.exists(tempfile_path)  # db file deleted
 
 
-def test_storage_db_clear():
+def test_storage_db_clear(sqlite_connection):
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
-    verify_all_db_tables_exist(node_storage.db_conn)
+    verify_all_db_tables_exist(sqlite_connection)
 
     # store some data
     node = create_random_mock_node()
     node_storage.store_node_metadata(node=node)
 
     state = create_specific_mock_state()
-    node_storage.store_state_metadata(state=FleetStateTracker.abridged_state_details(state))
+    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(state))
 
     teacher_checksum = '0x123456789'
     node_storage.store_current_teacher(teacher_checksum)
 
-    verify_all_db_tables(node_storage.db_conn, expect_empty=False)
+    verify_all_db_tables(sqlite_connection, expect_empty=False)
 
     # clear tables
     node_storage.clear()
 
     # db tables should have been cleared
-    verify_all_db_tables(node_storage.db_conn, expect_empty=True)
+    verify_all_db_tables(sqlite_connection, expect_empty=True)
 
 
-def test_storage_db_clear_only_metadata_not_certificates():
+def test_storage_db_clear_only_metadata_not_certificates(sqlite_connection):
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     # store some data
@@ -158,21 +169,21 @@ def test_storage_db_clear_only_metadata_not_certificates():
     node_storage.store_node_metadata(node=node)
 
     state = create_specific_mock_state()
-    node_storage.store_state_metadata(state=FleetStateTracker.abridged_state_details(state))
+    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(state))
 
     teacher_checksum = '0x123456789'
     node_storage.store_current_teacher(teacher_checksum)
 
-    verify_all_db_tables(node_storage.db_conn, expect_empty=False)
+    verify_all_db_tables(sqlite_connection, expect_empty=False)
 
     # clear metadata tables
     node_storage.clear(metadata=True, certificates=False)
 
     # db tables should have been cleared
-    verify_all_db_tables(node_storage.db_conn, expect_empty=True)
+    verify_all_db_tables(sqlite_connection, expect_empty=True)
 
 
-def test_storage_db_clear_not_metadata():
+def test_storage_db_clear_not_metadata(sqlite_connection):
     node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
 
     # store some data
@@ -180,38 +191,29 @@ def test_storage_db_clear_not_metadata():
     node_storage.store_node_metadata(node=node)
 
     state = create_specific_mock_state()
-    node_storage.store_state_metadata(state=FleetStateTracker.abridged_state_details(state))
+    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(state))
 
     teacher_checksum = '0x123456789'
     node_storage.store_current_teacher(teacher_checksum)
 
-    verify_all_db_tables(node_storage.db_conn, expect_empty=False)
+    verify_all_db_tables(sqlite_connection, expect_empty=False)
 
     # only clear certificates data
     node_storage.clear(metadata=False, certificates=True)
 
     # db tables should not have been cleared
-    verify_all_db_tables(node_storage.db_conn, expect_empty=False)
+    verify_all_db_tables(sqlite_connection, expect_empty=False)
 
 
 #
 # Crawler tests.
 #
 
-def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH, dont_set_teacher: bool = False):
+def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH):
     registry = InMemoryContractRegistry()
     middleware = RestMiddleware()
-    teacher_nodes = None
-    if not dont_set_teacher:
-        teacher_nodes = actions.load_seednodes(None,  # TODO: Needs emitter
-                                               min_stake=0,
-                                               federated_only=False,
-                                               network_domains={'gemini'},  # TODO: Needs Cleanup
-                                               network_middleware=middleware)
-
-    crawler = Crawler(domains={'goerli'},  # TODO: Needs Cleanup
+    crawler = Crawler(domain='ibex',  # TODO: Needs Cleanup
                       network_middleware=middleware,
-                      known_nodes=teacher_nodes,
                       registry=registry,
                       start_learning_now=True,
                       learn_on_same_thread=False,
@@ -242,7 +244,7 @@ def test_crawler_init(get_agent, get_economics):
     token_economics = StandardTokenEconomics()
     get_economics.return_value = token_economics
 
-    crawler = create_crawler(dont_set_teacher=True)
+    crawler = create_crawler()
 
     # crawler not yet started
     assert not crawler.is_running
@@ -261,7 +263,7 @@ def test_crawler_stop_before_start(new_influx_db, get_agent, get_economics):
     token_economics = StandardTokenEconomics()
     get_economics.return_value = token_economics
 
-    crawler = create_crawler(dont_set_teacher=True)
+    crawler = create_crawler()
 
     crawler.stop()
 
@@ -280,7 +282,7 @@ def test_crawler_start_then_stop(new_influx_db, get_agent):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler(dont_set_teacher=True)
+    crawler = create_crawler()
     try:
         crawler.start()
         assert crawler.is_running
@@ -302,7 +304,7 @@ def test_crawler_start_no_influx_db_connection(get_agent, get_economics):
     token_economics = StandardTokenEconomics()
     get_economics.return_value = token_economics
 
-    crawler = create_crawler(dont_set_teacher=True)
+    crawler = create_crawler()
     try:
         with pytest.raises(ConnectionError):
             crawler.start()
@@ -323,7 +325,7 @@ def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler(dont_set_teacher=True)
+    crawler = create_crawler()
     try:
         crawler.start()
         assert crawler.is_running
@@ -354,7 +356,7 @@ def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler(dont_set_teacher=True)
+    crawler = create_crawler()
     try:
         crawler.start()
         assert crawler.is_running
@@ -382,7 +384,7 @@ def test_crawler_learn_no_teacher(new_influx_db, get_agent, tempfile_path):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler(node_db_filepath=tempfile_path, dont_set_teacher=True)
+    crawler = create_crawler(node_db_filepath=tempfile_path)
     node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     try:
         crawler.start()

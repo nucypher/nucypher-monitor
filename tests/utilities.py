@@ -10,7 +10,7 @@ from eth_utils.address import to_checksum_address
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.registry import BaseContractRegistry
-from nucypher.datastore.keypairs import HostingKeypair
+from nucypher.crypto.keypairs import HostingKeypair
 from nucypher.network.nodes import Teacher
 
 COLORS = ['red', 'green', 'yellow', 'blue', 'black', 'brown', 'purple']

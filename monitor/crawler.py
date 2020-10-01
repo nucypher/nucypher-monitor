@@ -1,7 +1,6 @@
 import os
 import random
 import sqlite3
-import time
 from collections import defaultdict
 from typing import Tuple
 
@@ -13,6 +12,7 @@ from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
+from monitor.utils import collector, DelayedLoopingCall
 from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
@@ -27,12 +27,10 @@ from nucypher.blockchain.eth.token import StakeList, NU
 from nucypher.blockchain.eth.utils import datetime_at_period, datetime_to_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import ForgetfulNodeStorage
-from nucypher.network.nodes import FleetStateTracker, Teacher
+from nucypher.network.nodes import FleetSensor, Teacher
 from nucypher.network.nodes import Learner
-from twisted.internet import task, reactor
+from twisted.internet import reactor
 from twisted.logger import Logger
-
-from monitor.utils import collector
 
 
 class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
@@ -50,15 +48,11 @@ class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
     def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.db_filepath = db_filepath
-        self.db_conn = sqlite3.connect(self.db_filepath)
         self.init_db_tables()
 
     def __del__(self):
-        try:
-            self.db_conn.close()
-        finally:
-            if os.path.exists(self.db_filepath):
-                os.remove(self.db_filepath)
+        if os.path.exists(self.db_filepath):
+            os.remove(self.db_filepath)
 
     def store_node_metadata(self, node, filepath: str = None):
         self.__write_node_metadata(node)
@@ -72,33 +66,32 @@ class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
                ) -> Tuple[bool, str]:
 
         if metadata is True:
-            with self.db_conn:
-                self.db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME} WHERE staker_address='{checksum_address}'")
+            with sqlite3.connect(self.db_filepath) as db_conn:
+                db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME} WHERE staker_address='{checksum_address}'")
 
         return super().remove(checksum_address=checksum_address, metadata=metadata, certificate=certificate)
 
     def clear(self, metadata: bool = True, certificates: bool = True) -> None:
         if metadata is True:
-            with self.db_conn:
-                self.db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME}")
+            with sqlite3.connect(self.db_filepath) as db_conn:
+                db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME}")
 
         super().clear(metadata=metadata, certificates=certificates)
 
     def initialize(self) -> bool:
         if os.path.exists(self.db_filepath):
             os.remove(self.db_filepath)
-        self.db_conn = sqlite3.connect(self.db_filepath)
         self.init_db_tables()
         return super().initialize()
 
     def init_db_tables(self):
-        with self.db_conn:
+        with sqlite3.connect(self.db_filepath) as db_conn:
             # ensure tables are empty
-            self.db_conn.execute(f"DROP TABLE IF EXISTS {self.NODE_DB_NAME}")
+            db_conn.execute(f"DROP TABLE IF EXISTS {self.NODE_DB_NAME}")
 
             # create fresh new node table (same column names as FleetStateTracker.abridged_nodes_details)
             node_db_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.NODE_DB_SCHEMA)
-            self.db_conn.execute(f"CREATE TABLE {self.NODE_DB_NAME} ({node_db_schema})")
+            db_conn.execute(f"CREATE TABLE {self.NODE_DB_NAME} ({node_db_schema})")
 
     def __write_node_metadata(self, node):
         node.mature()
@@ -109,8 +102,8 @@ class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
                   node_dict['timestamp'],
                   node_dict['last_seen'],
                   node_dict['fleet_state_icon'])
-        with self.db_conn:
-            self.db_conn.execute(f'REPLACE INTO {self.NODE_DB_NAME} VALUES(?,?,?,?,?,?)', db_row)
+        with sqlite3.connect(self.db_filepath) as db_conn:
+            db_conn.execute(f'REPLACE INTO {self.NODE_DB_NAME} VALUES(?,?,?,?,?,?)', db_row)
 
 
 class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
@@ -134,27 +127,27 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
         super().__init__(db_filepath=storage_filepath, federated_only=False, *args, **kwargs)
 
     def init_db_tables(self):
-        with self.db_conn:
+        with sqlite3.connect(self.db_filepath) as db_conn:
 
             # ensure table is empty
             for table in [self.STATE_DB_NAME, self.TEACHER_DB_NAME]:
-                self.db_conn.execute(f"DROP TABLE IF EXISTS {table}")
+                db_conn.execute(f"DROP TABLE IF EXISTS {table}")
 
             # create fresh new state table (same column names as FleetStateTracker.abridged_state_details)
             state_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.STATE_DB_SCHEMA)
-            self.db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} ({state_schema})")
+            db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} ({state_schema})")
 
             # create new teacher table
             teacher_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.TEACHER_DB_SCHEMA)
-            self.db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} ({teacher_schema})")
+            db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} ({teacher_schema})")
         super().init_db_tables()
 
     def clear(self, metadata: bool = True, certificates: bool = True) -> None:
         if metadata is True:
-            with self.db_conn:
+            with sqlite3.connect(self.db_filepath) as db_conn:
                 # TODO Clear the states table here?
                 for table in [self.STATE_DB_NAME, self.TEACHER_DB_NAME]:
-                    self.db_conn.execute(f"DELETE FROM {table}")
+                    db_conn.execute(f"DELETE FROM {table}")
 
         super().clear(metadata=metadata, certificates=certificates)
 
@@ -168,13 +161,13 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
                   # convert to rfc3339 for ease of sqlite3 sorting; we lose millisecond precision, but meh!
                   MayaDT.from_rfc2822(state['updated']).rfc3339())
         sql = f'REPLACE INTO {self.STATE_DB_NAME} VALUES(?,?,?,?,?)'
-        with self.db_conn:
-            self.db_conn.execute(sql, db_row)
+        with sqlite3.connect(self.db_filepath) as db_conn:
+            db_conn.execute(sql, db_row)
 
     def store_current_teacher(self, teacher_checksum: str):
         sql = f'REPLACE INTO {self.TEACHER_DB_NAME} VALUES (?,?)'
-        with self.db_conn:
-            self.db_conn.execute(sql, (self.TEACHER_ID, teacher_checksum))
+        with sqlite3.connect(self.db_filepath) as db_conn:
+            db_conn.execute(sql, (self.TEACHER_ID, teacher_checksum))
 
 
 class Crawler(Learner):
@@ -252,7 +245,8 @@ class Crawler(Learner):
         # TODO: Needs cleanup
         # Tracking
         node_storage = CrawlerNodeStorage(storage_filepath=node_storage_filepath)
-        class MonitoringTracker(FleetStateTracker):
+
+        class MonitoringTracker(FleetSensor):
             def record_fleet_state(self, *args, **kwargs):
                 new_state_or_none = super().record_fleet_state(*args, **kwargs)
                 if new_state_or_none:
@@ -261,7 +255,11 @@ class Crawler(Learner):
                     node_storage.store_state_metadata(state)
         self.tracker_class = MonitoringTracker
 
-        super().__init__(save_metadata=True, node_storage=node_storage, *args, **kwargs)
+        super().__init__(save_metadata=True,
+                         node_storage=node_storage,
+                         verify_node_bonding=False,
+                         *args, **kwargs)
+
         self.log = Logger(self.__class__.__name__)
         self.log.info(f"Storing node metadata in DB: {node_storage.db_filepath}")
         self.log.info(f"Storing blockchain metadata in DB: {influx_host}:{influx_port}")
@@ -285,9 +283,13 @@ class Crawler(Learner):
         self.__events_from_block = 0  # from the beginning
         self.__collecting_events = False
 
-        self._node_details_task = task.LoopingCall(self._learn_about_nodes)
-        self._stats_collection_task = task.LoopingCall(self._collect_stats, threaded=True)
-        self._events_collection_task = task.LoopingCall(self._collect_events)
+        self._node_details_task = DelayedLoopingCall(f=self._learn_about_nodes,
+                                                     start_delay=random.randint(2, 15))  # random staggered start
+        self._stats_collection_task = DelayedLoopingCall(f=self._collect_stats,
+                                                         threaded=True,
+                                                         start_delay=random.randint(2, 15))  # random staggered start
+        self._events_collection_task = DelayedLoopingCall(f=self._collect_events,
+                                                          start_delay=random.randint(2, 15))  # random staggered start
 
         # JSON Endpoint
         self._crawler_http_port = crawler_http_port
@@ -358,12 +360,15 @@ class Crawler(Learner):
         stakers['inactive'] = len(inactive)
         return stakers
 
-    @collector(label="Time Until Next Period")
-    def _measure_time_remaining(self) -> str:
+    @collector(label="Date/Time of Next Period")
+    def _measure_start_of_next_period(self) -> str:
+        """Returns iso8601 datetime of next period"""
         current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
-        next_period = datetime_at_period(period=current_period+1, seconds_per_period=self.economics.seconds_per_period)
-        remaining = str(next_period - maya.now())
-        return remaining
+        next_period = datetime_at_period(period=current_period+1,
+                                         seconds_per_period=self.economics.seconds_per_period,
+                                         start_of_period=True)
+
+        return next_period.iso8601()
 
     @collector(label="Known Nodes")
     def measure_known_nodes(self):
@@ -460,10 +465,12 @@ class Crawler(Learner):
         #
 
         # Time
-        block_time = self.staking_agent.blockchain.client.get_blocktime()  # epoch
+        block = self.staking_agent.blockchain.client.w3.eth.getBlock('latest')
+        block_number = block.number
+        block_time = block.timestamp # epoch
         current_period = datetime_to_period(datetime=maya.now(), seconds_per_period=self.economics.seconds_per_period)
         click.secho("✓ ... Current Period", color='blue')
-        time_remaining = self._measure_time_remaining()
+        next_period = self._measure_start_of_next_period()
 
         # Nodes
         teacher = self._crawler_client.get_current_teacher_checksum()
@@ -484,9 +491,11 @@ class Crawler(Learner):
         # Write
         #
 
-        self._stats = {'blocktime': block_time,
+        self._stats = {'blocknumber': block_number,
+                       'blocktime': block_time,
+
                        'current_period': current_period,
-                       'next_period': time_remaining,
+                       'next_period': next_period,
 
                        'prev_states': states,
                        'current_teacher': teacher,
@@ -670,14 +679,12 @@ class Crawler(Learner):
             node_learner_deferred = self._node_details_task.start(
                 interval=random.randint(int(self._refresh_rate * (1 - self.REFRESH_RATE_WINDOW)), self._refresh_rate),
                 now=eager)
-            time.sleep(random.randint(2, 10))  # random stagger start of task
             collection_deferred = self._stats_collection_task.start(
                 interval=random.randint(self._refresh_rate, int(self._refresh_rate * (1 + self.REFRESH_RATE_WINDOW))),
                 now=eager)
 
             # get known last event block
             self.__events_from_block = self._get_last_known_blocknumber()
-            time.sleep(random.randint(2, 10))  # random stagger start of task
             events_deferred = self._events_collection_task.start(interval=self._refresh_rate, now=eager)
 
             # hookup error callbacks
