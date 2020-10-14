@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "72129d145e735bdf058fff0d6e25a20d1fe7ac67b13aafa6c26fba09e18e91bd"
+            "sha256": "572aeda74e114efa3887e2f7c846b063619521243c3db4dff34b93e9d305b03f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -683,12 +683,9 @@
             "version": "==0.8.0"
         },
         "nucypher": {
-            "hashes": [
-                "sha256:602025c5a12b2667dc378ff8dadc51d268ded36846b9c4d13f8062c877b47061",
-                "sha256:defc6c0f9ebca8789fa249ca62abe310850589373e360946db1f1532bbecd625"
-            ],
-            "index": "pypi",
-            "version": "==3.0.0b4"
+            "editable": true,
+            "git": "https://github.com/derekpierre/nucypher.git",
+            "ref": "29d46f28d49141ae82928f7cba6334852d4a8ab6"
         },
         "parsimonious": {
             "hashes": [
@@ -1588,10 +1585,9 @@
         },
         "iniconfig": {
             "hashes": [
-                "sha256:80cf40c597eb564e86346103f609d74efce0f6b4d4f30ec8ce9e2c26411ba437",
-                "sha256:e5f92f89355a67de0595932a6c6c02ab4afddc6fcdc0bfc5becd0d60884d3f69"
+                "sha256:bc3af051d7d14b2ee5ef9969666def0cd1a000e121eaea580d4a313df4b37f32"
             ],
-            "version": "==1.0.1"
+            "version": "==1.1.1"
         },
         "itsdangerous": {
             "hashes": [
