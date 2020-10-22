@@ -4,9 +4,10 @@ from unittest.mock import MagicMock, patch
 import maya
 from influxdb.resultset import ResultSet
 from maya import MayaDT
+from nucypher.acumen.perception import FleetSensor
+
 from monitor.crawler import CrawlerNodeStorage, Crawler
 from monitor.db import CrawlerStorageClient, CrawlerInfluxClient
-from nucypher.acumen.perception import FleetSensor
 from tests.utilities import (
     create_random_mock_node,
     create_random_mock_state,
@@ -55,9 +56,9 @@ def test_node_client_get_node_metadata(tempfile_path):
 def test_node_client_get_state_metadata(tempfile_path):
     # Add some node data
     node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
-    state_1 = create_random_mock_state()
-    state_2 = create_random_mock_state()
-    state_3 = create_random_mock_state()
+    state_1 = create_random_mock_state(seed=1)
+    state_2 = create_random_mock_state(seed=2)
+    state_3 = create_random_mock_state(seed=3)
 
     state_list = [state_1, state_2, state_3]
     for state in state_list:
@@ -295,10 +296,10 @@ def test_blockchain_client_get_historical_work_orders(new_influx_db):
 
 
 def convert_node_to_db_row(node):
-    return (node.checksum_address, node.rest_url(), node.nickname,
+    return (node.checksum_address, node.rest_url(), str(node.nickname),
             node.timestamp.iso8601(), node.last_seen.iso8601(), "?")
 
 
 def convert_state_to_display_values(state):
-    return (state.nickname, state.metadata[0][1], state.metadata[0][0]['hex'],
-            state.metadata[0][0]['color'], state.updated.rfc2822())
+    return (str(state.nickname), state.nickname.characters[0].symbol, state.nickname.characters[0].color_hex,
+            state.nickname.characters[0].color_name, state.updated.rfc2822())

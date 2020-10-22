@@ -3,18 +3,18 @@ import sqlite3
 from unittest.mock import MagicMock, patch
 
 import maya
-import monitor
 import pytest
-from monitor.crawler import CrawlerNodeStorage, Crawler, SQLiteForgetfulNodeStorage
-from monitor.db import CrawlerStorageClient
 from nucypher.acumen.perception import FleetSensor
 from nucypher.blockchain.economics import StandardTokenEconomics
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
 from nucypher.blockchain.eth.utils import datetime_to_period
-from nucypher.cli import actions
 from nucypher.network.middleware import RestMiddleware
+
+import monitor
+from monitor.crawler import CrawlerNodeStorage, Crawler, SQLiteForgetfulNodeStorage
+from monitor.db import CrawlerStorageClient
 from tests.utilities import (
     create_random_mock_node,
     create_specific_mock_node,
@@ -101,10 +101,7 @@ def test_storage_store_state_metadata(sqlite_connection):
 
     # update state
     new_now = state.updated.add(minutes=5)
-    new_color = 'red'
-    new_color_hex = '4F3D21'
-    symbol = '%'
-    updated_state = create_specific_mock_state(updated=new_now, color=new_color, color_hex=new_color_hex, symbol=symbol)
+    updated_state = create_specific_mock_state(updated=new_now)
     node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(updated_state))
 
     # ensure same item gets updated
@@ -547,7 +544,7 @@ def verify_mock_node_matches(node, row):
 
     assert node.checksum_address == row[0], 'staker address matches'
     assert node.rest_url() == row[1], 'rest url matches'
-    assert node.nickname == row[2], 'nickname matches'
+    assert str(node.nickname) == row[2], 'nickname matches'
     assert node.timestamp.iso8601() == row[3], 'new now timestamp matches'
     assert node.last_seen.iso8601() == row[4], 'last seen matches'
     assert "?" == row[5], 'fleet state icon matches'
@@ -556,8 +553,8 @@ def verify_mock_node_matches(node, row):
 def verify_mock_state_matches_row(state, row):
     assert len(row) == 5
 
-    assert state.nickname == row[0], 'nickname matches'
-    assert state.metadata[0][1] == row[1], 'symbol matches'
-    assert state.metadata[0][0]['hex'] == row[2], 'color hex matches'
-    assert state.metadata[0][0]['color'] == row[3], 'color matches'
+    assert str(state.nickname) == row[0], 'nickname matches'
+    assert state.nickname.characters[0].symbol == row[1], 'symbol matches'
+    assert state.nickname.characters[0].color_hex == row[2], 'color hex matches'
+    assert state.nickname.characters[0].color_name == row[3], 'color matches'
     assert state.updated.rfc3339() == row[4], 'updated timestamp matches'  # ensure timestamp in rfc3339
