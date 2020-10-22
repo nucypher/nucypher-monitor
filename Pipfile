@@ -8,7 +8,7 @@ python_version = "3"
 
 [packages]
 # NuCypher
-nucypher = { git = 'https://github.com/derekpierre/nucypher.git', ref = 'monitor-main-workaround'}
+nucypher = "*"
 # Web
 requests = "*"
 flask = "*"
