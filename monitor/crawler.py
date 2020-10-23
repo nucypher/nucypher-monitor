@@ -538,9 +538,7 @@ class Crawler(Learner):
             for event_name in event_names:
                 events = [agent.contract.events[event_name]]
                 for event in events:
-                    event_filter = event.createFilter(fromBlock=from_block,
-                                                      toBlock=latest_block_number)
-                    entries = event_filter.get_all_entries()
+                    entries = event.getLogs(fromBlock=from_block, toBlock=latest_block_number)
                     for event_record in entries:
                         record = EventRecord(event_record)
                         args = ", ".join(f"{k}:{v}" for k, v in record.args.items())
