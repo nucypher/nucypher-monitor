@@ -8,7 +8,9 @@ from dash import Dash
 from dash.dependencies import Output, Input, State
 from flask import Flask, jsonify
 from maya import MayaDT
+from nucypher.acumen.nicknames import Nickname
 from nucypher.blockchain.economics import EconomicsFactory, BaseEconomics
+from nucypher.blockchain.eth.actors import Staker
 from nucypher.blockchain.eth.agents import (
     StakingEscrowAgent,
     ContractAgency,
@@ -16,8 +18,9 @@ from nucypher.blockchain.eth.agents import (
     PolicyManagerAgent,
     AdjudicatorAgent
 )
-from nucypher.blockchain.eth.registry import InMemoryContractRegistry
+from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
 from nucypher.blockchain.eth.token import NU
+from nucypher.blockchain.eth.utils import prettify_eth_amount
 from twisted.logger import Logger
 
 from monitor import layout, components, settings
@@ -69,7 +72,8 @@ class Dashboard:
         self.economics = EconomicsFactory.get_economics(registry=self.registry)
         self.add_supply_endpoint(flask_server=flask_server, economics=self.economics)
 
-        # TODO: Staker
+        # Staker Information
+        self.add_staker_endpoint(flask_server=flask_server, staking_agent=self.staking_agent, registry=self.registry)
 
         # Dash
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
@@ -122,6 +126,50 @@ class Dashboard:
             supply_information['est_circulating_supply'] = est_circulating_supply
 
             response = jsonify(supply_information)
+            return response
+
+    def add_staker_endpoint(self, flask_server: Flask, staking_agent: StakingEscrowAgent, registry: BaseContractRegistry):
+        @flask_server.route('/staker_information/<staker_address>', methods=["GET"])
+        def staker_information(staker_address):
+            # analogous to `nucypher status stakers --staking-address...`
+            staker = Staker(is_me=False, checksum_address=staker_address, registry=registry)
+
+            staker_info = dict()
+            staker_info['staker_address'] = staker_address
+
+            nickname = Nickname.from_seed(staker_address)
+            staker_info['nickname'] = str(nickname)
+
+            owned_tokens = staker.owned_tokens()
+            owned_in_nu = round(owned_tokens, 2)
+            staker_info['owned_tokens'] = str(owned_in_nu)
+
+            current_locked_tokens = round(staker.locked_tokens(periods=0), 2)
+            staker_info['staked_current_period'] = str(current_locked_tokens)
+            next_locked_tokens = round(staker.locked_tokens(periods=1), 2)
+            staker_info['staked_next_period'] = str(next_locked_tokens)
+
+            is_restaking = staker.is_restaking
+            is_winding_down = staker.is_winding_down
+            is_taking_snapshots = staker.is_taking_snapshots
+            staker_info['restake'] = is_restaking
+            staker_info['winddown'] = is_winding_down
+            staker_info['snapshots'] = is_taking_snapshots
+
+            last_committed_period = staker.last_committed_period
+            current_period = staking_agent.get_current_period()
+            missing_commitments = current_period - last_committed_period
+            staker_info['missed_commitments'] = missing_commitments
+
+            staker_info['worker_address'] = staker.worker_address
+
+            fees = prettify_eth_amount(staker.calculate_policy_fee())
+            staker_info['unclaimed_fees'] = fees
+
+            min_rate = prettify_eth_amount(staker.min_fee_rate)
+            staker_info['min_fee_rate'] = min_rate
+
+            response = jsonify(staker_info)
             return response
 
     def make_dash_app(self, flask_server: Flask, route_url: str, debug: bool = False):
