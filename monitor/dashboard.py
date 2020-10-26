@@ -99,26 +99,30 @@ class Dashboard:
             supply_information = dict()
 
             total_supply = economics.total_supply
-            initial_supply = economics.initial_supply
+            initial_supply = 1000000000
+            current_total_supply = economics.initial_supply
+            worklock_supply = economics.worklock_supply
 
             # Overview
-            supply_information['total_supply'] = str(round(NU.from_nunits(total_supply), 2))
-            supply_information['initial_supply'] = str(round(NU.from_nunits(initial_supply), 2))
-            supply_information['staking_rewards_supply'] = str(round(NU.from_nunits(total_supply - initial_supply), 2))
+            supply_information['max_supply'] = str(round(NU.from_nunits(total_supply), 2))
+            supply_information['current_total_supply'] = str(round(NU.from_nunits(current_total_supply), 2))
+            supply_information['staking_rewards_supply'] = str(round(NU.from_nunits(max_supply - current_total_supply), 2))
 
             # Allocations
-            investor_supply = (0.319 + 0.08) * initial_supply  # SAFT1, SAFT2
+            saft1_supply = 0.319 * initial_supply  # SAFT1
+            saft2_supply = 0.08 * initial_supply  # SAFT2
             team_supply = 0.106 * initial_supply  # Team
             nuco_supply = 0.2 * initial_supply  # NuCo
 
             initial_allocation = dict()
             supply_information['internal_allocations'] = initial_allocation
-            initial_allocation['investors'] = str(round(NU.from_nunits(investor_supply), 2))
+            initial_allocation['saft'] = str(round(NU.from_nunits(saft1_supply + saft2_supply), 2))
             initial_allocation['team'] = str(round(NU.from_nunits(team_supply), 2))
             initial_allocation['company'] = str(round(NU.from_nunits(nuco_supply), 2))
+            initial_allocation['worklock'] = str(round(NU.from_nunits(worklock_supply), 2))
 
             # Non-internal supply
-            est_circulating_supply = str(round(NU.from_nunits(initial_supply - investor_supply - team_supply - nuco_supply), 2))
+            est_circulating_supply = str(round(NU.from_nunits(initial_supply - saft2_supply - team_supply - nuco_supply - worklock_supply), 2))
             supply_information['est_circulating_supply'] = est_circulating_supply
 
             response = jsonify(supply_information)
