@@ -3,22 +3,12 @@ from os import path
 
 import IP2Location
 import dash_html_components as html
-import maya
 import requests
 from dash import Dash
 from dash.dependencies import Output, Input, State
-from flask import Flask
+from flask import Flask, jsonify
 from maya import MayaDT
-from monitor import layout, components, settings
-from monitor.charts import (
-    future_locked_tokens_bar_chart,
-    stakers_breakdown_pie_chart,
-    top_stakers_chart,
-    nodes_geolocation_map
-)
-from monitor.components import make_contract_row
-from monitor.crawler import Crawler
-from monitor.db import CrawlerInfluxClient
+from nucypher.blockchain.economics import EconomicsFactory, BaseEconomics
 from nucypher.blockchain.eth.agents import (
     StakingEscrowAgent,
     ContractAgency,
@@ -29,6 +19,17 @@ from nucypher.blockchain.eth.agents import (
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
 from twisted.logger import Logger
+
+from monitor import layout, components, settings
+from monitor.charts import (
+    future_locked_tokens_bar_chart,
+    stakers_breakdown_pie_chart,
+    top_stakers_chart,
+    nodes_geolocation_map
+)
+from monitor.components import make_contract_row
+from monitor.crawler import Crawler
+from monitor.db import CrawlerInfluxClient
 
 
 class Dashboard:
@@ -63,6 +64,13 @@ class Dashboard:
         self.policy_agent = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
         self.adjudicator_agent = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
 
+        # Add informational endpoints
+        # Supply
+        self.economics = EconomicsFactory.get_economics(registry=self.registry)
+        self.add_supply_endpoint(flask_server=flask_server, economics=self.economics)
+
+        # TODO: Staker
+
         # Dash
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
 
@@ -84,6 +92,37 @@ class Dashboard:
         else:
             data = json.loads(cached_stats)
         return data
+
+    def add_supply_endpoint(self, flask_server: Flask, economics: BaseEconomics):
+        @flask_server.route('/supply_information', methods=["GET"])
+        def supply_information():
+            supply_information = dict()
+
+            total_supply = economics.total_supply
+            initial_supply = economics.initial_supply
+
+            # Overview
+            supply_information['total_supply'] = str(round(NU.from_nunits(total_supply), 2))
+            supply_information['initial_supply'] = str(round(NU.from_nunits(initial_supply), 2))
+            supply_information['staking_rewards_supply'] = str(round(NU.from_nunits(total_supply - initial_supply), 2))
+
+            # Allocations
+            investor_supply = (0.319 + 0.08) * initial_supply  # SAFT1, SAFT2
+            team_supply = 0.106 * initial_supply  # Team
+            nuco_supply = 0.2 * initial_supply  # NuCo
+
+            initial_allocation = dict()
+            supply_information['internal_allocations'] = initial_allocation
+            initial_allocation['investors'] = str(round(NU.from_nunits(investor_supply), 2))
+            initial_allocation['team'] = str(round(NU.from_nunits(team_supply), 2))
+            initial_allocation['company'] = str(round(NU.from_nunits(nuco_supply), 2))
+
+            # Non-internal supply
+            est_circulating_supply = str(round(NU.from_nunits(initial_supply - investor_supply - team_supply - nuco_supply), 2))
+            supply_information['est_circulating_supply'] = est_circulating_supply
+
+            response = jsonify(supply_information)
+            return response
 
     def make_dash_app(self, flask_server: Flask, route_url: str, debug: bool = False):
         dash_app = Dash(name=__name__,
