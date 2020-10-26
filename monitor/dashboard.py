@@ -96,36 +96,36 @@ class Dashboard:
     def add_supply_endpoint(self, flask_server: Flask, economics: BaseEconomics):
         @flask_server.route('/supply_information', methods=["GET"])
         def supply_information():
-            supply_information = dict()
+            supply_info = dict()
 
-            total_supply = economics.total_supply
-            initial_supply = 1000000000
+            max_supply = economics.total_supply
+            initial_supply =  NU(1_000_000_000, 'NU').to_nunits()
             current_total_supply = economics.initial_supply
-            worklock_supply = economics.worklock_supply
 
             # Overview
-            supply_information['max_supply'] = str(round(NU.from_nunits(total_supply), 2))
-            supply_information['current_total_supply'] = str(round(NU.from_nunits(current_total_supply), 2))
-            supply_information['staking_rewards_supply'] = str(round(NU.from_nunits(max_supply - current_total_supply), 2))
+            supply_info['max_supply'] = str(round(NU.from_nunits(max_supply), 2))
+            supply_info['current_total_supply'] = str(round(NU.from_nunits(current_total_supply), 2))
+            supply_info['staking_rewards_supply'] = str(round(NU.from_nunits(max_supply - current_total_supply), 2))
 
             # Allocations
             saft1_supply = 0.319 * initial_supply  # SAFT1
             saft2_supply = 0.08 * initial_supply  # SAFT2
             team_supply = 0.106 * initial_supply  # Team
             nuco_supply = 0.2 * initial_supply  # NuCo
+            worklock_supply = economics.worklock_supply  # WorkLock
 
-            initial_allocation = dict()
-            supply_information['internal_allocations'] = initial_allocation
-            initial_allocation['saft'] = str(round(NU.from_nunits(saft1_supply + saft2_supply), 2))
-            initial_allocation['team'] = str(round(NU.from_nunits(team_supply), 2))
-            initial_allocation['company'] = str(round(NU.from_nunits(nuco_supply), 2))
-            initial_allocation['worklock'] = str(round(NU.from_nunits(worklock_supply), 2))
+            initial_allocations = dict()
+            supply_info['internal_allocations'] = initial_allocations
+            initial_allocations['saft'] = str(round(NU.from_nunits(saft1_supply + saft2_supply), 2))
+            initial_allocations['team'] = str(round(NU.from_nunits(team_supply), 2))
+            initial_allocations['company'] = str(round(NU.from_nunits(nuco_supply), 2))
+            initial_allocations['worklock'] = str(round(NU.from_nunits(worklock_supply), 2))
 
             # Non-internal supply
             est_circulating_supply = str(round(NU.from_nunits(initial_supply - saft2_supply - team_supply - nuco_supply - worklock_supply), 2))
-            supply_information['est_circulating_supply'] = est_circulating_supply
+            supply_info['est_circulating_supply'] = est_circulating_supply
 
-            response = jsonify(supply_information)
+            response = jsonify(supply_info)
             return response
 
     def make_dash_app(self, flask_server: Flask, route_url: str, debug: bool = False):
