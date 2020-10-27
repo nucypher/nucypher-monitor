@@ -6,7 +6,7 @@ import dash_html_components as html
 import requests
 from dash import Dash
 from dash.dependencies import Output, Input, State
-from flask import Flask, jsonify
+from flask import Flask
 from maya import MayaDT
 from nucypher.blockchain.economics import EconomicsFactory, BaseEconomics
 from nucypher.blockchain.eth.agents import (
@@ -30,6 +30,7 @@ from monitor.charts import (
 from monitor.components import make_contract_row
 from monitor.crawler import Crawler
 from monitor.db import CrawlerInfluxClient
+from monitor.supply import calculate_supply_information
 
 
 class Dashboard:
@@ -96,36 +97,13 @@ class Dashboard:
     def add_supply_endpoint(self, flask_server: Flask, economics: BaseEconomics):
         @flask_server.route('/supply_information', methods=["GET"])
         def supply_information():
-            supply_info = dict()
+            supply_info = calculate_supply_information(economics=economics)
 
-            max_supply = economics.total_supply
-            initial_supply =  NU(1_000_000_000, 'NU').to_nunits()
-            current_total_supply = economics.initial_supply
-
-            # Overview
-            supply_info['max_supply'] = str(round(NU.from_nunits(max_supply), 2))
-            supply_info['current_total_supply'] = str(round(NU.from_nunits(current_total_supply), 2))
-            supply_info['staking_rewards_supply'] = str(round(NU.from_nunits(max_supply - current_total_supply), 2))
-
-            # Allocations
-            saft1_supply = 0.319 * initial_supply  # SAFT1
-            saft2_supply = 0.08 * initial_supply  # SAFT2
-            team_supply = 0.106 * initial_supply  # Team
-            nuco_supply = 0.2 * initial_supply  # NuCo
-            worklock_supply = economics.worklock_supply  # WorkLock
-
-            initial_allocations = dict()
-            supply_info['internal_allocations'] = initial_allocations
-            initial_allocations['saft'] = str(round(NU.from_nunits(saft1_supply + saft2_supply), 2))
-            initial_allocations['team'] = str(round(NU.from_nunits(team_supply), 2))
-            initial_allocations['company'] = str(round(NU.from_nunits(nuco_supply), 2))
-            initial_allocations['worklock'] = str(round(NU.from_nunits(worklock_supply), 2))
-
-            # Non-internal supply
-            est_circulating_supply = str(round(NU.from_nunits(initial_supply - saft2_supply - team_supply - nuco_supply - worklock_supply), 2))
-            supply_info['est_circulating_supply'] = est_circulating_supply
-
-            response = jsonify(supply_info)
+            response = flask_server.response_class(
+                response=json.dumps(supply_info),
+                status=200,
+                mimetype='application/json'
+            )
             return response
 
     def make_dash_app(self, flask_server: Flask, route_url: str, debug: bool = False):
