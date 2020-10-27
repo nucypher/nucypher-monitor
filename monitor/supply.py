@@ -84,10 +84,10 @@ def calculate_supply_information(economics: BaseEconomics):
     saft1_supply = NU(value=(SAFT1_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit')
     unlocked_supply_info['saft1'] = str(round(saft1_supply, 2))
     unlocked_supply_info['casi'] = str(round(CASI_SUPPLY, 2))
-    other_unlocked = INITIAL_SUPPLY - total_locked_allocations - (saft1_supply + CASI_SUPPLY)
-    unlocked_supply_info['other'] = str(round(other_unlocked, 2))
+    remaining_unlocked = INITIAL_SUPPLY - total_locked_allocations - (saft1_supply + CASI_SUPPLY)
+    unlocked_supply_info['other'] = str(round(remaining_unlocked, 2))
 
-    total_unlocked_allocations = saft1_supply + CASI_SUPPLY + other_unlocked
+    total_unlocked_allocations = saft1_supply + CASI_SUPPLY + remaining_unlocked
 
     # Staking Rewards Information
     staking_rewards_info = OrderedDict()

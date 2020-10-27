@@ -66,8 +66,6 @@ def verify_supply_information(supply_information: Dict,
                               initial_supply_with_rewards: NU,
                               worklock_supply: NU,
                               future_date: MayaDT):
-    assert supply_information['max_supply'] == str(round(max_supply, 2))
-
     assert supply_information['initial_supply']['total_allocated'] == str(round(INITIAL_SUPPLY, 2))
 
     # Locked
@@ -76,25 +74,37 @@ def verify_supply_information(supply_information: Dict,
     vest_3_years_cliff = vesting_remaining_factor(vesting_months=3*12, cliff=True, now=future_date)
     vest_5_years_cliff = vesting_remaining_factor(vesting_months=5*12, cliff=True, now=future_date)
 
-    assert supply_information['initial_supply']['locked_allocations']['saft2'] == str(
-        round(NU(value=(SAFT2_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_24_months),
-                 denomination='NuNit'), 2))
-    assert supply_information['initial_supply']['locked_allocations']['team'] == str(
-        round(NU(value=(TEAM_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_24_months),
-                 denomination='NuNit'), 2))
-    assert supply_information['initial_supply']['locked_allocations']['company'] == str(
-        round(NU(value=(NUCO_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_5_years_cliff),
-                 denomination='NuNit'), 2))
-    assert supply_information['initial_supply']['locked_allocations']['worklock'] == str(
-        round(NU(value=(worklock_supply.to_nunits() * vest_6_months_cliff), denomination='NuNit'), 2))
-    assert supply_information['initial_supply']['locked_allocations']['university'] == str(
-        round(NU(value=(UNIVERSITY_SUPPLY.to_nunits() * vest_3_years_cliff), denomination='NuNit'), 2))
+    saft2_supply = NU(value=(SAFT2_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_24_months),
+                      denomination='NuNit')
+    assert supply_information['initial_supply']['locked_allocations']['saft2'] == str(round(saft2_supply, 2))
+
+    team_supply = NU(value=(TEAM_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_24_months),
+                     denomination='NuNit')
+    assert supply_information['initial_supply']['locked_allocations']['team'] == str(round(team_supply, 2))
+
+    nuco_supply = NU(value=(NUCO_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_5_years_cliff),
+                     denomination='NuNit')
+    assert supply_information['initial_supply']['locked_allocations']['company'] == str(round(nuco_supply, 2))
+
+    wl_supply = NU(value=(worklock_supply.to_nunits() * vest_6_months_cliff), denomination='NuNit')
+    assert supply_information['initial_supply']['locked_allocations']['worklock'] == str(round(wl_supply, 2))
+
+    university_supply = NU(value=(UNIVERSITY_SUPPLY.to_nunits() * vest_3_years_cliff), denomination='NuNit')
+    assert supply_information['initial_supply']['locked_allocations']['university'] == str(round(university_supply, 2))
+
+    total_locked = saft2_supply + team_supply + nuco_supply + wl_supply + university_supply
 
     # Unlocked
-    assert supply_information['initial_supply']['unlocked_allocations']['saft1'] == str(
-        round(NU(value=(SAFT1_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit'), 2))
+    saft1_supply = NU(value=(SAFT1_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit')
+    assert supply_information['initial_supply']['unlocked_allocations']['saft1'] == str(round(saft1_supply, 2))
+
     assert supply_information['initial_supply']['unlocked_allocations']['casi'] == str(round(CASI_SUPPLY, 2))
-    # TODO 'other' entry
+    # TODO 'other' entry\
+
+    remaining_unlocked = INITIAL_SUPPLY - total_locked - saft1_supply - CASI_SUPPLY
+    assert supply_information['initial_supply']['unlocked_allocations']['other'] == str(round(remaining_unlocked, 2))
+
+    total_unlocked = saft1_supply + CASI_SUPPLY + remaining_unlocked
 
     # Staking Rewards
     assert supply_information['staking_rewards_supply']['total_allocated'] == str(
@@ -106,3 +116,8 @@ def verify_supply_information(supply_information: Dict,
         round(max_supply - initial_supply_with_rewards, 2)
     )
 
+    # Max Supply
+    assert supply_information['max_supply'] == str(round(max_supply, 2))
+
+    # Circulating Supply
+    assert supply_information['est_circulating_supply'] == str(round(total_unlocked, 2))
