@@ -14,10 +14,60 @@ from monitor.supply import LAUNCH_DATE, vesting_remaining_factor, DAYS_PER_MONTH
 TEST_REWARDS_PER_MONTH = NU(83_333, 'NU')
 
 
+def test_vesting_remaining_factor_24_months():
+    # 1 month later i.e. not yet vested
+    months_transpired = 1
+    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
+    assert factor == 1
+    factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
+    assert factor == ((24 - months_transpired)/24)
+
+    # 5 months later i.e. not yet vested
+    months_transpired = 5
+    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
+    assert factor == 1
+    factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
+    assert factor == ((24 - months_transpired)/24)
+
+    # 13 months later i.e. not yet vested
+    months_transpired = 13
+    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
+    assert factor == 1
+    factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
+    assert factor == ((24 - months_transpired)/24)
+
+    # 23 months later i.e. not yet vested
+    months_transpired = 23
+    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
+    assert factor == 1
+    factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
+    assert factor == ((24 - months_transpired) / 24)
+
+    # 24 months later i.e. vested
+    months_transpired = 24
+    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
+    assert factor == 0
+    factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
+    assert factor == 0
+
+    # 30 months later i.e. vested
+    months_transpired = 30
+    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
+    assert factor == 0
+    factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
+    assert factor == 0
+
+
 @pytest.mark.parametrize('months_transpired', [2, 10, 20, 33, 42, 54, 63, 79, 81, 97, 100])
 @pytest.mark.parametrize('vesting_months', [5, 10, 24, 37, 48, 72])
 def test_vesting_remaining_factor(months_transpired, vesting_months):
-    verify_vesting_reamaining_factor(vesting_months, months_transpired)
+    verify_vesting_remaining_factor(vesting_months, months_transpired)
 
 
 @pytest.mark.parametrize('months_transpired', [0, 3, 5, 11, 13, 23, 29, 31, 37, 20, 33, 42, 54, 67, 79, 83, 97, 100])
@@ -41,24 +91,16 @@ def test_supply_information(months_transpired):
                                   worklock_supply, future_date)
 
 
-def verify_vesting_reamaining_factor(vesting_months: int, months_transpired: int):
+def verify_vesting_remaining_factor(vesting_months: int, months_transpired: int):
     future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
 
     # cliff check
     factor = vesting_remaining_factor(vesting_months=vesting_months, cliff=True, now=future_date)
-    if months_transpired >= vesting_months:
-        # everything has vested
-        assert factor == 0
-    else:
-        assert factor == 1
+    assert factor == (1 if months_transpired < vesting_months else 0)  # 1 if not yet vested, 0 otherwise
 
     # non-cliff check
     factor = vesting_remaining_factor(vesting_months=vesting_months, cliff=False, now=future_date)
-    if months_transpired >= vesting_months:
-        # vesting period over
-        assert factor == 0
-    else:
-        assert factor == ((vesting_months - months_transpired) / vesting_months)
+    assert factor == ((vesting_months - months_transpired)/vesting_months if months_transpired < vesting_months else 0)
 
 
 def verify_supply_information(supply_information: Dict,
@@ -99,7 +141,6 @@ def verify_supply_information(supply_information: Dict,
     assert supply_information['initial_supply']['unlocked_allocations']['saft1'] == str(round(saft1_supply, 2))
 
     assert supply_information['initial_supply']['unlocked_allocations']['casi'] == str(round(CASI_SUPPLY, 2))
-    # TODO 'other' entry\
 
     remaining_unlocked = INITIAL_SUPPLY - total_locked - saft1_supply - CASI_SUPPLY
     assert supply_information['initial_supply']['unlocked_allocations']['other'] == str(round(remaining_unlocked, 2))
