@@ -1,4 +1,3 @@
-import math
 from collections import OrderedDict
 from typing import Union, Optional, Dict
 
@@ -19,9 +18,14 @@ NUCO_ALLOCATION_PERCENTAGE = 0.2
 NUCO_VESTING_MONTHS = 5 * 12
 WORKLOCK_VESTING_MONTHS = 6
 UNIVERSITY_VESTING_MONTHS = 3 * 12
+SAFT2_TEAM_VESTING_MONTHS = 24
 
 LAUNCH_DATE = MayaDT.from_rfc3339('2020-10-15T00:00:00.0Z')
-DAYS_PER_MONTH = 30.416  # value used in allocations
+DAYS_PER_MONTH = 30.416  # value used in csv allocations
+
+
+def months_transpired_from_launch(now: MayaDT) -> int:
+    return round((now - LAUNCH_DATE).days / DAYS_PER_MONTH)
 
 
 def vesting_remaining_factor(vesting_months: int,
@@ -34,7 +38,7 @@ def vesting_remaining_factor(vesting_months: int,
     if not now:
         now = maya.now()
 
-    months_transpired = math.floor((now - LAUNCH_DATE).days / DAYS_PER_MONTH)  # round down
+    months_transpired = months_transpired_from_launch(now)
     if cliff:
         return 1 if months_transpired < vesting_months else 0
     else:
@@ -59,13 +63,13 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     locked_allocations = OrderedDict()
     initial_supply_info['locked_allocations'] = locked_allocations
     now = maya.now()
-    vest_24_month_factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=now)
+    vest_saft2_team_factor = vesting_remaining_factor(vesting_months=SAFT2_TEAM_VESTING_MONTHS, cliff=False, now=now)
     vest_worklock_factor = vesting_remaining_factor(vesting_months=WORKLOCK_VESTING_MONTHS, cliff=True, now=now)
     vest_nuco_factor = vesting_remaining_factor(vesting_months=NUCO_VESTING_MONTHS, cliff=True, now=now)
     vest_university_factor = vesting_remaining_factor(vesting_months=UNIVERSITY_VESTING_MONTHS, cliff=True, now=now)
-    saft2_supply = NU(value=(SAFT2_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_24_month_factor),
+    saft2_supply = NU(value=(SAFT2_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_saft2_team_factor),
                       denomination='NuNit')
-    team_supply = NU(value=(TEAM_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_24_month_factor),
+    team_supply = NU(value=(TEAM_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_saft2_team_factor),
                      denomination='NuNit')
     nuco_supply = NU(value=(NUCO_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_nuco_factor),
                      denomination='NuNit')

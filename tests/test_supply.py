@@ -1,4 +1,3 @@
-import math
 from typing import Dict
 from unittest.mock import MagicMock, patch
 
@@ -9,15 +8,24 @@ from nucypher.blockchain.eth.token import NU
 
 from monitor.supply import LAUNCH_DATE, vesting_remaining_factor, DAYS_PER_MONTH, calculate_supply_information, \
     INITIAL_SUPPLY, UNIVERSITY_SUPPLY, CASI_SUPPLY, SAFT2_ALLOCATION_PERCENTAGE, TEAM_ALLOCATION_PERCENTAGE, \
-    NUCO_ALLOCATION_PERCENTAGE, SAFT1_ALLOCATION_PERCENTAGE
+    NUCO_ALLOCATION_PERCENTAGE, SAFT1_ALLOCATION_PERCENTAGE, months_transpired_from_launch
 
 TEST_REWARDS_PER_MONTH = NU(83_333, 'NU')
+
+
+def test_months_transpired():
+    # ensure months transpired match calculation used for locked periods for allocations
+    max_time_months = 5*12
+    for i in range(1, max_time_months+1):
+        lock_periods_used_in_allocation = round(i * DAYS_PER_MONTH)  # calculation used in allocations
+        months_transpired = months_transpired_from_launch(LAUNCH_DATE.add(days=lock_periods_used_in_allocation))
+        assert months_transpired == i
 
 
 def test_vesting_remaining_factor_24_months():
     # 1 month later i.e. not yet vested
     months_transpired = 1
-    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
     assert factor == 1
     factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
@@ -25,7 +33,7 @@ def test_vesting_remaining_factor_24_months():
 
     # 5 months later i.e. not yet vested
     months_transpired = 5
-    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
     assert factor == 1
     factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
@@ -33,7 +41,7 @@ def test_vesting_remaining_factor_24_months():
 
     # 13 months later i.e. not yet vested
     months_transpired = 13
-    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
     assert factor == 1
     factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
@@ -41,7 +49,7 @@ def test_vesting_remaining_factor_24_months():
 
     # 23 months later i.e. not yet vested
     months_transpired = 23
-    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
     assert factor == 1
     factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
@@ -49,7 +57,7 @@ def test_vesting_remaining_factor_24_months():
 
     # 24 months later i.e. vested
     months_transpired = 24
-    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
     assert factor == 0
     factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
@@ -57,7 +65,7 @@ def test_vesting_remaining_factor_24_months():
 
     # 30 months later i.e. vested
     months_transpired = 30
-    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     factor = vesting_remaining_factor(vesting_months=24, cliff=True, now=future_date)  # cliff
     assert factor == 0
     factor = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)  # non-cliff
@@ -84,7 +92,7 @@ def test_supply_information(months_transpired):
                           worklock_supply=worklock_supply.to_nunits(),
                           initial_supply=initial_supply_with_rewards.to_nunits())
 
-    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     with patch.object(maya, 'now', return_value=future_date):
         supply_information = calculate_supply_information(economics)
         verify_supply_information(supply_information, max_supply, initial_supply_with_rewards,
@@ -92,7 +100,7 @@ def test_supply_information(months_transpired):
 
 
 def verify_vesting_remaining_factor(vesting_months: int, months_transpired: int):
-    future_date = LAUNCH_DATE.add(days=math.ceil(months_transpired * DAYS_PER_MONTH))
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
 
     # cliff check
     factor = vesting_remaining_factor(vesting_months=vesting_months, cliff=True, now=future_date)
