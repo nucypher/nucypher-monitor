@@ -6,14 +6,20 @@ from maya import MayaDT
 from nucypher.blockchain.economics import BaseEconomics
 from nucypher.blockchain.eth.token import NU
 
-INITIAL_SUPPLY = NU(1_000_000_000, 'NU')
-UNIVERSITY_SUPPLY = NU(19_500_000, 'NU')
-CASI_SUPPLY = NU(9_000_000, 'NU')
-
 SAFT1_ALLOCATION_PERCENTAGE = 0.319
 SAFT2_ALLOCATION_PERCENTAGE = 0.08
 TEAM_ALLOCATION_PERCENTAGE = 0.106
 NUCO_ALLOCATION_PERCENTAGE = 0.2
+
+INITIAL_SUPPLY = NU(1_000_000_000, 'NU')
+
+UNIVERSITY_INITIAL_SUPPLY = NU(19_500_000, 'NU')
+SAFT2_INITIAL_SUPPLY = NU(value=(SAFT2_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit')
+TEAM_INITIAL_SUPPLY = NU(value=(TEAM_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit')
+NUCO_INITIAL_SUPPLY = NU(value=(NUCO_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit')
+
+SAFT1_SUPPLY = NU(value=(SAFT1_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit')
+CASI_SUPPLY = NU(9_000_000, 'NU')
 
 NUCO_VESTING_MONTHS = 5 * 12
 WORKLOCK_VESTING_MONTHS = 6
@@ -24,7 +30,7 @@ LAUNCH_DATE = MayaDT.from_rfc3339('2020-10-15T00:00:00.0Z')
 DAYS_PER_MONTH = 30.416  # value used in csv allocations
 
 
-def months_transpired_from_launch(now: MayaDT) -> int:
+def months_transpired_since_launch(now: MayaDT) -> int:
     return round((now - LAUNCH_DATE).days / DAYS_PER_MONTH)
 
 
@@ -38,7 +44,7 @@ def vesting_remaining_factor(vesting_months: int,
     if not now:
         now = maya.now()
 
-    months_transpired = months_transpired_from_launch(now)
+    months_transpired = months_transpired_since_launch(now)
     if cliff:
         return 1 if months_transpired < vesting_months else 0
     else:
@@ -67,33 +73,43 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     vest_worklock_factor = vesting_remaining_factor(vesting_months=WORKLOCK_VESTING_MONTHS, cliff=True, now=now)
     vest_nuco_factor = vesting_remaining_factor(vesting_months=NUCO_VESTING_MONTHS, cliff=True, now=now)
     vest_university_factor = vesting_remaining_factor(vesting_months=UNIVERSITY_VESTING_MONTHS, cliff=True, now=now)
-    saft2_supply = NU(value=(SAFT2_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_saft2_team_factor),
-                      denomination='NuNit')
-    team_supply = NU(value=(TEAM_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_saft2_team_factor),
-                     denomination='NuNit')
-    nuco_supply = NU(value=(NUCO_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits() * vest_nuco_factor),
-                     denomination='NuNit')
-    worklock_supply = NU(value=(economics.worklock_supply * vest_worklock_factor), denomination='NuNit')
-    university_supply = NU(value=(UNIVERSITY_SUPPLY.to_nunits() * vest_university_factor), denomination='NuNit')
+    vested_nu = NU(0, 'NU')
 
-    locked_allocations['saft2'] = str(round(saft2_supply, 2))
-    locked_allocations['team'] = str(round(team_supply, 2))
-    locked_allocations['company'] = str(round(nuco_supply, 2))
-    locked_allocations['worklock'] = str(round(worklock_supply, 2))
-    locked_allocations['university'] = str(round(university_supply, 2))
+    saft2_locked_supply = NU(value=(SAFT2_INITIAL_SUPPLY.to_nunits() * vest_saft2_team_factor), denomination='NuNit')
+    vested_nu += (SAFT2_INITIAL_SUPPLY - saft2_locked_supply)
 
-    total_locked_allocations = saft2_supply + team_supply + nuco_supply + worklock_supply + university_supply
+    team_locked_supply = NU(value=(TEAM_INITIAL_SUPPLY.to_nunits() * vest_saft2_team_factor), denomination='NuNit')
+    vested_nu += (TEAM_INITIAL_SUPPLY - team_locked_supply)
+
+    nuco_locked_supply = NU(value=(NUCO_INITIAL_SUPPLY.to_nunits() * vest_nuco_factor), denomination='NuNit')
+    vested_nu += (NUCO_INITIAL_SUPPLY - nuco_locked_supply)
+
+    worklock_locked_supply = NU(value=(economics.worklock_supply * vest_worklock_factor), denomination='NuNit')
+    vested_nu += NU(value=(economics.worklock_supply - worklock_locked_supply.to_nunits()), denomination='NuNit')
+
+    university_locked_supply = NU(value=(UNIVERSITY_INITIAL_SUPPLY.to_nunits() * vest_university_factor),
+                                  denomination='NuNit')
+    vested_nu += (UNIVERSITY_INITIAL_SUPPLY - university_locked_supply)
+
+    locked_allocations['saft2'] = str(round(saft2_locked_supply, 2))
+    locked_allocations['team'] = str(round(team_locked_supply, 2))
+    locked_allocations['company'] = str(round(nuco_locked_supply, 2))
+    locked_allocations['worklock'] = str(round(worklock_locked_supply, 2))
+    locked_allocations['university'] = str(round(university_locked_supply, 2))
+
+    total_locked_allocations = (saft2_locked_supply + team_locked_supply + nuco_locked_supply +
+                                worklock_locked_supply + university_locked_supply)
 
     # - Unlocked Allocations
     unlocked_supply_info = OrderedDict()
     initial_supply_info['unlocked_allocations'] = unlocked_supply_info
-    saft1_supply = NU(value=(SAFT1_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit')
-    unlocked_supply_info['saft1'] = str(round(saft1_supply, 2))
+    unlocked_supply_info['saft1'] = str(round(SAFT1_SUPPLY, 2))
     unlocked_supply_info['casi'] = str(round(CASI_SUPPLY, 2))
-    ecosystem_supply = INITIAL_SUPPLY - total_locked_allocations - (saft1_supply + CASI_SUPPLY)
+    unlocked_supply_info['vested'] = str(round(vested_nu, 2))
+    ecosystem_supply = INITIAL_SUPPLY - total_locked_allocations - (SAFT1_SUPPLY + CASI_SUPPLY + vested_nu)
     unlocked_supply_info['ecosystem'] = str(round(ecosystem_supply, 2))
 
-    total_unlocked_allocations = saft1_supply + CASI_SUPPLY + ecosystem_supply
+    total_unlocked_allocations = SAFT1_SUPPLY + CASI_SUPPLY + vested_nu + ecosystem_supply
 
     # Staking Rewards Information
     staking_rewards_info = OrderedDict()
