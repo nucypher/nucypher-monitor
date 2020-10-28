@@ -142,10 +142,10 @@ def verify_supply_information(supply_information: Dict,
 
     assert supply_information['initial_supply']['unlocked_allocations']['casi'] == str(round(CASI_SUPPLY, 2))
 
-    remaining_unlocked = INITIAL_SUPPLY - total_locked - saft1_supply - CASI_SUPPLY
-    assert supply_information['initial_supply']['unlocked_allocations']['other'] == str(round(remaining_unlocked, 2))
+    ecosystem_supply = INITIAL_SUPPLY - total_locked - saft1_supply - CASI_SUPPLY
+    assert supply_information['initial_supply']['unlocked_allocations']['ecosystem'] == str(round(ecosystem_supply, 2))
 
-    total_unlocked = saft1_supply + CASI_SUPPLY + remaining_unlocked
+    total_unlocked = saft1_supply + CASI_SUPPLY + ecosystem_supply
 
     # Staking Rewards
     assert supply_information['staking_rewards_supply']['total_allocated'] == str(

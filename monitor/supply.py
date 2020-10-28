@@ -1,6 +1,6 @@
 import math
 from collections import OrderedDict
-from typing import Union, Optional
+from typing import Union, Optional, Dict
 
 import maya
 from maya import MayaDT
@@ -9,14 +9,14 @@ from nucypher.blockchain.eth.token import NU
 
 INITIAL_SUPPLY = NU(1_000_000_000, 'NU')
 UNIVERSITY_SUPPLY = NU(19_500_000, 'NU')
-CASI_SUPPLY = NU(8_280_000, 'NU')  # TODO is this correct?
+CASI_SUPPLY = NU(9_000_000, 'NU')
 
 SAFT1_ALLOCATION_PERCENTAGE = 0.319
 SAFT2_ALLOCATION_PERCENTAGE = 0.08
 TEAM_ALLOCATION_PERCENTAGE = 0.106
 NUCO_ALLOCATION_PERCENTAGE = 0.2
 
-NUCO_VESTING_MONTHS = 5 * 12  # TODO is this correct?
+NUCO_VESTING_MONTHS = 5 * 12
 WORKLOCK_VESTING_MONTHS = 6
 UNIVERSITY_VESTING_MONTHS = 3 * 12
 
@@ -24,7 +24,9 @@ LAUNCH_DATE = MayaDT.from_rfc3339('2020-10-15T00:00:00.0Z')
 DAYS_PER_MONTH = 30.416  # value used in allocations
 
 
-def vesting_remaining_factor(vesting_months: int, cliff: bool = False, now: Optional[MayaDT] = None) -> Union[float, int]:
+def vesting_remaining_factor(vesting_months: int,
+                             cliff: bool = False,
+                             now: Optional[MayaDT] = None) -> Union[float, int]:
     """
     Calculates the remaining percentage of tokens that should still be locked relative to launch date,
     Oct 15, 2020 00:00:00 UTC, based on the provided vesting characteristics.
@@ -43,7 +45,7 @@ def vesting_remaining_factor(vesting_months: int, cliff: bool = False, now: Opti
             return (vesting_months - months_transpired) / vesting_months
 
 
-def calculate_supply_information(economics: BaseEconomics):
+def calculate_supply_information(economics: BaseEconomics) -> Dict:
     """Calculates the NU token supply information."""
     supply_info = OrderedDict()
     max_supply = NU.from_nunits(economics.total_supply)
@@ -84,10 +86,10 @@ def calculate_supply_information(economics: BaseEconomics):
     saft1_supply = NU(value=(SAFT1_ALLOCATION_PERCENTAGE * INITIAL_SUPPLY.to_nunits()), denomination='NuNit')
     unlocked_supply_info['saft1'] = str(round(saft1_supply, 2))
     unlocked_supply_info['casi'] = str(round(CASI_SUPPLY, 2))
-    remaining_unlocked = INITIAL_SUPPLY - total_locked_allocations - (saft1_supply + CASI_SUPPLY)
-    unlocked_supply_info['other'] = str(round(remaining_unlocked, 2))
+    ecosystem_supply = INITIAL_SUPPLY - total_locked_allocations - (saft1_supply + CASI_SUPPLY)
+    unlocked_supply_info['ecosystem'] = str(round(ecosystem_supply, 2))
 
-    total_unlocked_allocations = saft1_supply + CASI_SUPPLY + remaining_unlocked
+    total_unlocked_allocations = saft1_supply + CASI_SUPPLY + ecosystem_supply
 
     # Staking Rewards Information
     staking_rewards_info = OrderedDict()
