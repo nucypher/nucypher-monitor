@@ -67,8 +67,7 @@ class Dashboard:
 
         # Add informational endpoints
         # Supply
-        self.economics = EconomicsFactory.get_economics(registry=self.registry)
-        self.add_supply_endpoint(flask_server=flask_server, economics=self.economics)
+        self.add_supply_endpoint(flask_server=flask_server)
 
         # TODO: Staker
 
@@ -94,9 +93,10 @@ class Dashboard:
             data = json.loads(cached_stats)
         return data
 
-    def add_supply_endpoint(self, flask_server: Flask, economics: BaseEconomics):
+    def add_supply_endpoint(self, flask_server: Flask):
         @flask_server.route('/supply_information', methods=["GET"])
         def supply_information():
+            economics = EconomicsFactory.retrieve_from_blockchain(registry=self.registry)
             supply_info = calculate_supply_information(economics=economics)
 
             response = flask_server.response_class(
