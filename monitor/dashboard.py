@@ -3,22 +3,12 @@ from os import path
 
 import IP2Location
 import dash_html_components as html
-import maya
 import requests
 from dash import Dash
 from dash.dependencies import Output, Input, State
 from flask import Flask
 from maya import MayaDT
-from monitor import layout, components, settings
-from monitor.charts import (
-    future_locked_tokens_bar_chart,
-    stakers_breakdown_pie_chart,
-    top_stakers_chart,
-    nodes_geolocation_map
-)
-from monitor.components import make_contract_row
-from monitor.crawler import Crawler
-from monitor.db import CrawlerInfluxClient
+from nucypher.blockchain.economics import EconomicsFactory, BaseEconomics
 from nucypher.blockchain.eth.agents import (
     StakingEscrowAgent,
     ContractAgency,
@@ -29,6 +19,18 @@ from nucypher.blockchain.eth.agents import (
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
 from twisted.logger import Logger
+
+from monitor import layout, components, settings
+from monitor.charts import (
+    future_locked_tokens_bar_chart,
+    stakers_breakdown_pie_chart,
+    top_stakers_chart,
+    nodes_geolocation_map
+)
+from monitor.components import make_contract_row
+from monitor.crawler import Crawler
+from monitor.db import CrawlerInfluxClient
+from monitor.supply import calculate_supply_information
 
 
 class Dashboard:
@@ -63,6 +65,12 @@ class Dashboard:
         self.policy_agent = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
         self.adjudicator_agent = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
 
+        # Add informational endpoints
+        # Supply
+        self.add_supply_endpoint(flask_server=flask_server)
+
+        # TODO: Staker
+
         # Dash
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
 
@@ -84,6 +92,19 @@ class Dashboard:
         else:
             data = json.loads(cached_stats)
         return data
+
+    def add_supply_endpoint(self, flask_server: Flask):
+        @flask_server.route('/supply_information', methods=["GET"])
+        def supply_information():
+            economics = EconomicsFactory.retrieve_from_blockchain(registry=self.registry)
+            supply_info = calculate_supply_information(economics=economics)
+
+            response = flask_server.response_class(
+                response=json.dumps(supply_info),
+                status=200,
+                mimetype='application/json'
+            )
+            return response
 
     def make_dash_app(self, flask_server: Flask, route_url: str, debug: bool = False):
         dash_app = Dash(name=__name__,
