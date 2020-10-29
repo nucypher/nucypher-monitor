@@ -234,19 +234,19 @@ class Dashboard:
             staked = NU.from_nunits(data['global_locked_tokens'])
             return html.Div([html.H4('Staked Tokens'), html.H5(f"{staked}", id='staked-tokens-value')])
 
-        @dash_app.callback(Output('locked-stake-graph', 'children'),
-                           [Input('daily-interval', 'n_intervals')],
-                           [State('cached-crawler-stats', 'children')])
-        def stake_and_known_nodes_plot(n, latest_crawler_stats):
-            prior_periods = 30
-            data = self.verify_cached_stats(latest_crawler_stats)
-            nodes_history = self.influx_client.get_historical_num_stakers_over_range(prior_periods)
-            past_stakes = self.influx_client.get_historical_locked_tokens_over_range(prior_periods)
-            future_stakes = data['future_locked_tokens']
-            graph = future_locked_tokens_bar_chart(future_locked_tokens=future_stakes,
-                                                   past_locked_tokens=past_stakes,
-                                                   node_history=nodes_history)
-            return graph
+        # @dash_app.callback(Output('locked-stake-graph', 'children'),
+        #                    [Input('daily-interval', 'n_intervals')],
+        #                    [State('cached-crawler-stats', 'children')])
+        # def stake_and_known_nodes_plot(n, latest_crawler_stats):
+        #     prior_periods = 30
+        #     data = self.verify_cached_stats(latest_crawler_stats)
+        #     nodes_history = self.influx_client.get_historical_num_stakers_over_range(prior_periods)
+        #     past_stakes = self.influx_client.get_historical_locked_tokens_over_range(prior_periods)
+        #     future_stakes = data['future_locked_tokens']
+        #     graph = future_locked_tokens_bar_chart(future_locked_tokens=future_stakes,
+        #                                            past_locked_tokens=past_stakes,
+        #                                            node_history=nodes_history)
+        #     return graph
 
         @dash_app.callback(Output('nodes-geolocation-graph', 'children'),
                            [Input('minute-interval', 'n_intervals')],
