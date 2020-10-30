@@ -63,7 +63,7 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     # Initial Supply Information
     initial_supply_info = OrderedDict()
     supply_info['initial_supply'] = initial_supply_info
-    initial_supply_info['total_allocated'] = str(round(INITIAL_SUPPLY, 2))
+    initial_supply_info['total_allocated'] = float(round(INITIAL_SUPPLY, 2).to_tokens())
 
     # - Locked allocations
     locked_allocations = OrderedDict()
@@ -91,11 +91,11 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
                                   denomination='NuNit')
     vested_nu += (UNIVERSITY_INITIAL_SUPPLY - university_locked_supply)
 
-    locked_allocations['saft2'] = str(round(saft2_locked_supply, 2))
-    locked_allocations['team'] = str(round(team_locked_supply, 2))
-    locked_allocations['company'] = str(round(nuco_locked_supply, 2))
-    locked_allocations['worklock'] = str(round(worklock_locked_supply, 2))
-    locked_allocations['university'] = str(round(university_locked_supply, 2))
+    locked_allocations['saft2'] = float(round(saft2_locked_supply, 2).to_tokens())
+    locked_allocations['team'] = float(round(team_locked_supply, 2).to_tokens())
+    locked_allocations['company'] = float(round(nuco_locked_supply, 2).to_tokens())
+    locked_allocations['worklock'] = float(round(worklock_locked_supply, 2).to_tokens())
+    locked_allocations['university'] = float(round(university_locked_supply, 2).to_tokens())
 
     total_locked_allocations = (saft2_locked_supply + team_locked_supply + nuco_locked_supply +
                                 worklock_locked_supply + university_locked_supply)
@@ -103,28 +103,31 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     # - Unlocked Allocations
     unlocked_supply_info = OrderedDict()
     initial_supply_info['unlocked_allocations'] = unlocked_supply_info
-    unlocked_supply_info['saft1'] = str(round(SAFT1_SUPPLY, 2))
-    unlocked_supply_info['casi'] = str(round(CASI_SUPPLY, 2))
-    unlocked_supply_info['vested'] = str(round(vested_nu, 2))
+    unlocked_supply_info['saft1'] = float(round(SAFT1_SUPPLY, 2).to_tokens())
+    unlocked_supply_info['casi'] = float(round(CASI_SUPPLY, 2).to_tokens())
+    unlocked_supply_info['vested'] = float(round(vested_nu, 2).to_tokens())
     ecosystem_supply = INITIAL_SUPPLY - total_locked_allocations - (SAFT1_SUPPLY + CASI_SUPPLY + vested_nu)
-    unlocked_supply_info['ecosystem'] = str(round(ecosystem_supply, 2))
+    unlocked_supply_info['ecosystem'] = float(round(ecosystem_supply, 2).to_tokens())
 
     total_unlocked_allocations = SAFT1_SUPPLY + CASI_SUPPLY + vested_nu + ecosystem_supply
 
     # Staking Rewards Information
     staking_rewards_info = OrderedDict()
     supply_info['staking_rewards_supply'] = staking_rewards_info
-    initial_supply_with_rewards = economics.initial_supply  # economics.initial_supply includes issued rewards
-    staking_rewards_remaining = NU.from_nunits(max_supply.to_nunits() - initial_supply_with_rewards)
-    staking_rewards_issued = NU.from_nunits(initial_supply_with_rewards - INITIAL_SUPPLY.to_nunits())
+    initial_supply_with_rewards = NU.from_nunits(economics.initial_supply)  # economics value includes issued rewards
+    staking_rewards_remaining = max_supply - initial_supply_with_rewards
+    staking_rewards_issued = initial_supply_with_rewards - INITIAL_SUPPLY
     staking_rewards_total_allocated = staking_rewards_remaining + staking_rewards_issued
-    staking_rewards_info['total_allocated'] = str(round(staking_rewards_total_allocated, 2))
-    staking_rewards_info['staking_rewards_issued'] = str(round(staking_rewards_issued, 2))
-    staking_rewards_info['staking_rewards_remaining'] = str(round(staking_rewards_remaining, 2))
+    staking_rewards_info['total_allocated'] = float(round(staking_rewards_total_allocated, 2).to_tokens())
+    staking_rewards_info['staking_rewards_issued'] = float(round(staking_rewards_issued, 2).to_tokens())
+    staking_rewards_info['staking_rewards_remaining'] = float(round(staking_rewards_remaining, 2).to_tokens())
 
     # Max Supply
-    supply_info['max_supply'] = str(round(max_supply, 2))
+    supply_info['max_supply'] = float(round(max_supply, 2).to_tokens())
+
+    # Current Total Supply
+    supply_info['current_total_supply'] = float(round(initial_supply_with_rewards, 2).to_tokens())
 
     # Est. Circulating Supply
-    supply_info['est_circulating_supply'] = str(round(total_unlocked_allocations, 2))
+    supply_info['est_circulating_supply'] = float(round(total_unlocked_allocations, 2).to_tokens())
     return supply_info
