@@ -223,6 +223,8 @@ class Crawler(Learner):
         PolicyManagerAgent: ['NodeBrokenState'],
     }
 
+    STAKER_PAGINATION_SIZE = 200
+
     def __init__(self,
                  influx_host: str,
                  influx_port: int,
@@ -341,13 +343,14 @@ class Crawler(Learner):
         period_range = range(1, periods + 1)
         token_counter = dict()
         for day in period_range:
-            tokens, stakers = self.staking_agent.get_all_active_stakers(periods=day)
+            tokens, stakers = self.staking_agent.get_all_active_stakers(periods=day,
+                                                                        pagination_size=self.STAKER_PAGINATION_SIZE)
             token_counter[day] = (float(NU.from_nunits(tokens).to_tokens()), len(stakers))
         return dict(token_counter)
 
     @collector(label="Top Stakes")
     def _measure_top_stakers(self) -> dict:
-        _, stakers = self.staking_agent.get_all_active_stakers(periods=1)
+        _, stakers = self.staking_agent.get_all_active_stakers(periods=1, pagination_size=self.STAKER_PAGINATION_SIZE)
         data = dict(sorted(stakers.items(), key=lambda s: s[1], reverse=True))
         return data
 
@@ -481,7 +484,7 @@ class Crawler(Learner):
         activity = self._measure_staker_activity()
 
         # Stake
-        future_locked_tokens = self._measure_future_locked_tokens()
+        #future_locked_tokens = self._measure_future_locked_tokens()
         global_locked_tokens = self.staking_agent.get_global_locked_tokens()
         click.secho("✓ ... Global Network Locked Tokens", color='blue')
 
@@ -504,7 +507,7 @@ class Crawler(Learner):
                        'node_details': known_nodes,
 
                        'global_locked_tokens': global_locked_tokens,
-                       'future_locked_tokens': future_locked_tokens,
+                       #'future_locked_tokens': future_locked_tokens,
                        'top_stakers': top_stakers,
                        }
         done = maya.now()
@@ -522,7 +525,6 @@ class Crawler(Learner):
                 return
             return reactor.callInThread(self._collect_events, threaded=False)
         self.__collecting_events = True
-
 
         blockchain_client = self.staking_agent.blockchain.client
         latest_block_number = blockchain_client.block_number

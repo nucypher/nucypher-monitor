@@ -51,7 +51,7 @@ GRAPHS = html.Div([
             # html.Div(id='prev-work-orders-graph'),  # TODO
             html.Div(id='nodes-geolocation-graph'),
             html.Div(id='top-stakers-graph'),
-            html.Div(id='locked-stake-graph'),
+            #html.Div(id='locked-stake-graph'),
             html.Div(id='prev-states'),
         ], id='widgets')
 
