@@ -223,6 +223,8 @@ class Crawler(Learner):
         PolicyManagerAgent: ['NodeBrokenState'],
     }
 
+    STAKER_PAGINATION_SIZE = 200
+
     def __init__(self,
                  influx_host: str,
                  influx_port: int,
@@ -341,13 +343,14 @@ class Crawler(Learner):
         period_range = range(1, periods + 1)
         token_counter = dict()
         for day in period_range:
-            tokens, stakers = self.staking_agent.get_all_active_stakers(periods=day, pagination_size=200)
+            tokens, stakers = self.staking_agent.get_all_active_stakers(periods=day,
+                                                                        pagination_size=self.STAKER_PAGINATION_SIZE)
             token_counter[day] = (float(NU.from_nunits(tokens).to_tokens()), len(stakers))
         return dict(token_counter)
 
     @collector(label="Top Stakes")
     def _measure_top_stakers(self) -> dict:
-        _, stakers = self.staking_agent.get_all_active_stakers(periods=1, pagination_size=200)
+        _, stakers = self.staking_agent.get_all_active_stakers(periods=1, pagination_size=self.STAKER_PAGINATION_SIZE)
         data = dict(sorted(stakers.items(), key=lambda s: s[1], reverse=True))
         return data
 
