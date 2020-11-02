@@ -17,11 +17,24 @@ TEST_REWARDS_PER_MONTH = NU(83_333, 'NU')
 
 def test_months_transpired():
     # ensure months transpired match calculation used for locked periods for allocations
-    max_locked_months = 5*12
+    max_locked_months = 5*12  # 5 years of time
     for i in range(1, max_locked_months+1):
         lock_periods_used_in_allocation = round(i * DAYS_PER_MONTH)  # calculation used in allocations
         months_transpired = months_transpired_since_launch(LAUNCH_DATE.add(days=lock_periods_used_in_allocation))
-        assert months_transpired == i  # ensure that calculation of months matches calculation used for locked periods
+        # ensure that calculation of months matches calculation used for locked periods
+        assert months_transpired == i, f"{i} months transpired"
+
+
+def test_months_transpired_rounding_days():
+    # ensure months transpired match calculation used for locked periods for allocations
+    max_locked_months = 5*12  # 5 years of time
+    for i in range(1, max_locked_months+1):
+        for j in range(1, 30):
+            # each day within month
+            lock_periods_used_in_allocation = round(i * DAYS_PER_MONTH) + j  # calculation used in allocations
+            months_transpired = months_transpired_since_launch(LAUNCH_DATE.add(days=lock_periods_used_in_allocation))
+            # ensure that calculation of months matches calculation used for locked periods
+            assert months_transpired == i, f"{i} months {j} days transpired"
 
 
 def test_vesting_remaining_factor_24_months():

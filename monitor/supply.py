@@ -1,3 +1,4 @@
+import math
 from collections import OrderedDict
 from typing import Union, Optional, Dict
 
@@ -31,7 +32,27 @@ DAYS_PER_MONTH = 30.416  # value used in csv allocations
 
 
 def months_transpired_since_launch(now: MayaDT) -> int:
-    return round((now - LAUNCH_DATE).days / DAYS_PER_MONTH)
+    """
+    Determines the number of months transpired since the launch date, Oct 15, 2020 00:00:00 UTC, based on how
+    monthly durations were calculated when allocations were distributed.
+    """
+    days_transpired = (now - LAUNCH_DATE).days
+    months_transpired = days_transpired / DAYS_PER_MONTH
+    months_transpired_floor = math.floor(months_transpired)
+    months_transpired_round = round(months_transpired)
+    if months_transpired_floor == months_transpired_round:
+        # same value so life is easy i.e. round function rounded down
+        return months_transpired_round
+    else:
+        # round function rounded up - we are somewhere in duration between floor and ceil
+        # calculation done during allocation
+        rounded_up_months_min_duration_days = round(months_transpired_round * DAYS_PER_MONTH)
+
+        if rounded_up_months_min_duration_days <= days_transpired:
+            return months_transpired_round
+        else:
+            # required days not yet surpassed for subsequent month - use floor value
+            return months_transpired_floor
 
 
 def vesting_remaining_factor(vesting_months: int,
