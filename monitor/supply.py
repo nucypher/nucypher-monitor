@@ -38,21 +38,16 @@ def months_transpired_since_launch(now: MayaDT) -> int:
     """
     days_transpired = (now - LAUNCH_DATE).days
     months_transpired = days_transpired / DAYS_PER_MONTH
-    months_transpired_floor = math.floor(months_transpired)
-    months_transpired_round = round(months_transpired)
-    if months_transpired_floor == months_transpired_round:
-        # same value so life is easy i.e. round function rounded down
-        return months_transpired_round
-    else:
-        # round function rounded up - we are somewhere in duration between floor and ceil
-        # calculation done during allocation
-        rounded_up_months_min_duration_days = round(months_transpired_round * DAYS_PER_MONTH)
 
-        if rounded_up_months_min_duration_days <= days_transpired:
-            return months_transpired_round
-        else:
-            # required days not yet surpassed for subsequent month - use floor value
-            return months_transpired_floor
+    months_transpired_ceil = math.ceil(months_transpired)
+    # calculation of vesting days (based on months) done during allocation
+    rounded_up_months_min_duration_days = round(months_transpired_ceil * DAYS_PER_MONTH)
+
+    if rounded_up_months_min_duration_days <= days_transpired:
+        return months_transpired_ceil
+    else:
+        # required days not yet surpassed for subsequent month - use floor value
+        return math.floor(months_transpired)
 
 
 def vesting_remaining_factor(vesting_months: int,
