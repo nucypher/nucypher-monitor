@@ -27,14 +27,19 @@ def test_months_transpired():
 
 def test_months_transpired_rounding_days():
     # ensure months transpired match calculation used for locked periods for allocations
-    max_locked_months = 5*12  # 5 years of time
-    for i in range(1, max_locked_months+1):
-        for j in range(1, 30):
-            # each day within month
-            lock_periods_used_in_allocation = round(i * DAYS_PER_MONTH) + j  # calculation used in allocations
-            months_transpired = months_transpired_since_launch(LAUNCH_DATE.add(days=lock_periods_used_in_allocation))
-            # ensure that calculation of months matches calculation used for locked periods
-            assert months_transpired == i, f"{i} months {j} days transpired"
+    max_locked_days = 6 * 365  # each day for 6 years (extra time for solid test)
+    current_expected_months_transpired = 0
+    next_expected_month_days_transpired = round(1 * DAYS_PER_MONTH)  # same as allocation calc
+    for days_transpired in range(1, max_locked_days+1):
+        months_transpired = months_transpired_since_launch(LAUNCH_DATE.add(days=days_transpired))
+        if days_transpired < next_expected_month_days_transpired:
+            assert months_transpired == current_expected_months_transpired, f"{days_transpired} days transpired"
+        else:
+            # we've transitioned to the next month
+            current_expected_months_transpired += 1
+            assert months_transpired == current_expected_months_transpired, f"{days_transpired} days transpired"
+            # same as allocation calc
+            next_expected_month_days_transpired = round((current_expected_months_transpired+1) * DAYS_PER_MONTH)
 
 
 def test_vesting_remaining_factor_24_months():
