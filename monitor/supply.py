@@ -79,7 +79,7 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     # Initial Supply Information
     initial_supply_info = OrderedDict()
     supply_info['initial_supply'] = initial_supply_info
-    initial_supply_info['total_allocated'] = float(round(INITIAL_SUPPLY, 2).to_tokens())
+    initial_supply_info['total_allocated'] = float(INITIAL_SUPPLY.to_tokens())
 
     # - Locked allocations
     locked_allocations = OrderedDict()
@@ -107,11 +107,11 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
                                   denomination='NuNit')
     vested_nu += (UNIVERSITY_INITIAL_SUPPLY - university_locked_supply)
 
-    locked_allocations['saft2'] = float(round(saft2_locked_supply, 2).to_tokens())
-    locked_allocations['team'] = float(round(team_locked_supply, 2).to_tokens())
-    locked_allocations['company'] = float(round(nuco_locked_supply, 2).to_tokens())
-    locked_allocations['worklock'] = float(round(worklock_locked_supply, 2).to_tokens())
-    locked_allocations['university'] = float(round(university_locked_supply, 2).to_tokens())
+    locked_allocations['saft2'] = float(saft2_locked_supply.to_tokens())
+    locked_allocations['team'] = float(team_locked_supply.to_tokens())
+    locked_allocations['company'] = float(nuco_locked_supply.to_tokens())
+    locked_allocations['worklock'] = float(worklock_locked_supply.to_tokens())
+    locked_allocations['university'] = float(university_locked_supply.to_tokens())
 
     total_locked_allocations = (saft2_locked_supply + team_locked_supply + nuco_locked_supply +
                                 worklock_locked_supply + university_locked_supply)
@@ -119,11 +119,11 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     # - Unlocked Allocations
     unlocked_supply_info = OrderedDict()
     initial_supply_info['unlocked_allocations'] = unlocked_supply_info
-    unlocked_supply_info['saft1'] = float(round(SAFT1_SUPPLY, 2).to_tokens())
-    unlocked_supply_info['casi'] = float(round(CASI_SUPPLY, 2).to_tokens())
-    unlocked_supply_info['vested'] = float(round(vested_nu, 2).to_tokens())
+    unlocked_supply_info['saft1'] = float(SAFT1_SUPPLY.to_tokens())
+    unlocked_supply_info['casi'] = float(CASI_SUPPLY.to_tokens())
+    unlocked_supply_info['vested'] = float(vested_nu.to_tokens())
     ecosystem_supply = INITIAL_SUPPLY - total_locked_allocations - (SAFT1_SUPPLY + CASI_SUPPLY + vested_nu)
-    unlocked_supply_info['ecosystem'] = float(round(ecosystem_supply, 2).to_tokens())
+    unlocked_supply_info['ecosystem'] = float(ecosystem_supply.to_tokens())
 
     total_unlocked_allocations = SAFT1_SUPPLY + CASI_SUPPLY + vested_nu + ecosystem_supply
 
@@ -134,16 +134,27 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     staking_rewards_remaining = max_supply - initial_supply_with_rewards
     staking_rewards_issued = initial_supply_with_rewards - INITIAL_SUPPLY
     staking_rewards_total_allocated = staking_rewards_remaining + staking_rewards_issued
-    staking_rewards_info['total_allocated'] = float(round(staking_rewards_total_allocated, 2).to_tokens())
-    staking_rewards_info['staking_rewards_issued'] = float(round(staking_rewards_issued, 2).to_tokens())
-    staking_rewards_info['staking_rewards_remaining'] = float(round(staking_rewards_remaining, 2).to_tokens())
+    staking_rewards_info['total_allocated'] = float(staking_rewards_total_allocated.to_tokens())
+    staking_rewards_info['staking_rewards_issued'] = float(staking_rewards_issued.to_tokens())
+    staking_rewards_info['staking_rewards_remaining'] = float(staking_rewards_remaining.to_tokens())
 
     # Max Supply
-    supply_info['max_supply'] = float(round(max_supply, 2).to_tokens())
+    supply_info['max_supply'] = float(max_supply.to_tokens())
 
     # Current Total Supply
-    supply_info['current_total_supply'] = float(round(initial_supply_with_rewards, 2).to_tokens())
+    supply_info['current_total_supply'] = float(initial_supply_with_rewards.to_tokens())
 
     # Est. Circulating Supply
-    supply_info['est_circulating_supply'] = float(round(total_unlocked_allocations, 2).to_tokens())
+    supply_info['est_circulating_supply'] = float(total_unlocked_allocations.to_tokens())
     return supply_info
+
+
+def calculate_current_total_supply(economics: BaseEconomics) -> float:
+    initial_supply_with_rewards = NU.from_nunits(economics.initial_supply)  # economics value includes issued rewards
+    return float(initial_supply_with_rewards.to_tokens())
+
+
+def calculate_circulating_supply(economics: BaseEconomics) -> float:
+    supply_info = calculate_supply_information(economics)
+    circulating_supply = supply_info['est_circulating_supply']
+    return circulating_supply

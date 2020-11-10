@@ -6,9 +6,9 @@ import dash_html_components as html
 import requests
 from dash import Dash
 from dash.dependencies import Output, Input, State
-from flask import Flask
+from flask import Flask, request
 from maya import MayaDT
-from nucypher.blockchain.economics import EconomicsFactory, BaseEconomics
+from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     StakingEscrowAgent,
     ContractAgency,
@@ -22,7 +22,6 @@ from twisted.logger import Logger
 
 from monitor import layout, components, settings
 from monitor.charts import (
-    future_locked_tokens_bar_chart,
     stakers_breakdown_pie_chart,
     top_stakers_chart,
     nodes_geolocation_map
@@ -30,7 +29,7 @@ from monitor.charts import (
 from monitor.components import make_contract_row
 from monitor.crawler import Crawler
 from monitor.db import CrawlerInfluxClient
-from monitor.supply import calculate_supply_information
+from monitor.supply import calculate_supply_information, calculate_current_total_supply, calculate_circulating_supply
 
 
 class Dashboard:
@@ -97,13 +96,38 @@ class Dashboard:
         @flask_server.route('/supply_information', methods=["GET"])
         def supply_information():
             economics = EconomicsFactory.retrieve_from_blockchain(registry=self.registry)
-            supply_info = calculate_supply_information(economics=economics)
 
-            response = flask_server.response_class(
-                response=json.dumps(supply_info),
-                status=200,
-                mimetype='application/json'
-            )
+            parameter = request.args.get('q')
+            if parameter is None:
+                # no query - return all supply information
+                supply_info = calculate_supply_information(economics=economics)
+                response = flask_server.response_class(
+                    response=json.dumps(supply_info),
+                    status=200,
+                    mimetype='application/json'
+                )
+            else:
+                # specific request query provided
+                if parameter == 'current_total_supply':
+                    current_total_supply = calculate_current_total_supply(economics)
+                    response = flask_server.response_class(
+                        response=str(current_total_supply),
+                        status=200,
+                        mimetype='text/plain'
+                    )
+                elif parameter == 'est_circulating_supply':
+                    est_circulating_supply = calculate_circulating_supply(economics)
+                    response = flask_server.response_class(
+                        response=str(est_circulating_supply),
+                        status=200,
+                        mimetype='text/plain'
+                    )
+                else:
+                    response = flask_server.response_class(
+                        response=f"Unsupported supply parameter: {parameter}",
+                        status=400,
+                        mimetype='text/plain'
+                    )
             return response
 
     def make_dash_app(self, flask_server: Flask, route_url: str, debug: bool = False):

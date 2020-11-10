@@ -10,7 +10,11 @@ from nucypher.blockchain.eth.token import NU
 from monitor.supply import LAUNCH_DATE, vesting_remaining_factor, DAYS_PER_MONTH, calculate_supply_information, \
     INITIAL_SUPPLY, UNIVERSITY_INITIAL_SUPPLY, CASI_SUPPLY, months_transpired_since_launch, SAFT2_INITIAL_SUPPLY, \
     TEAM_INITIAL_SUPPLY, NUCO_INITIAL_SUPPLY, SAFT1_SUPPLY, NUCO_VESTING_MONTHS, WORKLOCK_VESTING_MONTHS, \
-    UNIVERSITY_VESTING_MONTHS, SAFT2_TEAM_VESTING_MONTHS
+    UNIVERSITY_VESTING_MONTHS, SAFT2_TEAM_VESTING_MONTHS, calculate_current_total_supply, calculate_circulating_supply
+
+# initial values
+MAX_SUPPLY = NU(3_890_000_000, 'NU')
+WORKLOCK_SUPPLY = NU(225_000_000, 'NU')
 
 TEST_REWARDS_PER_MONTH = NU(83_333, 'NU')
 
@@ -117,11 +121,11 @@ def test_supply_information_at_launch():
             }
         },
         "staking_rewards_supply": {
-            "total_allocated": 2885390081.75,
+            "total_allocated": 2885390081.7482486,
             "staking_rewards_issued": 0,
-            "staking_rewards_remaining": 2885390081.75
+            "staking_rewards_remaining": 2885390081.7482486
         },
-        "max_supply": 3885390081.75,
+        "max_supply": 3885390081.7482486,
         "current_total_supply": 1000000000,
         "est_circulating_supply": 369500000
     })
@@ -142,22 +146,19 @@ def test_supply_information_at_launch():
 @pytest.mark.parametrize('months_transpired', [0, 3, 5, 11, 13, 23, 29, 31, 37, 20, 33, 42, 54, 67, 79, 83, 97, 100])
 def test_supply_information(months_transpired):
 
-    # initial values
-    max_supply = NU(3_890_000_000, 'NU')
-    worklock_supply = NU(225_000_000, 'NU')
-
     # assume 83,333 NU / month in rewards
     initial_supply_with_rewards = INITIAL_SUPPLY + (months_transpired * TEST_REWARDS_PER_MONTH)
 
-    economics = MagicMock(total_supply=max_supply.to_nunits(),
-                          worklock_supply=worklock_supply.to_nunits(),
+    economics = MagicMock(total_supply=MAX_SUPPLY.to_nunits(),
+                          worklock_supply=WORKLOCK_SUPPLY.to_nunits(),
                           initial_supply=initial_supply_with_rewards.to_nunits())
 
     future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     with patch.object(maya, 'now', return_value=future_date):
         supply_information = calculate_supply_information(economics)
-        verify_supply_information(supply_information, max_supply, initial_supply_with_rewards,
-                                  worklock_supply, future_date)
+        verify_supply_information(supply_information, MAX_SUPPLY, initial_supply_with_rewards,
+                                  WORKLOCK_SUPPLY, future_date)
+
 
 
 def verify_vesting_remaining_factor(vesting_months: int, months_transpired: int):
@@ -177,7 +178,7 @@ def verify_supply_information(supply_information: Dict,
                               initial_supply_with_rewards: NU,
                               worklock_supply: NU,
                               future_date: MayaDT):
-    assert supply_information['initial_supply']['total_allocated'] == float(round(INITIAL_SUPPLY, 2).to_tokens())
+    assert supply_information['initial_supply']['total_allocated'] == float(INITIAL_SUPPLY.to_tokens())
 
     # Locked
     vest_24_months = vesting_remaining_factor(vesting_months=24, cliff=False, now=future_date)
@@ -189,40 +190,34 @@ def verify_supply_information(supply_information: Dict,
 
     saft2_supply = NU(value=(SAFT2_INITIAL_SUPPLY.to_nunits() * vest_24_months),
                       denomination='NuNit')
-    assert (supply_information['initial_supply']['locked_allocations']['saft2'] ==
-            float(round(saft2_supply, 2).to_tokens()))
+    assert supply_information['initial_supply']['locked_allocations']['saft2'] == float(saft2_supply.to_tokens())
     vested_nu += SAFT2_INITIAL_SUPPLY - saft2_supply
 
     team_supply = NU(value=(TEAM_INITIAL_SUPPLY.to_nunits() * vest_24_months),
                      denomination='NuNit')
-    assert (supply_information['initial_supply']['locked_allocations']['team'] ==
-            float(round(team_supply, 2).to_tokens()))
+    assert supply_information['initial_supply']['locked_allocations']['team'] == float(team_supply.to_tokens())
     vested_nu += TEAM_INITIAL_SUPPLY - team_supply
 
     nuco_supply = NU(value=(NUCO_INITIAL_SUPPLY.to_nunits() * vest_5_years_cliff),
                      denomination='NuNit')
-    assert (supply_information['initial_supply']['locked_allocations']['company'] ==
-            float(round(nuco_supply, 2).to_tokens()))
+    assert supply_information['initial_supply']['locked_allocations']['company'] == float(nuco_supply.to_tokens())
     vested_nu += NUCO_INITIAL_SUPPLY - nuco_supply
 
     wl_supply = NU(value=(worklock_supply.to_nunits() * vest_6_months_cliff), denomination='NuNit')
-    assert (supply_information['initial_supply']['locked_allocations']['worklock'] ==
-            float(round(wl_supply, 2).to_tokens()))
+    assert supply_information['initial_supply']['locked_allocations']['worklock'] == float(wl_supply.to_tokens())
     vested_nu += worklock_supply - wl_supply
 
     university_supply = NU(value=(UNIVERSITY_INITIAL_SUPPLY.to_nunits() * vest_3_years_cliff), denomination='NuNit')
     assert (supply_information['initial_supply']['locked_allocations']['university'] ==
-            float(round(university_supply, 2).to_tokens()))
+            float(university_supply.to_tokens()))
     vested_nu += UNIVERSITY_INITIAL_SUPPLY - university_supply
 
     total_locked = saft2_supply + team_supply + nuco_supply + wl_supply + university_supply
 
     # Unlocked
-    assert (supply_information['initial_supply']['unlocked_allocations']['saft1'] ==
-            float(round(SAFT1_SUPPLY, 2).to_tokens()))
+    assert supply_information['initial_supply']['unlocked_allocations']['saft1'] == float(SAFT1_SUPPLY.to_tokens())
 
-    assert (supply_information['initial_supply']['unlocked_allocations']['casi'] ==
-            float(round(CASI_SUPPLY, 2).to_tokens()))
+    assert supply_information['initial_supply']['unlocked_allocations']['casi'] == float(CASI_SUPPLY.to_tokens())
 
     months_transpired = months_transpired_since_launch(now=future_date)
 
@@ -241,25 +236,55 @@ def verify_supply_information(supply_information: Dict,
                 vested_total += vesting_value
                 assert vested_nu >= vested_total  # >= vesting total
 
-    assert (supply_information['initial_supply']['unlocked_allocations']['vested'] ==
-            float(round(vested_nu, 2).to_tokens()))
+    assert supply_information['initial_supply']['unlocked_allocations']['vested'] == float(vested_nu.to_tokens())
 
     ecosystem_supply = INITIAL_SUPPLY - total_locked - SAFT1_SUPPLY - CASI_SUPPLY - vested_nu
     assert (supply_information['initial_supply']['unlocked_allocations']['ecosystem'] ==
-            float(round(ecosystem_supply, 2).to_tokens()))
+            float(ecosystem_supply.to_tokens()))
 
     total_unlocked = SAFT1_SUPPLY + CASI_SUPPLY + vested_nu + ecosystem_supply
 
     # Staking Rewards
     assert (supply_information['staking_rewards_supply']['total_allocated'] ==
-            float(round(max_supply - INITIAL_SUPPLY, 2).to_tokens()))
+            float((max_supply - INITIAL_SUPPLY).to_tokens()))
     assert (supply_information['staking_rewards_supply']['staking_rewards_issued'] ==
-            float(round(initial_supply_with_rewards - INITIAL_SUPPLY, 2).to_tokens()))
+            float((initial_supply_with_rewards - INITIAL_SUPPLY).to_tokens()))
     assert (supply_information['staking_rewards_supply']['staking_rewards_remaining'] ==
-            float(round(max_supply - initial_supply_with_rewards, 2).to_tokens()))
+            float((max_supply - initial_supply_with_rewards).to_tokens()))
 
     # Max Supply
-    assert supply_information['max_supply'] == float(round(max_supply, 2).to_tokens())
+    assert supply_information['max_supply'] == float(max_supply.to_tokens())
 
     # Circulating Supply
-    assert supply_information['est_circulating_supply'] == float(round(total_unlocked, 2).to_tokens())
+    assert supply_information['est_circulating_supply'] == float(total_unlocked.to_tokens())
+
+
+@pytest.mark.parametrize('months_transpired', [0, 3, 5])
+def test_calculate_current_total_supply(months_transpired):
+    # assume 83,333 NU / month in rewards
+    initial_supply_with_rewards = INITIAL_SUPPLY + (months_transpired * TEST_REWARDS_PER_MONTH)
+
+    economics = MagicMock(total_supply=MAX_SUPPLY.to_nunits(),
+                          worklock_supply=WORKLOCK_SUPPLY.to_nunits(),
+                          initial_supply=initial_supply_with_rewards.to_nunits())
+
+    current_total_supply = calculate_current_total_supply(economics)
+    assert current_total_supply == float(initial_supply_with_rewards.to_tokens())
+
+
+@pytest.mark.parametrize('months_transpired', [0, 29, 31, 37, 54, 67, 79, 97, 100])
+def test_calculate_circulating_supply(months_transpired):
+
+    # assume 83,333 NU / month in rewards
+    initial_supply_with_rewards = INITIAL_SUPPLY + (months_transpired * TEST_REWARDS_PER_MONTH)
+
+    economics = MagicMock(total_supply=MAX_SUPPLY.to_nunits(),
+                          worklock_supply=WORKLOCK_SUPPLY.to_nunits(),
+                          initial_supply=initial_supply_with_rewards.to_nunits())
+
+    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
+    with patch.object(maya, 'now', return_value=future_date):
+        supply_information = calculate_supply_information(economics)
+
+        est_circulating_supply = calculate_circulating_supply(economics)
+        assert supply_information['est_circulating_supply'] == est_circulating_supply
