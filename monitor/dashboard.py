@@ -143,9 +143,10 @@ class Dashboard:
         dash_app.title = settings.TITLE
         dash_app.layout = layout.BODY
 
-        @dash_app.callback(Output('header', 'children'), [Input('url', 'pathname')])  # on page-load
-        def header(pathname):
-            return components.header()
+        # TODO - not needed?
+        # @dash_app.callback(Output('header', 'children'), [Input('url', 'pathname')])  # on page-load
+        # def header(pathname):
+        #     return components.header()
 
         @dash_app.callback(Output('cached-crawler-stats', 'children'), [Input('request-interval', 'n_intervals')])
         def update_cached_stats(n_intervals):

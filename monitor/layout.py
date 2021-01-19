@@ -30,7 +30,7 @@ else:
 
 HEADER = html.Div([
     html.A(html.Img(src=LOGO_PATH, className='banner'), href='https://www.nucypher.com'),
-    html.Div(id='header'),
+    # html.Div(id='header'), TODO not needed?
     HIDDEN_BUTTONS],
     id="controls")
 
