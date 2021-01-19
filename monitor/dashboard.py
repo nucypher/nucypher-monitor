@@ -256,7 +256,7 @@ class Dashboard:
         def staked_tokens(n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
             staked = NU.from_nunits(data['global_locked_tokens'])
-            return html.Div([html.H4('Staked Tokens'), html.H5(f"{staked}", id='staked-tokens-value')])
+            return html.Div([html.H4('Staked in Current Period'), html.H5(f"{staked}", id='staked-tokens-value')])
 
         # @dash_app.callback(Output('locked-stake-graph', 'children'),
         #                    [Input('daily-interval', 'n_intervals')],
