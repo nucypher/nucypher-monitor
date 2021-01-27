@@ -48,7 +48,6 @@ def monitor():
 @click.option('--http-port', help="Crawler HTTP port for JSON endpoint", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the crawler", is_flag=True)
 @click.option('--eager', help="Start learning and scraping before starting up other services", is_flag=True, default=False)
-@click.option('--poa', help="Inject POA middleware", is_flag=True, default=None)
 def crawl(general_config,
           teacher_uri,
           registry_filepath,
@@ -60,8 +59,7 @@ def crawl(general_config,
           influx_port,
           http_port,
           dry_run,
-          eager,
-          poa,
+          eager
           ):
     """
     Gather NuCypher network information.
@@ -73,7 +71,7 @@ def crawl(general_config,
     emitter.banner(MONITOR_BANNER.format(CRAWLER))
 
     # Setup
-    BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri, poa=poa)
+    BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri)
     registry = _get_registry(registry_filepath, network)
     middleware = RestMiddleware()
 
@@ -88,7 +86,7 @@ def crawl(general_config,
 
     crawler = Crawler(domain=network if network else None,
                       network_middleware=middleware,
-                      known_nodes=[sage_node] if teacher_uri else None,
+                      known_nodes=[sage_node] if sage_node else None,
                       registry=registry,
                       start_learning_now=eager,
                       learn_on_same_thread=learn_on_launch,
@@ -120,7 +118,6 @@ def crawl(general_config,
 @click.option('--crawler-host', help="Crawler's HTTP host address", type=click.STRING, default='localhost')
 @click.option('--crawler-port', help="Crawler's HTTP port serving JSON", type=NETWORK_PORT, default=Crawler.DEFAULT_CRAWLER_HTTP_PORT)
 @click.option('--dry-run', '-x', help="Execute normally without actually starting the dashboard", is_flag=True)
-@click.option('--poa', help="Inject POA middleware", is_flag=True, default=None)
 def dashboard(general_config,
               host,
               http_port,
@@ -134,7 +131,6 @@ def dashboard(general_config,
               crawler_host,
               crawler_port,
               dry_run,
-              poa,
               ):
     """
     Run UI dashboard of NuCypher network.
@@ -146,7 +142,7 @@ def dashboard(general_config,
     emitter.banner(MONITOR_BANNER.format(DASHBOARD))
 
     # Setup
-    BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri, poa=poa)
+    BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri)
     registry = _get_registry(registry_filepath, network)
 
     #

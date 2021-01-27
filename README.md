@@ -76,8 +76,6 @@ INFO [01-29|11:06:09.048] IPC endpoint opened                      url=/home/k/.
 ```
 
 3. Run the `Crawler`
-
-    **NOTE: If using a POA network, e.g. Goerli, then the `--poa` flag should be specified**
     
 ```bash
 $ nucypher-monitor crawl --provider <YOUR_WEB3_PROVIDER_URI> --network <NETWORK NAME>
@@ -97,8 +95,6 @@ Running Nucypher Crawler JSON endpoint at http://localhost:9555/stats
 ```
 
 4. Run the `Dashboard`
-
-    **NOTE: If using a POA network, e.g. Goerli, then the `--poa` flag should be specified**
     
 ```bash
 
