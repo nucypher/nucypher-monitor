@@ -220,7 +220,6 @@ class Crawler(Learner):
     ERROR_EVENTS = {
         StakingEscrowAgent: ['Slashed'],
         AdjudicatorAgent: ['IncorrectCFragVerdict'],
-        PolicyManagerAgent: ['NodeBrokenState'],
     }
 
     STAKER_PAGINATION_SIZE = 200
