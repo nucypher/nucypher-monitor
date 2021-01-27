@@ -52,9 +52,9 @@ NODE_STATUS_URL_TEMPLATE = "https://{}/status"
 NO_CONNECTION_TO_NODE = "No Connection to Node"
 NOT_YET_CONNECTED_TO_NODE = "Not Yet Connected to Node"
 
-
-def header() -> html.Div:
-    return html.Div([html.Div(f'v{nucypher.__version__}', id='version')], className="logo-widget")
+# TODO - not needed?
+# def header() -> html.Div:
+#     return html.Div([html.Div(f'v{nucypher.__version__}', id='version')], className="logo-widget")
 
 
 def make_contract_row(network: str, agent, balance: NU = None):

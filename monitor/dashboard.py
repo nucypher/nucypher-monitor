@@ -143,9 +143,10 @@ class Dashboard:
         dash_app.title = settings.TITLE
         dash_app.layout = layout.BODY
 
-        @dash_app.callback(Output('header', 'children'), [Input('url', 'pathname')])  # on page-load
-        def header(pathname):
-            return components.header()
+        # TODO - not needed?
+        # @dash_app.callback(Output('header', 'children'), [Input('url', 'pathname')])  # on page-load
+        # def header(pathname):
+        #     return components.header()
 
         @dash_app.callback(Output('cached-crawler-stats', 'children'), [Input('request-interval', 'n_intervals')])
         def update_cached_stats(n_intervals):
@@ -256,7 +257,7 @@ class Dashboard:
         def staked_tokens(n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
             staked = NU.from_nunits(data['global_locked_tokens'])
-            return html.Div([html.H4('Staked Tokens'), html.H5(f"{staked}", id='staked-tokens-value')])
+            return html.Div([html.H4('Staked in Current Period'), html.H5(f"{staked}", id='staked-tokens-value')])
 
         # @dash_app.callback(Output('locked-stake-graph', 'children'),
         #                    [Input('daily-interval', 'n_intervals')],
