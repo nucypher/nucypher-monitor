@@ -27,90 +27,20 @@ from nucypher.blockchain.eth.token import StakeList, NU
 from nucypher.blockchain.eth.utils import datetime_at_period, datetime_to_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import ForgetfulNodeStorage
-from nucypher.network.nodes import FleetSensor, Teacher
-from nucypher.network.nodes import Learner
+from nucypher.network.nodes import Teacher, Learner
+from nucypher.acumen.perception import FleetSensor, ArchivedFleetState, RemoteUrsulaStatus
 from twisted.internet import reactor
 from twisted.logger import Logger
 
 
-class SQLiteForgetfulNodeStorage(ForgetfulNodeStorage):
-    """
-    SQLite forgetful storage of node metadata
-    """
-    _name = 'sqlite'
-    DB_FILE_NAME = 'nodes.sqlite'
+class CrawlerStorage:
+
+    DB_FILE_NAME = 'crawler-storage.sqlite'
     DEFAULT_DB_FILEPATH = os.path.join(DEFAULT_CONFIG_ROOT, DB_FILE_NAME)
 
     NODE_DB_NAME = 'node_info'
     NODE_DB_SCHEMA = [('staker_address', 'text primary key'), ('rest_url', 'text'), ('nickname', 'text'),
                       ('timestamp', 'text'), ('last_seen', 'text'), ('fleet_state_icon', 'text')]
-
-    def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.db_filepath = db_filepath
-        self.init_db_tables()
-
-    def __del__(self):
-        if os.path.exists(self.db_filepath):
-            os.remove(self.db_filepath)
-
-    def store_node_metadata(self, node, filepath: str = None):
-        self.__write_node_metadata(node)
-        return super().store_node_metadata(node=node, filepath=filepath)
-
-    @validate_checksum_address
-    def remove(self,
-               checksum_address: str,
-               metadata: bool = True,
-               certificate: bool = True
-               ) -> Tuple[bool, str]:
-
-        if metadata is True:
-            with sqlite3.connect(self.db_filepath) as db_conn:
-                db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME} WHERE staker_address='{checksum_address}'")
-
-        return super().remove(checksum_address=checksum_address, metadata=metadata, certificate=certificate)
-
-    def clear(self, metadata: bool = True, certificates: bool = True) -> None:
-        if metadata is True:
-            with sqlite3.connect(self.db_filepath) as db_conn:
-                db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME}")
-
-        super().clear(metadata=metadata, certificates=certificates)
-
-    def initialize(self) -> bool:
-        if os.path.exists(self.db_filepath):
-            os.remove(self.db_filepath)
-        self.init_db_tables()
-        return super().initialize()
-
-    def init_db_tables(self):
-        with sqlite3.connect(self.db_filepath) as db_conn:
-            # ensure tables are empty
-            db_conn.execute(f"DROP TABLE IF EXISTS {self.NODE_DB_NAME}")
-
-            # create fresh new node table (same column names as FleetStateTracker.abridged_nodes_details)
-            node_db_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.NODE_DB_SCHEMA)
-            db_conn.execute(f"CREATE TABLE {self.NODE_DB_NAME} ({node_db_schema})")
-
-    def __write_node_metadata(self, node):
-        node.mature()
-        node_dict = node.node_details(node=node)
-        db_row = (node_dict['staker_address'],
-                  node_dict['rest_url'],
-                  node_dict['nickname'],
-                  node_dict['timestamp'],
-                  node_dict['last_seen'],
-                  node_dict['fleet_state_icon'])
-        with sqlite3.connect(self.db_filepath) as db_conn:
-            db_conn.execute(f'REPLACE INTO {self.NODE_DB_NAME} VALUES(?,?,?,?,?,?)', db_row)
-
-
-class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
-    _name = 'crawler'
-
-    DB_FILE_NAME = 'crawler-storage.sqlite'
-    DEFAULT_DB_FILEPATH = os.path.join(DEFAULT_CONFIG_ROOT, DB_FILE_NAME)
 
     STATE_DB_NAME = 'fleet_state'
     STATE_DB_SCHEMA = [('nickname', 'text primary key'),
@@ -123,51 +53,100 @@ class CrawlerNodeStorage(SQLiteForgetfulNodeStorage):
     TEACHER_ID = 'current_teacher'
     TEACHER_DB_SCHEMA = [('id', 'text primary key'), ('checksum_address', 'text')]
 
-    def __init__(self, storage_filepath: str = DEFAULT_DB_FILEPATH, *args, **kwargs):
-        super().__init__(db_filepath=storage_filepath, federated_only=False, *args, **kwargs)
+    def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH):
+        self.db_filepath = db_filepath
 
-    def init_db_tables(self):
-        with sqlite3.connect(self.db_filepath) as db_conn:
+        if os.path.exists(self.db_filepath):
+            os.remove(self.db_filepath)
 
-            # ensure table is empty
-            for table in [self.STATE_DB_NAME, self.TEACHER_DB_NAME]:
-                db_conn.execute(f"DROP TABLE IF EXISTS {table}")
+        with self._connect() as db_conn:
 
-            # create fresh new state table (same column names as FleetStateTracker.abridged_state_details)
+            node_db_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.NODE_DB_SCHEMA)
+            db_conn.execute(f"CREATE TABLE {self.NODE_DB_NAME} ({node_db_schema})")
+
             state_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.STATE_DB_SCHEMA)
             db_conn.execute(f"CREATE TABLE {self.STATE_DB_NAME} ({state_schema})")
 
-            # create new teacher table
             teacher_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.TEACHER_DB_SCHEMA)
             db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} ({teacher_schema})")
-        super().init_db_tables()
 
-    def clear(self, metadata: bool = True, certificates: bool = True) -> None:
-        if metadata is True:
-            with sqlite3.connect(self.db_filepath) as db_conn:
-                # TODO Clear the states table here?
-                for table in [self.STATE_DB_NAME, self.TEACHER_DB_NAME]:
-                    db_conn.execute(f"DELETE FROM {table}")
+    def _connect(self):
+        return sqlite3.connect(self.db_filepath)
 
-        super().clear(metadata=metadata, certificates=certificates)
+    def store_node_status(self, node_status: RemoteUrsulaStatus):
 
-    def store_state_metadata(self, state: dict):
+        # TODO: these DB fields should really be nullable
+        if node_status.recorded_fleet_state:
+            fleet_state_icon = node_status.recorded_fleet_state.nickname.icon
+        else:
+            fleet_state_icon = '?'
+
+        if node_status.last_learned_from:
+            last_learned_from = node_status.last_learned_from.iso8601()
+        else:
+            last_learned_from = '?'
+
+        db_row = (node_status.staker_address,
+                  node_status.rest_url,
+                  str(node_status.nickname),
+                  node_status.timestamp.iso8601(),
+                  last_learned_from,
+                  fleet_state_icon)
+
+        with self._connect() as db_conn:
+            db_conn.execute(f'REPLACE INTO {self.NODE_DB_NAME} VALUES(?,?,?,?,?,?)', db_row)
+
+    @validate_checksum_address
+    def remove_node_status(self, checksum_address: str):
+        with self._connect() as db_conn:
+            db_conn.execute(f"DELETE FROM {self.NODE_DB_NAME} WHERE staker_address='{checksum_address}'")
+
+    def store_fleet_state(self, state: ArchivedFleetState):
         # TODO Limit the size of this table - no reason to store really old state values
 
-        db_row = (state['nickname'],
-                  state['symbol'],
-                  state['color_hex'],
-                  state['color_name'],
+        db_row = (str(state.nickname),
+                  state.nickname.characters[0].symbol,
+                  state.nickname.characters[0].color_hex,
+                  state.nickname.characters[0].color_name,
                   # convert to rfc3339 for ease of sqlite3 sorting; we lose millisecond precision, but meh!
-                  MayaDT.from_rfc2822(state['updated']).rfc3339())
+                  state.timestamp.rfc3339())
         sql = f'REPLACE INTO {self.STATE_DB_NAME} VALUES(?,?,?,?,?)'
-        with sqlite3.connect(self.db_filepath) as db_conn:
+        with self._connect() as db_conn:
             db_conn.execute(sql, db_row)
 
     def store_current_teacher(self, teacher_checksum: str):
         sql = f'REPLACE INTO {self.TEACHER_DB_NAME} VALUES (?,?)'
-        with sqlite3.connect(self.db_filepath) as db_conn:
+        with self._connect() as db_conn:
             db_conn.execute(sql, (self.TEACHER_ID, teacher_checksum))
+
+    def __del__(self):
+        if os.path.exists(self.db_filepath):
+            os.remove(self.db_filepath)
+
+
+def hooked_tracker_class(crawler_storage: CrawlerStorage):
+
+    class HookedFleetSensor(FleetSensor):
+
+        __crawler_storage = crawler_storage
+
+        def record_fleet_state(self, *args, **kwargs):
+            state_diff = super().record_fleet_state(*args, **kwargs)
+            if not state_diff.empty():
+                new_state = self._archived_states[-1]
+                self.__crawler_storage.store_fleet_state(new_state)
+
+                for checksum_address in state_diff.nodes_updated:
+                    self.__crawler_storage.store_node_status(self.status_info(checksum_address))
+
+                for checksum_address in state_diff.nodes_removed:
+                    self.__crawler_storage.remove_node_status(checksum_address)
+
+        def record_remote_fleet_state(self, checksum_address, *args, **kwargs):
+            super().record_remote_fleet_state(checksum_address, *args, **kwargs)
+            self.__crawler_storage.store_node_status(self.status_info(checksum_address))
+
+    return HookedFleetSensor
 
 
 class Crawler(Learner):
@@ -229,7 +208,7 @@ class Crawler(Learner):
                  influx_port: int,
                  crawler_http_port: int = DEFAULT_CRAWLER_HTTP_PORT,
                  registry: BaseContractRegistry = None,
-                 node_storage_filepath: str = CrawlerNodeStorage.DEFAULT_DB_FILEPATH,
+                 db_filepath: str = CrawlerStorage.DEFAULT_DB_FILEPATH,
                  refresh_rate=DEFAULT_REFRESH_RATE,
                  restart_on_error=True,
                  *args, **kwargs):
@@ -243,18 +222,11 @@ class Crawler(Learner):
         self._refresh_rate = refresh_rate
         self._restart_on_error = restart_on_error
 
-        # TODO: Needs cleanup
         # Tracking
-        node_storage = CrawlerNodeStorage(storage_filepath=node_storage_filepath)
+        self.__storage = CrawlerStorage(db_filepath)
+        self.tracker_class = hooked_tracker_class(self.__storage) # Used by Learner.__init__
 
-        class MonitoringTracker(FleetSensor):
-            def record_fleet_state(self, *args, **kwargs):
-                new_state_or_none = super().record_fleet_state(*args, **kwargs)
-                if new_state_or_none:
-                    _, new_state = new_state_or_none
-                    state = self.abridged_state_details(new_state)
-                    node_storage.store_state_metadata(state)
-        self.tracker_class = MonitoringTracker
+        node_storage = ForgetfulNodeStorage(federated_only=False)
 
         super().__init__(save_metadata=True,
                          node_storage=node_storage,
@@ -262,7 +234,7 @@ class Crawler(Learner):
                          *args, **kwargs)
 
         self.log = Logger(self.__class__.__name__)
-        self.log.info(f"Storing node metadata in DB: {node_storage.db_filepath}")
+        self.log.info(f"Storing status metadata in DB: {self.__storage.db_filepath}")
         self.log.info(f"Storing blockchain metadata in DB: {influx_host}:{influx_port}")
 
         # In-memory Metrics
@@ -315,17 +287,17 @@ class Crawler(Learner):
             self.log.info(f'Database {self.INFLUX_DB_NAME} already exists, no need to create it')
 
     def learn_from_teacher_node(self, *args, **kwargs):
+
+        new_nodes = super().learn_from_teacher_node(*args, **kwargs)
+
         try:
             current_teacher = self.current_teacher_node(cycle=False)
         except self.NotEnoughTeachers as e:
             self.log.warn("Can't learn right now: {}".format(e.args[0]))
             return
 
-        new_nodes = super().learn_from_teacher_node(*args, **kwargs)
-
         # update metadata of teacher - not just in memory but in the underlying storage system (db in this case)
-        self.node_storage.store_node_metadata(current_teacher)
-        self.node_storage.store_current_teacher(current_teacher.checksum_address)
+        self.__storage.store_current_teacher(current_teacher.checksum_address)
 
         return new_nodes
 

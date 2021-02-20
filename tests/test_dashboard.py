@@ -12,7 +12,7 @@ from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.token import NU
 
 import monitor.dashboard
-from monitor.crawler import CrawlerNodeStorage
+from monitor.crawler import CrawlerStorage
 from tests.markers import circleci_only
 from tests.utilities import MockContractAgency, create_random_mock_node, create_random_mock_state
 
@@ -32,7 +32,7 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
     states_list = create_states(num_states=3)
 
     # write node, teacher (first item in node list), and state data to storage
-    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
+    node_storage = CrawlerStorage(db_filepath=tempfile_path)
     store_node_db_data(node_storage, nodes=nodes_list, states=states_list)
 
     # Setup StakingEscrowAgent and ContractAgency
@@ -122,7 +122,7 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
     new_node = create_random_mock_node(generate_certificate=False)
     last_confirmed_period_dict[new_node.checksum_address] = current_period
     nodes_list.append(new_node)  # add new node to list
-    node_storage.store_node_metadata(new_node)
+    node_storage.store_node_status(new_node)
 
     dash_duo.find_element("#node-update-button").click()
 
@@ -173,15 +173,15 @@ def create_states(num_states: int):
     return states_list
 
 
-def store_node_db_data(storage: CrawlerNodeStorage, nodes: List, states: List):
+def store_node_db_data(storage: CrawlerStorage, nodes: List, states: List):
     for idx, node in enumerate(nodes):
-        storage.store_node_metadata(node=node)
+        storage.store_node_status(node=node)
         if idx == 0:
             # first item in list is teacher
             storage.store_current_teacher(teacher_checksum=node.checksum_address)
 
     for state in states:
-        storage.store_state_metadata(state=state)
+        storage.store_state_metadata(state)
 
 
 def create_blockchain_db_historical_data(days_in_past: int):
