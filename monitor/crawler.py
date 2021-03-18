@@ -70,7 +70,7 @@ class CrawlerStorage:
             teacher_schema = ", ".join(f"{schema[0]} {schema[1]}" for schema in self.TEACHER_DB_SCHEMA)
             db_conn.execute(f"CREATE TABLE {self.TEACHER_DB_NAME} ({teacher_schema})")
 
-    def _connect(self):
+    def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_filepath)
 
     def store_node_status(self, node_status: RemoteUrsulaStatus):
