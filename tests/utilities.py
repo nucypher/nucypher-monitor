@@ -56,6 +56,7 @@ def create_random_mock_node_status():
                               timestamp=timestamp,
                               last_learned_from=last_learned_from,
                               recorded_fleet_state=None,
+                              verified=True,
                               )
 
 
