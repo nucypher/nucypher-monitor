@@ -8,7 +8,7 @@ python_version = "3"
 
 [packages]
 # NuCypher
-nucypher = "*"
+nucypher = ">=4.8.0"
 # Web
 requests = "*"
 flask = "*"

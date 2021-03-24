@@ -13,20 +13,21 @@ from nucypher.blockchain.eth.utils import datetime_to_period
 from nucypher.network.middleware import RestMiddleware
 
 import monitor
-from monitor.crawler import CrawlerNodeStorage, Crawler, SQLiteForgetfulNodeStorage
+from monitor.crawler import CrawlerStorage, Crawler
 from monitor.db import CrawlerStorageClient
 from tests.utilities import (
     create_random_mock_node,
+    create_random_mock_node_status,
     create_specific_mock_node,
     create_specific_mock_state,
     MockContractAgency)
 
 IN_MEMORY_FILEPATH = ':memory:'
-DB_TABLES = [CrawlerNodeStorage.NODE_DB_NAME, CrawlerNodeStorage.STATE_DB_NAME, CrawlerNodeStorage.TEACHER_DB_NAME]
+DB_TABLES = [CrawlerStorage.NODE_DB_NAME, CrawlerStorage.STATE_DB_NAME, CrawlerStorage.TEACHER_DB_NAME]
 
 
 #
-# CrawlerNodeStorage tests.
+# CrawlerStorage tests.
 #
 @pytest.fixture(scope='function')
 def sqlite_connection(monkeypatch):
@@ -41,78 +42,69 @@ def sqlite_connection(monkeypatch):
 
 
 def test_storage_init():
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerStorage(db_filepath=IN_MEMORY_FILEPATH)
     assert node_storage.db_filepath == IN_MEMORY_FILEPATH
-    assert not node_storage.federated_only
-    assert CrawlerNodeStorage._name != SQLiteForgetfulNodeStorage._name
 
 
 def test_storage_db_table_init(sqlite_connection):
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerStorage(db_filepath=IN_MEMORY_FILEPATH)
 
     verify_all_db_tables_exist(sqlite_connection)
 
 
-def test_storage_initialize(sqlite_connection):
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
+def test_storage_store_node_status(sqlite_connection):
+    node_storage = CrawlerStorage(db_filepath=IN_MEMORY_FILEPATH)
 
-    node_storage.initialize()  # re-initialize
-    verify_all_db_tables_exist(sqlite_connection)
-
-
-def test_storage_store_node_metadata(sqlite_connection):
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
-
-    node = create_specific_mock_node()
+    node_status = create_random_mock_node_status()
 
     # Store node data
-    node_storage.store_node_metadata(node=node)
+    node_storage.store_node_status(node_status)
 
-    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerNodeStorage.NODE_DB_NAME}").fetchall()
+    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerStorage.NODE_DB_NAME}").fetchall()
     assert len(result) == 1
     for row in result:
-        verify_mock_node_matches(node, row)
+        verify_mock_node_matches(node_status, row)
 
     # update node timestamp value and store
-    new_now = node.timestamp.add(hours=1)
+    new_now = node_status.timestamp.add(hours=1)
     worker_address = '0xabcdef'
-    updated_node = create_specific_mock_node(timestamp=new_now, worker_address=worker_address)
+    updated_node = node_status._replace(timestamp=new_now, worker_address=worker_address)
 
     # ensure same item gets updated
-    node_storage.store_node_metadata(node=updated_node)
-    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerNodeStorage.NODE_DB_NAME}").fetchall()
+    node_storage.store_node_status(updated_node)
+    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerStorage.NODE_DB_NAME}").fetchall()
     assert len(result) == 1  # node data is updated not added
     for row in result:
         verify_mock_node_matches(updated_node, row)
 
 
-def test_storage_store_state_metadata(sqlite_connection):
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
+def test_storage_store_fleet_state(sqlite_connection):
+    node_storage = CrawlerStorage(db_filepath=IN_MEMORY_FILEPATH)
 
     state = create_specific_mock_state()
 
     # Store state data
-    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(state))
+    node_storage.store_fleet_state(state)
 
-    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME}").fetchall()
+    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerStorage.STATE_DB_NAME}").fetchall()
     assert len(result) == 1
     for row in result:
         verify_mock_state_matches_row(state, row)
 
     # update state
-    new_now = state.updated.add(minutes=5)
-    updated_state = create_specific_mock_state(updated=new_now)
-    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(updated_state))
+    new_now = state.timestamp.add(minutes=5)
+    updated_state = state._replace(timestamp=new_now)
+    node_storage.store_fleet_state(updated_state)
 
     # ensure same item gets updated
-    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME}").fetchall()
+    result = sqlite_connection.execute(f"SELECT * FROM {CrawlerStorage.STATE_DB_NAME}").fetchall()
     assert len(result) == 1  # state data is updated not added
     for row in result:
         verify_mock_state_matches_row(updated_state, row)
 
 
 def test_storage_store_current_retrieval(sqlite_connection):
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
+    node_storage = CrawlerStorage(db_filepath=IN_MEMORY_FILEPATH)
 
     teacher_checksum = '0x123456789'
     node_storage.store_current_teacher(teacher_checksum=teacher_checksum)
@@ -129,84 +121,17 @@ def test_storage_store_current_retrieval(sqlite_connection):
 def test_storage_deletion(tempfile_path):
     assert os.path.exists(tempfile_path)
 
-    node_storage = CrawlerNodeStorage(storage_filepath=tempfile_path)
+    node_storage = CrawlerStorage(db_filepath=tempfile_path)
     del node_storage
 
     assert not os.path.exists(tempfile_path)  # db file deleted
-
-
-def test_storage_db_clear(sqlite_connection):
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
-    verify_all_db_tables_exist(sqlite_connection)
-
-    # store some data
-    node = create_random_mock_node()
-    node_storage.store_node_metadata(node=node)
-
-    state = create_specific_mock_state()
-    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(state))
-
-    teacher_checksum = '0x123456789'
-    node_storage.store_current_teacher(teacher_checksum)
-
-    verify_all_db_tables(sqlite_connection, expect_empty=False)
-
-    # clear tables
-    node_storage.clear()
-
-    # db tables should have been cleared
-    verify_all_db_tables(sqlite_connection, expect_empty=True)
-
-
-def test_storage_db_clear_only_metadata_not_certificates(sqlite_connection):
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
-
-    # store some data
-    node = create_random_mock_node()
-    node_storage.store_node_metadata(node=node)
-
-    state = create_specific_mock_state()
-    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(state))
-
-    teacher_checksum = '0x123456789'
-    node_storage.store_current_teacher(teacher_checksum)
-
-    verify_all_db_tables(sqlite_connection, expect_empty=False)
-
-    # clear metadata tables
-    node_storage.clear(metadata=True, certificates=False)
-
-    # db tables should have been cleared
-    verify_all_db_tables(sqlite_connection, expect_empty=True)
-
-
-def test_storage_db_clear_not_metadata(sqlite_connection):
-    node_storage = CrawlerNodeStorage(storage_filepath=IN_MEMORY_FILEPATH)
-
-    # store some data
-    node = create_random_mock_node()
-    node_storage.store_node_metadata(node=node)
-
-    state = create_specific_mock_state()
-    node_storage.store_state_metadata(state=FleetSensor.abridged_state_details(state))
-
-    teacher_checksum = '0x123456789'
-    node_storage.store_current_teacher(teacher_checksum)
-
-    verify_all_db_tables(sqlite_connection, expect_empty=False)
-
-    # only clear certificates data
-    node_storage.clear(metadata=False, certificates=True)
-
-    # db tables should not have been cleared
-    verify_all_db_tables(sqlite_connection, expect_empty=False)
 
 
 #
 # Crawler tests.
 #
 
-def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH):
+def create_crawler(db_filepath: str = IN_MEMORY_FILEPATH):
     registry = InMemoryContractRegistry()
     middleware = RestMiddleware()
     crawler = Crawler(domain='ibex',  # TODO: Needs Cleanup
@@ -216,7 +141,7 @@ def create_crawler(node_db_filepath: str = IN_MEMORY_FILEPATH):
                       learn_on_same_thread=False,
                       influx_host='localhost',  # TODO: Needs Cleanup
                       influx_port=8086,  # TODO: Needs Cleanup
-                      node_storage_filepath=node_db_filepath
+                      db_filepath=db_filepath
                       )
     return crawler
 
@@ -381,7 +306,7 @@ def test_crawler_learn_no_teacher(new_influx_db, get_agent, tempfile_path):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler(node_db_filepath=tempfile_path)
+    crawler = create_crawler(db_filepath=tempfile_path)
     node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     try:
         crawler.start()
@@ -412,7 +337,7 @@ def test_crawler_learn_about_teacher(new_influx_db, get_agent, tempfile_path):
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    crawler = create_crawler(node_db_filepath=tempfile_path)
+    crawler = create_crawler(db_filepath=tempfile_path)
     node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     try:
         crawler.start()
@@ -451,7 +376,7 @@ def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, temp
     token_economics = StandardTokenEconomics()
     get_economics.return_value = token_economics
 
-    crawler = create_crawler(node_db_filepath=tempfile_path)
+    crawler = create_crawler(db_filepath=tempfile_path)
     node_db_client = CrawlerStorageClient(db_filepath=tempfile_path)
     try:
         crawler.start()
@@ -533,20 +458,20 @@ def verify_all_db_tables(db_conn, expect_empty=True):
 
 
 def verify_current_teacher(db_conn, expected_teacher_checksum):
-    result = db_conn.execute(f"SELECT checksum_address from {CrawlerNodeStorage.TEACHER_DB_NAME}").fetchall()
+    result = db_conn.execute(f"SELECT checksum_address from {CrawlerStorage.TEACHER_DB_NAME}").fetchall()
     assert len(result) == 1
     for row in result:
         assert expected_teacher_checksum == row[0]
 
 
-def verify_mock_node_matches(node, row):
+def verify_mock_node_matches(node_status, row):
     assert len(row) == 6
 
-    assert node.checksum_address == row[0], 'staker address matches'
-    assert node.rest_url() == row[1], 'rest url matches'
-    assert str(node.nickname) == row[2], 'nickname matches'
-    assert node.timestamp.iso8601() == row[3], 'new now timestamp matches'
-    assert node.last_seen.iso8601() == row[4], 'last seen matches'
+    assert node_status.staker_address == row[0], 'staker address matches'
+    assert node_status.rest_url == row[1], 'rest url matches'
+    assert str(node_status.nickname) == row[2], 'nickname matches'
+    assert node_status.timestamp.iso8601() == row[3], 'new now timestamp matches'
+    assert node_status.last_learned_from.iso8601() == row[4], 'last seen matches'
     assert "?" == row[5], 'fleet state icon matches'
 
 
@@ -557,4 +482,4 @@ def verify_mock_state_matches_row(state, row):
     assert state.nickname.characters[0].symbol == row[1], 'symbol matches'
     assert state.nickname.characters[0].color_hex == row[2], 'color hex matches'
     assert state.nickname.characters[0].color_name == row[3], 'color matches'
-    assert state.updated.rfc3339() == row[4], 'updated timestamp matches'  # ensure timestamp in rfc3339
+    assert state.timestamp.rfc3339() == row[4], 'updated timestamp matches'  # ensure timestamp in rfc3339

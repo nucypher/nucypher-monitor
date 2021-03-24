@@ -7,16 +7,16 @@ from typing import Dict, List
 from influxdb import InfluxDBClient
 from maya import MayaDT
 
-from monitor.crawler import CrawlerNodeStorage, Crawler
+from monitor.crawler import CrawlerStorage, Crawler
 from monitor.utils import collector
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 
 
 class CrawlerStorageClient:
 
-    DB_FILE_NAME = 'crawler-storage.sqlite'
+    DB_FILE_NAME = CrawlerStorage.DB_FILE_NAME
     DEFAULT_DB_FILEPATH = os.path.join(DEFAULT_CONFIG_ROOT, DB_FILE_NAME)
-    
+
     def __init__(self, db_filepath: str = DEFAULT_DB_FILEPATH):
         self._db_filepath = db_filepath
 
@@ -24,7 +24,7 @@ class CrawlerStorageClient:
         # dash threading means that connection needs to be established in same thread as use
         db_conn = sqlite3.connect(self._db_filepath)
         try:
-            result = db_conn.execute(f"SELECT * FROM {CrawlerNodeStorage.NODE_DB_NAME} ORDER BY staker_address")
+            result = db_conn.execute(f"SELECT * FROM {CrawlerStorage.NODE_DB_NAME} ORDER BY staker_address")
 
             # TODO use `pandas` package instead to automatically get dict?
             known_nodes = OrderedDict()
@@ -46,7 +46,7 @@ class CrawlerStorageClient:
         db_conn = sqlite3.connect(self._db_filepath)
         states_dict_list = []
         try:
-            result = db_conn.execute(f"SELECT * FROM {CrawlerNodeStorage.STATE_DB_NAME} "
+            result = db_conn.execute(f"SELECT * FROM {CrawlerStorage.STATE_DB_NAME} "
                                      f"ORDER BY datetime(updated) DESC LIMIT {limit}")
 
             # TODO use `pandas` package instead to automatically get dict?
@@ -71,7 +71,7 @@ class CrawlerStorageClient:
     def get_current_teacher_checksum(self):
         db_conn = sqlite3.connect(self._db_filepath)
         try:
-            result = db_conn.execute(f"SELECT checksum_address from {CrawlerNodeStorage.TEACHER_DB_NAME} LIMIT 1")
+            result = db_conn.execute(f"SELECT checksum_address from {CrawlerStorage.TEACHER_DB_NAME} LIMIT 1")
             for row in result:
                 return row[0]
 

@@ -17,7 +17,7 @@ def _get_registry(registry_filepath, network):
 
 
 def _get_self_signed_hosting_power(host: str):
-    tls_hosting_keypair = HostingKeypair(curve=ec.SECP384R1, host=host)
+    tls_hosting_keypair = HostingKeypair(host=host, generate_certificate=True)
     tls_hosting_power = TLSHostingPower(keypair=tls_hosting_keypair, host=host)
     return tls_hosting_power
 
