@@ -11,7 +11,7 @@ python_version = "3"
 nucypher = ">=4.8.0"
 # Web
 requests = "*"
-flask = "*"
+flask = "<2.0" # conflict with itsdangerous dependency in flask version with nucypher
 hendrix = "*"
 twisted = "*"
 # Database

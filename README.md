@@ -23,7 +23,7 @@ $ pip install -e . -r dev-requirements.txt
     The Monitor `Crawler` stores network blockchain information in an `InfluxDB` time-series instance. The default connection
 is made to a local instance.
 
-* Installation of Geth Ethereum Node
+* Ethereum Node - either local or remote
 
     The Monitor needs a Web3 node provider to obtain blockchain data.
 
@@ -65,15 +65,9 @@ $ sudo influxd
 
 ```
 
-2. Run Geth node as a Web3 node provider (or use Infura)
-```bash
-$ geth --goerli --nousb
+**NOTE: InfluxDB version must be < 2.0 due to authentication changes made in 2.0+.**
 
-INFO [01-29|11:06:06.816] Maximum peer count                       ETH=50 LES=0 total=50
-...
-INFO [01-29|11:06:09.046] Started P2P networking                   self=enode://1eb7c99106888c206583abc63fc58da1c202965b32486115575d27e03aba0e0c1be433f0a7060da3ecc95afbbce845a7d3df703307d94fe328602c3d105daf36@127.0.0.1:30303
-INFO [01-29|11:06:09.048] IPC endpoint opened                      url=/home/k/.ethereum/goerli/geth.ipc
-```
+2. Use remote Ethereum node provider e.g. Infura, Alchemy etc., OR run local Geth node
 
 3. Run the `Crawler`
     
@@ -162,8 +156,6 @@ docker-compose -f deploy/docker-compose.yml up -d influxdb
 docker-compose -f deploy/docker-compose.yml up -d crawler
 docker-compose -f deploy/docker-compose.yml up -d web
 ```
-
-**NOTE: If the `--poa` flag is required, the `deploy/docker-compose.yml` file should be modified to append the `--poa` flag to the `command` entries for the `crawler` and `web` services**
 
 3. View Docker compose logs
 ```bash

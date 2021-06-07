@@ -74,8 +74,8 @@ class Dashboard:
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
 
         # GeoLocation
-        self.ip2loc = IP2Location.IP2Location()
-        self.ip2loc.open(path.join(settings.ASSETS_PATH, 'geolocation', 'IP2LOCATION-LITE-DB5.BIN'))
+        iplocation_file = path.join(settings.ASSETS_PATH, 'geolocation', 'IP2LOCATION-LITE-DB5.BIN')
+        self.ip2loc = IP2Location.IP2Location(filename=iplocation_file)
 
     def make_request(self):
         url = f'http://{self.crawler_host}:{self.crawler_port}/{Crawler.METRICS_ENDPOINT}'
