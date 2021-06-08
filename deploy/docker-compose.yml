@@ -2,7 +2,8 @@ version: '3'
 services:
 
   influxdb:
-    image: influxdb:latest
+    # must use version < 2.0 due to modified authentication
+    image: influxdb:1.8.6
     restart: always
     networks:
       monitor:
