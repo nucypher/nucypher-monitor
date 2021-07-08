@@ -73,7 +73,7 @@ def crawl(general_config,
     # Setup
     BlockchainInterfaceFactory.initialize_interface(provider_uri=provider_uri)
     registry = _get_registry(registry_filepath, network)
-    middleware = RestMiddleware()
+    middleware = RestMiddleware(registry=registry)
 
     # Teacher Ursula
     sage_node = None

@@ -9,7 +9,7 @@ from nucypher.network.server import TLSHostingPower
 def _get_registry(registry_filepath, network):
 
     if registry_filepath:
-        registry = LocalContractRegistry.from_latest_publication(network=network)
+        registry = LocalContractRegistry(filepath=registry_filepath)
     else:
         registry = InMemoryContractRegistry.from_latest_publication(network=network)
 
