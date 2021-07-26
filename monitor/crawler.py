@@ -383,7 +383,8 @@ class Crawler(Learner):
 
             # is staker expired
             if self._is_staker_expired(staker_address=staker_address):
-                # stake already expired, ignore
+                # stake already expired, remove node from DB and ignore
+                self.__storage.remove_node_status(checksum_address=staker_address)
                 continue
             last_confirmed_period = self.staking_agent.get_last_committed_period(staker_address)
             missing_confirmations = current_period - last_confirmed_period
