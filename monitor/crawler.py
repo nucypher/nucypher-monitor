@@ -8,6 +8,7 @@ import click
 import maya
 import requests
 from constant_sorrow.constants import NOT_STAKING
+from eth_typing import ChecksumAddress
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
@@ -328,10 +329,16 @@ class Crawler(Learner):
     @collector(label="Staker Confirmation Status")
     def _measure_staker_activity(self) -> dict:
         confirmed, pending, inactive = self.staking_agent.partition_stakers_by_activity()
+        inactive_without_expired = []
+        for staker in inactive:
+            if self._is_staker_expired(staker_address=staker):
+                continue
+            inactive_without_expired.append(staker)
+
         stakers = dict()
         stakers['active'] = len(confirmed)
         stakers['pending'] = len(pending)
-        stakers['inactive'] = len(inactive)
+        stakers['inactive'] = len(inactive_without_expired)
         return stakers
 
     @collector(label="Date/Time of Next Period")
@@ -374,6 +381,11 @@ class Crawler(Learner):
             # Confirmation Status Scraping
             #
 
+            # is staker expired
+            if self._is_staker_expired(staker_address=staker_address):
+                # stake already expired, remove node from DB and ignore
+                self.__storage.remove_node_status(checksum_address=staker_address)
+                continue
             last_confirmed_period = self.staking_agent.get_last_committed_period(staker_address)
             missing_confirmations = current_period - last_confirmed_period
             worker = self.staking_agent.get_worker_from_staker(staker_address)
@@ -696,3 +708,9 @@ class Crawler(Learner):
             last_known_blocknumber = blocknumber_result[0]['max']
 
         return last_known_blocknumber
+
+    def _is_staker_expired(self, staker_address: ChecksumAddress):
+        tokens_for_current_period = self.staking_agent.get_locked_tokens(staker_address=staker_address)
+        tokens_for_next_period = self.staking_agent.get_locked_tokens(staker_address=staker_address, periods=1)
+
+        return tokens_for_current_period == 0 and tokens_for_next_period == 0
