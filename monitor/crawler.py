@@ -2,24 +2,21 @@ import os
 import random
 import sqlite3
 from collections import defaultdict
-from typing import Tuple
 
 import click
 import maya
 import requests
 from constant_sorrow.constants import NOT_STAKING
-from eth_typing import ChecksumAddress
 from flask import Flask, jsonify
 from hendrix.deploy.base import HendrixDeploy
 from influxdb import InfluxDBClient
 from maya import MayaDT
-from monitor.utils import collector, DelayedLoopingCall
+from nucypher.acumen.perception import FleetSensor, ArchivedFleetState, RemoteUrsulaStatus
 from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
     StakingEscrowAgent,
-    AdjudicatorAgent,
-    PolicyManagerAgent)
+    AdjudicatorAgent)
 from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.decorators import validate_checksum_address
 from nucypher.blockchain.eth.events import EventRecord
@@ -29,9 +26,10 @@ from nucypher.blockchain.eth.utils import datetime_at_period, datetime_to_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import ForgetfulNodeStorage
 from nucypher.network.nodes import Teacher, Learner
-from nucypher.acumen.perception import FleetSensor, ArchivedFleetState, RemoteUrsulaStatus
 from twisted.internet import reactor
 from twisted.logger import Logger
+
+from monitor.utils import collector, DelayedLoopingCall
 
 
 class CrawlerStorage:
@@ -204,6 +202,8 @@ class Crawler(Learner):
 
     STAKER_PAGINATION_SIZE = 200
 
+    STAKER_ACTIVITY_CACHE_INVALIDATION_TIMEOUT = 60 * 60 * 2  # 2 hours in seconds
+
     def __init__(self,
                  influx_host: str,
                  influx_port: int,
@@ -269,6 +269,10 @@ class Crawler(Learner):
         self._crawler_http_port = crawler_http_port
         self._flask = None
 
+        # cached staker activity
+        self.__cached_staker_activity = None
+        self.__cached_staker_activity_last_updated = None
+
     def _initialize_influx(self):
         try:
             db_list = self._influx_client.get_list_database()
@@ -328,17 +332,30 @@ class Crawler(Learner):
 
     @collector(label="Staker Confirmation Status")
     def _measure_staker_activity(self) -> dict:
-        confirmed, pending, inactive = self.staking_agent.partition_stakers_by_activity()
-        inactive_without_expired = []
-        for staker in inactive:
-            if self._is_staker_expired(staker_address=staker):
-                continue
-            inactive_without_expired.append(staker)
+        if (not self.__cached_staker_activity
+                or not self.__cached_staker_activity_last_updated
+                or (maya.now() - self.__cached_staker_activity_last_updated).seconds >= self.STAKER_ACTIVITY_CACHE_INVALIDATION_TIMEOUT):
+            # either cache has no value (on initialization) or invalidation timeout so cache needs to be updated
+            confirmed, pending, inactive = self.staking_agent.partition_stakers_by_activity()
+            inactive_without_expired = []
+            for staker in inactive:
+                locked_stake = self.staking_agent.non_withdrawable_stake(staker_address=staker)
+                if locked_stake == 0:
+                    # no active stake, ignore
+                    continue
+                inactive_without_expired.append(staker)
+
+            # update cache
+            self.__cached_staker_activity = confirmed, pending, inactive_without_expired
+            self.__cached_staker_activity_last_updated = maya.now()
+
+        # get data from cache
+        confirmed, pending, inactive = self.__cached_staker_activity
 
         stakers = dict()
         stakers['active'] = len(confirmed)
         stakers['pending'] = len(pending)
-        stakers['inactive'] = len(inactive_without_expired)
+        stakers['inactive'] = len(inactive)
         return stakers
 
     @collector(label="Date/Time of Next Period")
@@ -382,7 +399,8 @@ class Crawler(Learner):
             #
 
             # is staker expired
-            if self._is_staker_expired(staker_address=staker_address):
+            locked_stake = self.staking_agent.non_withdrawable_stake(staker_address=staker_address)
+            if locked_stake == 0:
                 # stake already expired, remove node from DB and ignore
                 self.__storage.remove_node_status(checksum_address=staker_address)
                 continue
@@ -708,9 +726,3 @@ class Crawler(Learner):
             last_known_blocknumber = blocknumber_result[0]['max']
 
         return last_known_blocknumber
-
-    def _is_staker_expired(self, staker_address: ChecksumAddress):
-        tokens_for_current_period = self.staking_agent.get_locked_tokens(staker_address=staker_address)
-        tokens_for_next_period = self.staking_agent.get_locked_tokens(staker_address=staker_address, periods=1)
-
-        return tokens_for_current_period == 0 and tokens_for_next_period == 0
