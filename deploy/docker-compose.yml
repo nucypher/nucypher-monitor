@@ -48,7 +48,7 @@ services:
               "--crawler-host", "172.28.1.3",
               "--provider", "${WEB3_PROVIDER_URI}",
               "--network", "${NUCYPHER_NETWORK}",
-              "--tls-key-filepath", "/etc/letsencrypt/key.pem",
+              "--tls-key-filepath", "/etc/letsencrypt/privkey.pem",
               "--certificate-filepath", "/etc/letsencrypt/fullchain.pem"]
     networks:
       monitor:
