@@ -16,6 +16,11 @@ services:
       - "8089:8089/udp"
     volumes:
       - ./influxdb/data:/var/lib/influxdb
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "1"
+        max-size: "2m"
 
   crawler:
     restart: on-failure
@@ -36,6 +41,11 @@ services:
     volumes:
       - .:/code
       - "nucypher_datadir:/root/.local/share/nucypher"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "15m"
     depends_on:
       - influxdb
 
@@ -59,6 +69,11 @@ services:
       - .:/code
       - "nucypher_datadir:/root/.local/share/nucypher"
       - "${NUCYPHER_LETSENCRYPT_DIR}:/etc/letsencrypt/"
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "2"
+        max-size: "10m"
     depends_on:
       - crawler
       - influxdb
