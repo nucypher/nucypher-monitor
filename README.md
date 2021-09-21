@@ -60,7 +60,7 @@ Refresh Rate: 60s
 Running Nucypher Crawler JSON endpoint at http://localhost:9555/stats
 ```
 
-3Run the `Dashboard`
+3. Run the `Dashboard`
     
 ```bash
 
@@ -81,7 +81,9 @@ Running Monitor Dashboard - https://127.0.0.1:12500
 
 ```
 
-4The `Dashboard` UI is available at https://127.0.0.1:12500.
+4. The `Dashboard` UI is available at https://127.0.0.1:12500.
+
+    **NOTE: The UI will remain empty until after the crawler has collected data during its first scraping round**
 
 
 #### via Docker Compose
@@ -138,3 +140,5 @@ docker-compose -f deploy/docker-compose.yml logs -f <SERVICE_NAME>
 ```
 
 4. The `Dashboard` UI is available on port 12500.
+
+     **NOTE: The UI will remain empty until after the crawler has collected data during its first scraping round**
