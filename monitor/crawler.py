@@ -163,7 +163,8 @@ class Crawler(Learner):
     DEFAULT_CRAWLER_HTTP_PORT = 9555
 
     ERROR_EVENTS = {
-        StakingEscrowAgent: ['Slashed'],
+        # TODO for some reason this event causes issues with our web3 provider - #104
+        # StakingEscrowAgent: ['Slashed'],
         AdjudicatorAgent: ['IncorrectCFragVerdict'],
     }
     ERROR_EVENTS_NUM_PAST_PERIODS = 2
@@ -454,7 +455,7 @@ class Crawler(Learner):
             agent = ContractAgency.get_agent(agent_class, registry=self.registry)
             for event_name in event_names:
                 event = agent.contract.events[event_name]
-                entries = event.getLogs(fromBlock=two_periods_ago_est_blocknumber)
+                entries = event.getLogs(fromBlock=two_periods_ago_est_blocknumber, toBlock=latest_block_number)
                 for event_record in entries:
                     record = EventRecord(event_record)
                     args = ", ".join(f"{k}:{v}" for k, v in record.args.items())
