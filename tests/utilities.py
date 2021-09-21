@@ -60,9 +60,10 @@ def create_random_mock_node_status():
                               )
 
 
-def create_node_certificate(host: str, checksum_address: str):
+def create_node_certificate(generate_certificate: bool, checksum_address: str, host: str):
     tls_hosting_keypair = HostingKeypair(host=host,
-                                         checksum_address=checksum_address)
+                                         checksum_address=checksum_address,
+                                         generate_certificate=generate_certificate)
 
     return tls_hosting_keypair.certificate
 
@@ -77,7 +78,9 @@ def create_specific_mock_node(generate_certificate: bool = False,
                               num_work_orders=2):
     if generate_certificate:
         # Generate certificate
-        certificate = create_node_certificate(host=host, checksum_address=checksum_address)
+        certificate = create_node_certificate(host=host,
+                                              checksum_address=checksum_address,
+                                              generate_certificate=generate_certificate)
     else:
         certificate = MagicMock()
 

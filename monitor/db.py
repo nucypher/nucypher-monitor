@@ -1,13 +1,10 @@
 import os
 import sqlite3
 from collections import OrderedDict
-from datetime import datetime, timedelta
 from typing import Dict, List
 
-from influxdb import InfluxDBClient
 from maya import MayaDT
-
-from monitor.crawler import CrawlerStorage, Crawler
+from monitor.crawler import CrawlerStorage
 from monitor.utils import collector
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 
@@ -78,98 +75,3 @@ class CrawlerStorageClient:
             return None
         finally:
             db_conn.close()
-
-
-class CrawlerInfluxClient:
-    """
-    Performs operations on data in the Crawler DB.
-
-    Helpful for data intensive long-running graphing calculations on historical data.
-    """
-    def __init__(self, host, port, database):
-        self._client = InfluxDBClient(host=host, port=port, database=database)
-
-    def get_historical_locked_tokens_over_range(self, days: int):
-        range_begin, range_end = self._get_range_bookends(days)
-        results = list(self._client.query(f"SELECT SUM(locked_stake) "
-                                          f"FROM ("
-                                          f"SELECT staker_address, current_period, "
-                                          f"LAST(locked_stake) "
-                                          f"AS locked_stake "
-                                          f"FROM {Crawler.NODE_MEASUREMENT} "
-                                          f"WHERE time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' "
-                                          f"AND "
-                                          f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
-                                          f"GROUP BY staker_address, time(1d)"
-                                          f") "
-                                          f"GROUP BY time(1d)").get_points())
-
-        # Note: all days may not have values eg. days before DB started getting populated
-        # As time progresses this should be less of an issue
-        locked_tokens_dict = OrderedDict()
-        for r in results:
-            locked_stake = r['sum']
-            # Dash accepts datetime objects for graphs
-            locked_tokens_dict[MayaDT.from_rfc3339(r['time']).datetime()] = locked_stake if locked_stake else 0
-
-        return locked_tokens_dict
-
-    def get_historical_num_stakers_over_range(self, days: int):
-        range_begin, range_end = self._get_range_bookends(days)
-        results = list(self._client.query(f"SELECT COUNT(staker_address) FROM "
-                                          f"("
-                                            f"SELECT staker_address, LAST(locked_stake)"
-                                            f"FROM {Crawler.NODE_MEASUREMENT} WHERE "
-                                            f"time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
-                                            f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
-                                            f"GROUP BY staker_address, time(1d)"
-                                          f") "
-                                          "GROUP BY time(1d)").get_points())   # 1 day measurements
-
-        # Note: all days may not have values eg. days before DB started getting populated
-        # As time progresses this should be less of an issue
-        num_stakers_dict = OrderedDict()
-        for r in results:
-            locked_stake = r['count']
-            # Dash accepts datetime objects for graphs
-            num_stakers_dict[MayaDT.from_rfc3339(r['time']).datetime()] = locked_stake if locked_stake else 0
-
-        return num_stakers_dict
-
-    def get_historical_work_orders_over_range(self, days: int):
-        range_begin, range_end = self._get_range_bookends(days)
-        results = list(self._client.query(f"SELECT SUM(work_orders) FROM "
-                                          f"("
-                                            f"SELECT staker_address, LAST(work_orders)"
-                                            f"FROM {Crawler.NODE_MEASUREMENT} WHERE "
-                                            f"time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
-                                            f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
-                                            f"GROUP BY staker_address, time(1d)"
-                                          f") "
-                                          "GROUP BY time(1d)").get_points())   # 1 day measurements
-        work_orders_dict = OrderedDict()
-        for r in results:
-            num_work_orders = r['sum']
-            work_orders_dict[MayaDT.from_rfc3339(r['time']).datetime()] = num_work_orders if num_work_orders else 0
-
-        return work_orders_dict
-
-    def get_historical_events(self, days: int) -> List:
-        range_begin, range_end = self._get_range_bookends(days)
-        results = list(self._client.query(f"SELECT * FROM {Crawler.EVENT_MEASUREMENT} WHERE "
-                                          f"time >= '{MayaDT.from_datetime(range_begin).rfc3339()}' AND "
-                                          f"time < '{MayaDT.from_datetime(range_end).rfc3339()}' "
-                                          f"ORDER BY time DESC").get_points())  # decreasing order
-        return results
-
-    def close(self):
-        self._client.close()
-
-    @staticmethod
-    def _get_range_bookends(days: int):
-        today = datetime.utcnow()
-        range_end = datetime(year=today.year, month=today.month, day=today.day,
-                             hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
-        range_begin = range_end - timedelta(days=days)
-
-        return range_begin, range_end

@@ -14,8 +14,6 @@ requests = "*"
 flask = "<2.0" # conflict with itsdangerous dependency in flask version with nucypher
 hendrix = "*"
 twisted = "<21.7.0"  # resolves conflict with 'incremental' library version used in latest nucypher version
-# Database
-influxdb = "<5.3.0"
 # CLI / Configuration
 maya = "*"
 click = ">=7.0"

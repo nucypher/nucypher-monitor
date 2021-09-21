@@ -1,5 +1,5 @@
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 
 # NOTE: changing this to an empty string is enough to remove the pinned message.
 PINNED_MESSAGE_TEXT = 'This page is under active development with frequent updates: bugs/inaccuracies may be present.\n' \
@@ -48,10 +48,8 @@ STATS = html.Div([
 GRAPHS = html.Div([
             html.Div(id='contracts'),
             html.Div(id='staker-breakdown'),
-            # html.Div(id='prev-work-orders-graph'),  # TODO
             html.Div(id='nodes-geolocation-graph'),
             html.Div(id='top-stakers-graph'),
-            #html.Div(id='locked-stake-graph'),
             html.Div(id='prev-states'),
         ], id='widgets')
 
