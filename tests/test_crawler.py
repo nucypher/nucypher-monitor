@@ -3,22 +3,19 @@ import sqlite3
 from unittest.mock import MagicMock, patch
 
 import maya
+import monitor
 import pytest
-from nucypher.acumen.perception import FleetSensor
+from monitor.crawler import CrawlerStorage, Crawler
+from monitor.db import CrawlerStorageClient
 from nucypher.blockchain.economics import StandardTokenEconomics
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry
 from nucypher.blockchain.eth.token import NU
 from nucypher.blockchain.eth.utils import datetime_to_period
 from nucypher.network.middleware import RestMiddleware
-
-import monitor
-from monitor.crawler import CrawlerStorage, Crawler
-from monitor.db import CrawlerStorageClient
 from tests.utilities import (
     create_random_mock_node,
     create_random_mock_node_status,
-    create_specific_mock_node,
     create_specific_mock_state,
     MockContractAgency)
 
@@ -139,21 +136,9 @@ def create_crawler(db_filepath: str = IN_MEMORY_FILEPATH):
                       registry=registry,
                       start_learning_now=True,
                       learn_on_same_thread=False,
-                      influx_host='localhost',  # TODO: Needs Cleanup
-                      influx_port=8086,  # TODO: Needs Cleanup
                       db_filepath=db_filepath
                       )
     return crawler
-
-
-def configure_mock_staking_agent(staking_agent, tokens, current_period, initial_period,
-                                 terminal_period, last_active_period):
-    staking_agent.owned_tokens.return_value = tokens
-    staking_agent.get_locked_tokens.return_value = tokens
-
-    staking_agent.get_current_period.return_value = current_period
-    staking_agent.get_all_stakes.return_value = [(initial_period, terminal_period, tokens)]
-    staking_agent.get_last_committed_period.return_value = last_active_period
 
 
 @patch.object(monitor.crawler.EconomicsFactory, 'get_economics', autospec=True)
@@ -174,10 +159,7 @@ def test_crawler_init(get_agent, get_economics):
 
 @patch.object(monitor.crawler.EconomicsFactory, 'get_economics', autospec=True)
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.crawler.InfluxDBClient', autospec=True)
-def test_crawler_stop_before_start(new_influx_db, get_agent, get_economics):
-    mock_influxdb_client = new_influx_db.return_value
-
+def test_crawler_stop_before_start(get_agent, get_economics):
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
@@ -188,18 +170,12 @@ def test_crawler_stop_before_start(new_influx_db, get_agent, get_economics):
     crawler = create_crawler()
 
     crawler.stop()
-
-    new_influx_db.assert_not_called()  # db only initialized when crawler is started
-    mock_influxdb_client.close.assert_not_called()  # just to be sure
     assert not crawler.is_running
 
 
 @pytest.mark.skip("stopping a started crawler is not stopping the thread; ctrl-c needed")
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.crawler.InfluxDBClient', autospec=True)
-def test_crawler_start_then_stop(new_influx_db, get_agent):
-    mock_influxdb_client = new_influx_db.return_value
-
+def test_crawler_start_then_stop(get_agent):
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
@@ -208,100 +184,14 @@ def test_crawler_start_then_stop(new_influx_db, get_agent):
     try:
         crawler.start()
         assert crawler.is_running
-        mock_influxdb_client.close.assert_not_called()
     finally:
         crawler.stop()
 
-    mock_influxdb_client.close.assert_called_once()
     assert not crawler.is_running
-
-
-@patch.object(monitor.crawler.EconomicsFactory, 'get_economics', autospec=True)
-@patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-def test_crawler_start_no_influx_db_connection(get_agent, get_economics):
-    staking_agent = MagicMock(spec=StakingEscrowAgent, autospec=True)
-    contract_agency = MockContractAgency(staking_agent=staking_agent)
-    get_agent.side_effect = contract_agency.get_agent
-
-    token_economics = StandardTokenEconomics()
-    get_economics.return_value = token_economics
-
-    crawler = create_crawler()
-    try:
-        with pytest.raises(ConnectionError):
-            crawler.start()
-    finally:
-        crawler.stop()
-
 
 @pytest.mark.skip("stopping a started crawler is not stopping the thread; ctrl-c needed")
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.crawler.InfluxDBClient', autospec=True)
-def test_crawler_start_blockchain_db_not_present(new_influx_db, get_agent):
-    mock_influxdb_client = new_influx_db.return_value
-    mock_influxdb_client.get_list_database.return_value = [{'name': 'db1'},
-                                                           {'name': 'db2'},
-                                                           {'name': 'db3'}]
-
-    staking_agent = MagicMock(spec=StakingEscrowAgent)
-    contract_agency = MockContractAgency(staking_agent=staking_agent)
-    get_agent.side_effect = contract_agency.get_agent
-
-    crawler = create_crawler()
-    try:
-        crawler.start()
-        assert crawler.is_running
-        mock_influxdb_client.close.assert_not_called()
-
-        # ensure table existence check run
-        mock_influxdb_client.get_list_database.assert_called_once()
-        # db created since not present
-        mock_influxdb_client.create_database.assert_called_once_with(Crawler.INFLUX_DB_NAME)
-        mock_influxdb_client.create_retention_policy.assert_called_once()
-    finally:
-        crawler.stop()
-
-    mock_influxdb_client.close.assert_called_once()
-    assert not crawler.is_running
-
-
-@pytest.mark.skip("stopping a started crawler is not stopping the thread; ctrl-c needed")
-@patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.crawler.InfluxDBClient', autospec=True)
-def test_crawler_start_blockchain_db_already_present(new_influx_db, get_agent):
-    mock_influxdb_client = new_influx_db.return_value
-    mock_influxdb_client.get_list_database.return_value = [{'name': 'db1'},
-                                                           {'name': f'{Crawler.INFLUX_DB_NAME}'},
-                                                           {'name': 'db3'}]
-
-    staking_agent = MagicMock(spec=StakingEscrowAgent)
-    contract_agency = MockContractAgency(staking_agent=staking_agent)
-    get_agent.side_effect = contract_agency.get_agent
-
-    crawler = create_crawler()
-    try:
-        crawler.start()
-        assert crawler.is_running
-        mock_influxdb_client.close.assert_not_called()
-
-        # ensure table existence check run
-        mock_influxdb_client.get_list_database.assert_called_once()
-        # db not created since not present
-        mock_influxdb_client.create_database.assert_not_called()
-        mock_influxdb_client.create_retention_policy.assert_not_called()
-    finally:
-        crawler.stop()
-
-    mock_influxdb_client.close.assert_called_once()
-    assert not crawler.is_running
-
-
-@pytest.mark.skip("stopping a started crawler is not stopping the thread; ctrl-c needed")
-@patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.crawler.InfluxDBClient', autospec=True)
-def test_crawler_learn_no_teacher(new_influx_db, get_agent, tempfile_path):
-    mock_influxdb_client = new_influx_db.return_value
-
+def test_crawler_learn_no_teacher(get_agent, tempfile_path):
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
@@ -323,16 +213,12 @@ def test_crawler_learn_no_teacher(new_influx_db, get_agent, tempfile_path):
     finally:
         crawler.stop()
 
-    mock_influxdb_client.close.assert_called_once()
     assert not crawler.is_running
 
 
 @pytest.mark.skip()
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.crawler.InfluxDBClient', autospec=True)
-def test_crawler_learn_about_teacher(new_influx_db, get_agent, tempfile_path):
-    mock_influxdb_client = new_influx_db.return_value
-
+def test_crawler_learn_about_teacher(get_agent, tempfile_path):
     staking_agent = MagicMock(spec=StakingEscrowAgent)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
@@ -355,20 +241,13 @@ def test_crawler_learn_about_teacher(new_influx_db, get_agent, tempfile_path):
     finally:
         crawler.stop()
 
-    mock_influxdb_client.close.assert_called_once()
     assert not crawler.is_running
 
 
 @pytest.mark.skip()
 @patch.object(monitor.crawler.EconomicsFactory, 'get_economics', autospec=True)
 @patch.object(monitor.crawler.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.crawler.InfluxDBClient', autospec=True)
-def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, tempfile_path):
-    mock_influxdb_client = new_influx_db.return_value
-    mock_influxdb_client.write_points.return_value = True
-
-    # TODO: issue with use of `agent.blockchain` causes spec=StakingEscrowAgent not to be specified in MagicMock
-    # Get the following - AttributeError: Mock object has no attribute 'blockchain'
+def test_crawler_learn_about_nodes(get_agent, get_economics, tempfile_path):
     staking_agent = MagicMock(autospec=True)
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
@@ -391,50 +270,9 @@ def test_crawler_learn_about_nodes(new_influx_db, get_agent, get_economics, temp
 
             previous_states = node_db_client.get_previous_states_metadata()
             assert len(previous_states) > i
-
-            # configure staking agent for blockchain calls
-            tokens = NU(int(15000 + i*2500), 'NU').to_nunits()
-            current_period = datetime_to_period(maya.now(), token_economics.seconds_per_period)
-            initial_period = current_period - i
-            terminal_period = current_period + (i+50)
-            last_active_period = current_period - i
-            staking_agent.get_worker_from_staker.side_effect = \
-                lambda staker_address: crawler.node_storage.get(federated_only=False,
-                                                                checksum_address=staker_address).worker_address
-
-            configure_mock_staking_agent(staking_agent=staking_agent,
-                                         tokens=tokens,
-                                         current_period=current_period,
-                                         initial_period=initial_period,
-                                         terminal_period=terminal_period,
-                                         last_active_period=last_active_period)
-
-            # run crawler callable
-            crawler._learn_about_nodes()
-
-            # ensure data written to influx table
-            mock_influxdb_client.write_points.assert_called_once()
-
-            # expected db row added
-            write_points_call_args_list = mock_influxdb_client.write_points.call_args_list
-            influx_db_line_protocol_statement = str(write_points_call_args_list[0][0])
-
-            expected_arguments = [f'staker_address={random_node.checksum_address}',
-                                  f'worker_address="{random_node.worker_address}"',
-                                  f'stake={float(NU.from_nunits(tokens).to_tokens())}',
-                                  f'locked_stake={float(NU.from_nunits(tokens).to_tokens())}',
-                                  f'current_period={current_period}i',
-                                  f'last_confirmed_period={last_active_period}i',
-                                  f'work_orders={len(random_node.work_orders())}i']
-            for arg in expected_arguments:
-                assert arg in influx_db_line_protocol_statement, \
-                    f"{arg} in {influx_db_line_protocol_statement} for iteration {i}"
-
-            mock_influxdb_client.reset_mock()
     finally:
         crawler.stop()
 
-    mock_influxdb_client.close.assert_called_once()
     assert not crawler.is_running
 
 

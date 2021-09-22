@@ -1,18 +1,15 @@
 import random
-from collections import OrderedDict
-from datetime import datetime, timedelta
 from typing import List, Dict
 from unittest.mock import MagicMock, patch
 
+import monitor.dashboard
 import nucypher
 import pytest
 from flask import Flask
+from monitor.crawler import CrawlerStorage
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.token import NU
-
-import monitor.dashboard
-from monitor.crawler import CrawlerStorage
 from tests.markers import circleci_only
 from tests.utilities import MockContractAgency, create_random_mock_node, create_random_mock_state
 
@@ -20,8 +17,7 @@ from tests.utilities import MockContractAgency, create_random_mock_node, create_
 @pytest.mark.skip()
 @circleci_only(reason="Additional complexity when using local machine's chromedriver")
 @patch.object(monitor.dashboard.ContractAgency, 'get_agent', autospec=True)
-@patch('monitor.dashboard.CrawlerInfluxClient', autospec=True)
-def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, dash_duo):
+def test_dashboard_render(get_agent, tempfile_path, dash_duo):
     ############## SETUP ################
     current_period = 18622
 
@@ -46,24 +42,12 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
     contract_agency = MockContractAgency(staking_agent=staking_agent)
     get_agent.side_effect = contract_agency.get_agent
 
-    # Setup Blockchain DB Client
-    historical_staked_tokens, historical_stakers, historical_work_orders = \
-        create_blockchain_db_historical_data(days_in_past=5)
-    mocked_blockchain_db_client = new_blockchain_db_client.return_value
-    configure_mocked_blockchain_db_client(mocked_db_client=mocked_blockchain_db_client,
-                                          historical_tokens=historical_staked_tokens,
-                                          historical_stakers=historical_stakers,
-                                          historical_work_orders=historical_work_orders)
-
     ############## RUN ################
     server = Flask("monitor-dashboard")
-    dashboard = monitor.dashboard.Dashboard(flask_server=server,
+    dashboard = monitor.dashboard.Dashboard(registry=None,
+                                            flask_server=server,
                                             route_url='/',
-                                            registry=None,
-                                            network='goerli',
-                                            influx_host='localhost',
-                                            influx_port=8086,
-                                            node_storage_db_filepath=tempfile_path)
+                                            network='goerli')
     dash_duo.start_server(dashboard.dash_app)
 
     # check version
@@ -92,14 +76,6 @@ def test_dashboard_render(new_blockchain_db_client, get_agent, tempfile_path, da
     pie_chart_text = dash_duo.wait_for_element_by_id('staker-breakdown-graph').text
     for num in partitioned_stakers:
         assert str(num) in pie_chart_text
-
-    # historical and future graphs are difficult to test - values aren't available through selenium WebElement
-    # The revious tests (below) were incorrect - the `text` property only included the y-axis labels (not values)
-    # - just so happened the test had the values as the same
-    # -> Simply ensure that these graphs are loaded for now
-    historical_stakers = dash_duo.wait_for_element_by_id('prev-stakers-graph').text
-    historical_work_orders = dash_duo.wait_for_element_by_id('prev-orders-graph').text
-    future_locked_stake = dash_duo.wait_for_element_by_id('locked-graph').text
 
     # check previous states
     state_table = dash_duo.wait_for_element_by_id('state-table')
@@ -194,35 +170,6 @@ def create_blockchain_db_historical_data(days_in_past: int):
         historical_work_orders.append(random.randrange(0, 20))
 
     return historical_staked_tokens, historical_stakers, historical_work_orders
-
-
-def configure_mocked_blockchain_db_client(mocked_db_client,
-                                          historical_tokens: List[int],
-                                          historical_stakers: List[int],
-                                          historical_work_orders: List[int]):
-    today = datetime.utcnow()
-    range_end = datetime(year=today.year, month=today.month, day=today.day,
-                         hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)  # include today
-    range_begin = range_end - timedelta(days=len(historical_tokens))
-
-    # mock get_historical_locked_tokens_over_range tokens
-    locked_tokens_dict = OrderedDict()
-    for idx, tokens in enumerate(historical_tokens):
-        locked_tokens_dict[range_begin + timedelta(days=idx)] = tokens
-
-    mocked_db_client.get_historical_locked_tokens_over_range.return_value = locked_tokens_dict
-
-    # mock get_historical_num_stakers_over_range
-    num_stakers_dict = OrderedDict()
-    for idx, stakers in enumerate(historical_stakers):
-        num_stakers_dict[range_begin + timedelta(days=idx)] = stakers
-    mocked_db_client.get_historical_num_stakers_over_range.return_value = num_stakers_dict
-
-    # mock get_historical_work_orders_over_range
-    work_orders_dict = OrderedDict()
-    for idx, num_work_orders in enumerate(historical_work_orders):
-        work_orders_dict[range_begin + timedelta(days=idx)] = num_work_orders
-    mocked_db_client.get_historical_work_orders_over_range.return_value = work_orders_dict
 
 
 def create_mocked_staker_agent(partitioned_stakers: tuple,

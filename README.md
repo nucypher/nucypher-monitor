@@ -18,12 +18,7 @@ $ pip install -e . -r dev-requirements.txt
 ```
 
 ### Minimum Requirements
-* Installation of [InfluxDB](https://www.influxdata.com/)
-
-    The Monitor `Crawler` stores network blockchain information in an `InfluxDB` time-series instance. The default connection
-is made to a local instance.
-
-* Ethereum Node - either local or remote
++* Ethereum Node - either local or remote
 
     The Monitor needs a Web3 node provider to obtain blockchain data.
 
@@ -46,30 +41,9 @@ Commands:
 
 #### via CLI
 
-1. Run InfluxDB
-```bash
-$ sudo influxd
+1. Use remote Ethereum node provider e.g. Infura, Alchemy etc., OR run local Geth node
 
-
- 8888888           .d888 888                   8888888b.  888888b.
-   888            d88P"  888                   888  "Y88b 888  "88b
-   888            888    888                   888    888 888  .88P
-   888   88888b.  888888 888 888  888 888  888 888    888 8888888K.
-   888   888 "88b 888    888 888  888  Y8bd8P' 888    888 888  "Y88b
-   888   888  888 888    888 888  888   X88K   888    888 888    888
-   888   888  888 888    888 Y88b 888 .d8""8b. 888  .d88P 888   d88P
- 8888888 888  888 888    888  "Y88888 888  888 8888888P"  8888888P"
-
-2020-01-29T19:07:09.671836Z	info	InfluxDB starting	{"log_id": "0Kdg2Tul000", "version": "1.7.8", "branch": "1.7", "commit": "ff383cdc0420217e3460dabe17db54f8557d95b6"}
-...
-
-```
-
-**NOTE: InfluxDB version must be < 2.0 due to authentication changes made in 2.0+.**
-
-2. Use remote Ethereum node provider e.g. Infura, Alchemy etc., OR run local Geth node
-
-3. Run the `Crawler`
+2. Run the `Crawler`
     
 ```bash
 $ nucypher-monitor crawl --provider <YOUR_WEB3_PROVIDER_URI> --network <NETWORK NAME>
@@ -80,15 +54,13 @@ $ nucypher-monitor crawl --provider <YOUR_WEB3_PROVIDER_URI> --network <NETWORK 
 
 ========= Crawler =========
 
-Connecting to preferred teacher nodes...
 Network: <NETWORK NAME>
-InfluxDB: 0.0.0.0:8086
 Provider: ...
 Refresh Rate: 60s
 Running Nucypher Crawler JSON endpoint at http://localhost:9555/stats
 ```
 
-4. Run the `Dashboard`
+3. Run the `Dashboard`
     
 ```bash
 
@@ -103,19 +75,20 @@ $ nucypher-monitor dashboard --provider <YOUR WEB3 PROVIDER URI> --network <NETW
 
 Network: <NETWORK NAME>
 Crawler: localhost:9555
-InfluxDB: localhost:8086
 Provider: ...
 Running Monitor Dashboard - https://127.0.0.1:12500
 
 
 ```
 
-5. The `Dashboard` UI is available at https://127.0.0.1:12500.
+4. The `Dashboard` UI is available at https://127.0.0.1:12500.
+
+    **NOTE: The UI will remain empty until after the crawler has collected data during its first scraping round**
 
 
 #### via Docker Compose
 
-Docker Compose will start InfluxDB, Crawler, and Dashboard containers, and no installation of the monitor is required.
+Docker Compose will start the Crawler and Dashboard containers, and no installation of the monitor is required.
 
 1. Set required environment variables
 
@@ -152,7 +125,6 @@ docker-compose -f deploy/docker-compose.yml up
 
 Alternatively, you can run the services individually
 ```bash
-docker-compose -f deploy/docker-compose.yml up -d influxdb
 docker-compose -f deploy/docker-compose.yml up -d crawler
 docker-compose -f deploy/docker-compose.yml up -d web
 ```
@@ -168,3 +140,5 @@ docker-compose -f deploy/docker-compose.yml logs -f <SERVICE_NAME>
 ```
 
 4. The `Dashboard` UI is available on port 12500.
+
+     **NOTE: The UI will remain empty until after the crawler has collected data during its first scraping round**

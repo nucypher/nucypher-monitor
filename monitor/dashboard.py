@@ -2,9 +2,9 @@ import json
 from os import path
 
 import IP2Location
-import dash_html_components as html
 import requests
 from dash import Dash
+from dash import html
 from dash.dependencies import Output, Input, State
 from flask import Flask, request
 from maya import MayaDT
@@ -28,7 +28,6 @@ from monitor.charts import (
 )
 from monitor.components import make_contract_row
 from monitor.crawler import Crawler
-from monitor.db import CrawlerInfluxClient
 from monitor.supply import calculate_supply_information, calculate_current_total_supply, calculate_circulating_supply
 
 
@@ -43,16 +42,13 @@ class Dashboard:
                  route_url: str,
                  network: str,
                  crawler_host: str,
-                 crawler_port: int,
-                 influx_host: str,
-                 influx_port: int):
+                 crawler_port: int):
 
         self.log = Logger(self.__class__.__name__)
 
         # Crawler
         self.crawler_host = crawler_host
         self.crawler_port = crawler_port
-        self.influx_client = CrawlerInfluxClient(host=influx_host, port=influx_port, database=Crawler.INFLUX_DB_NAME)
 
         # Blockchain & Contracts
         self.network = network
@@ -63,6 +59,9 @@ class Dashboard:
         self.token_agent = ContractAgency.get_agent(NucypherTokenAgent, registry=self.registry)
         self.policy_agent = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
         self.adjudicator_agent = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
+
+        # Economics
+        self.economics = EconomicsFactory.get_economics(registry=self.registry)
 
         # Add informational endpoints
         # Supply
@@ -170,12 +169,14 @@ class Dashboard:
             if current_tab == 'node-details':
                 return known_nodes(latest_crawler_stats=latest_crawler_stats)
             else:
-                return events()
+                return network_events(latest_crawler_stats)
 
-        def events():
-            prior_periods = 30  # TODO more thought? (note: retention for the db is 5w - so anything longer is useless)
-            events_data = self.influx_client.get_historical_events(days=prior_periods)
-            events_table = components.events_table(network=self.network, events=events_data, days=prior_periods)
+        def network_events(latest_crawler_stats):
+            data = self.verify_cached_stats(latest_crawler_stats)
+            events_table = components.events_table(
+                network=self.network,
+                events=data['network_events'],
+                days=Crawler.ERROR_EVENTS_NUM_PAST_PERIODS * self.economics.days_per_period)
             return events_table
 
         def known_nodes(latest_crawler_stats):
@@ -259,20 +260,6 @@ class Dashboard:
             staked = NU.from_nunits(data['global_locked_tokens'])
             return html.Div([html.H4('Staked in Current Period'), html.H5(f"{staked}", id='staked-tokens-value')])
 
-        # @dash_app.callback(Output('locked-stake-graph', 'children'),
-        #                    [Input('daily-interval', 'n_intervals')],
-        #                    [State('cached-crawler-stats', 'children')])
-        # def stake_and_known_nodes_plot(n, latest_crawler_stats):
-        #     prior_periods = 30
-        #     data = self.verify_cached_stats(latest_crawler_stats)
-        #     nodes_history = self.influx_client.get_historical_num_stakers_over_range(prior_periods)
-        #     past_stakes = self.influx_client.get_historical_locked_tokens_over_range(prior_periods)
-        #     future_stakes = data['future_locked_tokens']
-        #     graph = future_locked_tokens_bar_chart(future_locked_tokens=future_stakes,
-        #                                            past_locked_tokens=past_stakes,
-        #                                            node_history=nodes_history)
-        #     return graph
-
         @dash_app.callback(Output('nodes-geolocation-graph', 'children'),
                            [Input('minute-interval', 'n_intervals')],
                            [State('cached-crawler-stats', 'children')])
@@ -280,12 +267,5 @@ class Dashboard:
             data = self.verify_cached_stats(latest_crawler_stats)
             nodes_map = nodes_geolocation_map(nodes_dict=data['node_details'], ip2loc=self.ip2loc)
             return nodes_map
-
-        # @dash_app.callback(Output('prev-work-orders-graph', 'children'), [Input('daily-interval', 'n_intervals')])
-        # def historical_work_orders(n):
-        #     TODO: only works for is_me characters
-        #     prior_periods = 30
-        #     num_work_orders_data = self.influx_client.get_historical_work_orders_over_range(prior_periods)
-        #     return historical_work_orders_line_chart(data=num_work_orders_data)
 
         return dash_app

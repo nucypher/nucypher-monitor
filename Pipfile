@@ -8,14 +8,12 @@ python_version = "3"
 
 [packages]
 # NuCypher
-nucypher = ">=4.8.0"
+nucypher = {git = "https://github.com/derekpierre/nucypher.git", ref = "ease-up-monitor-logs"}
 # Web
 requests = "*"
 flask = "<2.0" # conflict with itsdangerous dependency in flask version with nucypher
 hendrix = "*"
-twisted = "*"
-# Database
-influxdb = "<5.3.0"
+twisted = "<21.7.0"  # resolves conflict with 'incremental' library version used in latest nucypher version
 # CLI / Configuration
 maya = "*"
 click = ">=7.0"

@@ -1,7 +1,7 @@
-import dash_core_components as dcc
+import IP2Location
 import maya
 import plotly.graph_objs as go
-import IP2Location
+from dash import dcc
 
 GRAPH_CONFIG = {'displaylogo': False,
                 'autosizable': True,

@@ -1,12 +1,11 @@
 from typing import List
 
-import dash_html_components as html
-import dash_table
-import nucypher
+from dash import dash_table, html
 from maya import MayaDT
-from monitor.utils import get_etherscan_url, EtherscanURLType
 from nucypher.blockchain.eth.token import NU
 from pendulum.parsing import ParserError
+
+from monitor.utils import get_etherscan_url, EtherscanURLType
 
 NODE_TABLE_COLUMNS = ['Status', 'Checksum', 'Nickname', 'Uptime', 'Last Seen', 'Fleet State']
 NODE_TABLE_COLUMNS_PROPERTIES = {
@@ -221,7 +220,7 @@ def nodes_table(network: str, nodes: List) -> dash_table.DataTable:
     return table
 
 
-def known_nodes(network: str, nodes_dict: dict, teacher_checksum: str = None) -> List[html.Div]:
+def known_nodes(network: str, nodes_dict: dict) -> List[html.Div]:
     components = []
     buckets = {'active': sorted([*nodes_dict.get('confirmed', []), *nodes_dict.get('pending', [])],
                                 key=lambda n: n['timestamp']),
@@ -302,9 +301,8 @@ def events_table(network: str, events: List, days: int) -> html.Div:
 
 def generate_event_row(network: str, event_info: dict) -> dict:
     tx_hash = event_info['txhash']
-
     event_row = {
-        EVENT_TABLE_COLUMNS[0]: event_info['time'],
+        EVENT_TABLE_COLUMNS[0]: MayaDT(epoch=event_info['timestamp']).rfc3339(),
         EVENT_TABLE_COLUMNS[1]: f'[{event_info["contract_name"]}]'
                                 f'({get_etherscan_url(network, EtherscanURLType.ADDRESS, event_info["contract_address"])})',
         EVENT_TABLE_COLUMNS[2]: event_info['event_name'],
@@ -312,5 +310,4 @@ def generate_event_row(network: str, event_info: dict) -> dict:
         EVENT_TABLE_COLUMNS[4]: f'[{tx_hash[:12]}...]'
                                 f'({get_etherscan_url(network, EtherscanURLType.TRANSACTION, tx_hash)})',
     }
-
     return event_row

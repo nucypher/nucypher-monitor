@@ -1,12 +1,11 @@
 from unittest.mock import MagicMock, patch
 
+import monitor
 import nucypher
 import pytest
 from click.testing import CliRunner
-from nucypher.blockchain.eth.agents import StakingEscrowAgent
-
-import monitor
 from monitor.cli.main import monitor as monitor_cli, CRAWLER, MONITOR_BANNER, DASHBOARD
+from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from tests.utilities import MockContractAgency
 
 
@@ -51,7 +50,6 @@ def test_monitor_crawl_run(click_runner):
 
 # TODO fix test
 @pytest.mark.skip('not working')
-@patch('monitor.dashboard.CrawlerInfluxClient', autospec=True)
 @patch.object(monitor.dashboard.ContractAgency, 'get_agent', autospec=True)
 @patch.object(monitor.cli.main.BlockchainInterfaceFactory, 'initialize_interface', autospec=True)
 def test_monitor_dashboard_run(init_interface, get_agent, click_runner):
