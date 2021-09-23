@@ -2,7 +2,6 @@ import os
 import random
 import sqlite3
 from collections import defaultdict
-from typing import List, Dict
 
 import click
 import maya
@@ -13,14 +12,12 @@ from nucypher.acumen.perception import FleetSensor, ArchivedFleetState, RemoteUr
 from nucypher.blockchain.economics import EconomicsFactory
 from nucypher.blockchain.eth.agents import (
     ContractAgency,
-    StakingEscrowAgent,
-    AdjudicatorAgent)
+    StakingEscrowAgent)
 from nucypher.blockchain.eth.constants import NULL_ADDRESS
 from nucypher.blockchain.eth.decorators import validate_checksum_address
-from nucypher.blockchain.eth.events import EventRecord
 from nucypher.blockchain.eth.registry import InMemoryContractRegistry, BaseContractRegistry
 from nucypher.blockchain.eth.token import NU
-from nucypher.blockchain.eth.utils import datetime_at_period, datetime_to_period, estimate_block_number_for_period
+from nucypher.blockchain.eth.utils import datetime_at_period, datetime_to_period
 from nucypher.config.constants import DEFAULT_CONFIG_ROOT
 from nucypher.config.storages import ForgetfulNodeStorage
 from nucypher.network.nodes import Teacher, Learner
@@ -161,13 +158,6 @@ class Crawler(Learner):
 
     METRICS_ENDPOINT = 'stats'
     DEFAULT_CRAWLER_HTTP_PORT = 9555
-
-    ERROR_EVENTS = {
-        # TODO for some reason this event causes issues with our web3 provider - #104
-        # StakingEscrowAgent: ['Slashed'],
-        AdjudicatorAgent: ['IncorrectCFragVerdict'],
-    }
-    ERROR_EVENTS_NUM_PAST_PERIODS = 2
 
     STAKER_PAGINATION_SIZE = 200
 
@@ -406,9 +396,6 @@ class Crawler(Learner):
 
         top_stakers = self._measure_top_stakers()
 
-        # events
-        network_events = self.check_network_events()
-
         #
         # Write
         #
@@ -427,7 +414,6 @@ class Crawler(Learner):
 
                        'global_locked_tokens': global_locked_tokens,
                        'top_stakers': top_stakers,
-                       'network_events': network_events,
                        }
         done = maya.now()
         delta = done - start
@@ -435,40 +421,6 @@ class Crawler(Learner):
         click.echo(f"Scraping round completed (duration {delta}).", color='yellow')  # TODO: Make optional, use emitter, or remove
         click.echo("==========================================")
         self.log.debug(f"Collected new metrics took {delta}.")
-
-    @collector(label="Network Events")
-    def check_network_events(self) -> List[Dict]:
-        blockchain_client = self.staking_agent.blockchain.client
-        latest_block_number = blockchain_client.block_number
-
-        two_periods_ago_datetime = maya.now() - maya.timedelta(days=self.ERROR_EVENTS_NUM_PAST_PERIODS * self.economics.days_per_period)
-        two_periods_ago = datetime_to_period(datetime=two_periods_ago_datetime,
-                                             seconds_per_period=self.economics.seconds_per_period)
-        # estimate blocknumber - does not have to be exact
-        two_periods_ago_est_blocknumber = estimate_block_number_for_period(
-            period=two_periods_ago,
-            seconds_per_period=self.economics.seconds_per_period,
-            latest_block=latest_block_number)
-
-        events_list = list()
-        for agent_class, event_names in self.ERROR_EVENTS.items():
-            agent = ContractAgency.get_agent(agent_class, registry=self.registry)
-            for event_name in event_names:
-                event = agent.contract.events[event_name]
-                entries = event.getLogs(fromBlock=two_periods_ago_est_blocknumber, toBlock=latest_block_number)
-                for event_record in entries:
-                    record = EventRecord(event_record)
-                    args = ", ".join(f"{k}:{v}" for k, v in record.args.items())
-                    events_list.append(dict(
-                        txhash=record.transaction_hash,
-                        contract_name=agent.contract_name,
-                        contract_address=agent.contract_address,
-                        event_name=event_name,
-                        block_number=record.block_number,
-                        args=args,
-                        timestamp=blockchain_client.w3.eth.getBlock(record.block_number).timestamp,
-                    ))
-        return events_list
 
     def make_flask_server(self):
         """JSON Endpoint"""

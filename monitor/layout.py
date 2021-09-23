@@ -54,14 +54,6 @@ GRAPHS = html.Div([
         ], id='widgets')
 
 NETWORK_INFO_TABS = html.Div([
-    html.H4('Network Information'),
-    dcc.Tabs(id='network-info-tabs',
-             parent_className='network-info-tabs-parent',
-             children=[
-                 dcc.Tab(label='Nodes', value='node-details', className='network-info-tab', selected_className='network-info-tab--selected'),
-                 dcc.Tab(label='Issues/Events', value='event-details', className='network-info-tab', selected_className='network-info-tab--selected'),
-             ],
-             value='node-details'),
     html.Div(id='network-info-content')
 ])
 
