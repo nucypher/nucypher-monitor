@@ -162,22 +162,10 @@ class Dashboard:
 
         @dash_app.callback(Output('network-info-content', 'children'),
                            [Input('url', 'pathname'),
-                            Input('minute-interval', 'n_intervals'),
-                            Input('network-info-tabs', 'value')],
+                            Input('minute-interval', 'n_intervals')],
                            [State('cached-crawler-stats', 'children')])
-        def network_info_tab_content(pathname, n, current_tab, latest_crawler_stats):
-            if current_tab == 'node-details':
-                return known_nodes(latest_crawler_stats=latest_crawler_stats)
-            else:
-                return network_events(latest_crawler_stats)
-
-        def network_events(latest_crawler_stats):
-            data = self.verify_cached_stats(latest_crawler_stats)
-            events_table = components.events_table(
-                network=self.network,
-                events=data['network_events'],
-                days=Crawler.ERROR_EVENTS_NUM_PAST_PERIODS * self.economics.days_per_period)
-            return events_table
+        def network_info_content(pathname, n, latest_crawler_stats):
+            return known_nodes(latest_crawler_stats=latest_crawler_stats)
 
         def known_nodes(latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
