@@ -245,8 +245,16 @@ class Dashboard:
                            [State('cached-crawler-stats', 'children')])
         def staked_tokens(n, latest_crawler_stats):
             data = self.verify_cached_stats(latest_crawler_stats)
-            staked = NU.from_nunits(data['global_locked_tokens'])
+            staked = round(NU.from_nunits(sum(data['top_stakers'].values())), 2)  # round to 2 decimals
             return html.Div([html.H4('Staked in Current Period'), html.H5(f"{staked}", id='staked-tokens-value')])
+
+        @dash_app.callback(Output('staked-tokens-next-period', 'children'),
+                           [Input('minute-interval', 'n_intervals')],
+                           [State('cached-crawler-stats', 'children')])
+        def staked_tokens_next_period(n, latest_crawler_stats):
+            data = self.verify_cached_stats(latest_crawler_stats)
+            staked = round(NU.from_nunits(data['global_locked_tokens']), 2)  # round to 2 decimals
+            return html.Div([html.H4('Currently Staked for Next Period'), html.H5(f"{staked}", id='staked-tokens-next-period-value')])
 
         @dash_app.callback(Output('nodes-geolocation-graph', 'children'),
                            [Input('minute-interval', 'n_intervals')],
