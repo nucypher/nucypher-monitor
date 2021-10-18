@@ -2,6 +2,7 @@ import IP2Location
 import maya
 import plotly.graph_objs as go
 from dash import dcc
+from nucypher.blockchain.eth.token import NU
 
 GRAPH_CONFIG = {'displaylogo': False,
                 'autosizable': True,
@@ -79,12 +80,17 @@ def stakers_breakdown_pie_chart(data):
 
 
 def top_stakers_chart(data: dict):
-    data_values_list = list(data.values())
-    total_staked = sum(data_values_list)
+    # modify values to show 'NU'
+    stakes_in_nu = []
+    total_staked = 0
+    for stake_in_nunits in data.values():
+        stake_in_nu = NU.from_nunits(stake_in_nunits).to_tokens()
+        stakes_in_nu.append(stake_in_nu)
+        total_staked += stake_in_nu
 
     # add Total entry as root element
     treemap_labels = (list(data.keys()) + ['Total'])
-    treemap_values = data_values_list + [total_staked]
+    treemap_values = stakes_in_nu + [total_staked]
     treemap_parents = ['Total'] * len(data) + ['']  # set parent of Total entry to be root ('')
 
     fig = go.Figure(
@@ -95,7 +101,7 @@ def top_stakers_chart(data: dict):
             parents=treemap_parents,
             values=treemap_values,
             textinfo='none',
-            hovertemplate="<b>%{label} </b> <br> Stake Size: %{value:,.2f} NU<br> % of Network: %{percentRoot:.3% %}",
+            hovertemplate="<b>%{label} </b> <br> Stake Size: %{value:,.0f} NU<br> % of Network: %{percentRoot:.3%}",
             marker=go.treemap.Marker(colors=list(data.keys()), colorscale='Viridis', line={"width": 1}),
             pathbar=dict(visible=False),
         ),

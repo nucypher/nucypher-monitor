@@ -42,6 +42,7 @@ STATS = html.Div([
             html.Div(id='domain'),
             html.Div(id='active-stakers'),
             html.Div(id='staked-tokens'),
+            html.Div(id='staked-tokens-next-period')
 ], id='stats')
 
 
