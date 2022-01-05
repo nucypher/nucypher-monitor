@@ -10,7 +10,7 @@ from nucypher.blockchain.eth.token import NU
 from monitor.supply import LAUNCH_DATE, vesting_remaining_factor, DAYS_PER_MONTH, calculate_supply_information, \
     INITIAL_SUPPLY, UNIVERSITY_INITIAL_SUPPLY, CASI_SUPPLY, months_transpired_since_launch, SAFT2_INITIAL_SUPPLY, \
     TEAM_INITIAL_SUPPLY, NUCO_INITIAL_SUPPLY, SAFT1_SUPPLY, NUCO_VESTING_MONTHS, WORKLOCK_VESTING_MONTHS, \
-    UNIVERSITY_VESTING_MONTHS, SAFT2_TEAM_VESTING_MONTHS, calculate_current_total_supply, calculate_circulating_supply
+    UNIVERSITY_VESTING_MONTHS, SAFT2_TEAM_VESTING_MONTHS
 
 # initial values
 MAX_SUPPLY = NU(3_890_000_000, 'NU')
@@ -284,7 +284,7 @@ def test_calculate_circulating_supply(months_transpired):
 
     future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
     with patch.object(maya, 'now', return_value=future_date):
-        supply_information = calculate_supply_information(economics)
+        supply_information = calculate_supply_information(total_supply=initial_supply_with_rewards)
 
         est_circulating_supply = calculate_circulating_supply(economics)
         assert supply_information['est_circulating_supply'] == est_circulating_supply

@@ -35,39 +35,39 @@ HEADER = html.Div([
     id="controls")
 
 STATS = html.Div([
-            html.Div(id='blocktime-value'),
-            html.Div(id='registry'),
+            #html.Div(id='blocktime-value'),
             html.Div([html.Div(id='current-period')]),
-            html.Div(id='time-remaining'),
+            #html.Div(id='time-remaining'),
             html.Div(id='domain'),
-            html.Div(id='active-stakers'),
+            #html.Div(id='active-stakers'),
             html.Div(id='staked-tokens'),
-            html.Div(id='staked-tokens-next-period')
+            #html.Div(id='staked-tokens-next-period')
 ], id='stats')
 
 
 GRAPHS = html.Div([
+            html.Div(id='registry'),
             html.Div(id='contracts'),
-            html.Div(id='staker-breakdown'),
-            html.Div(id='nodes-geolocation-graph'),
-            html.Div(id='top-stakers-graph'),
-            html.Div(id='prev-states'),
+            #html.Div(id='staker-breakdown'),
+            #html.Div(id='nodes-geolocation-graph'),
+            #html.Div(id='top-stakers-graph'),
+            #html.Div(id='prev-states'),
         ], id='widgets')
 
 NETWORK_INFO_TABS = html.Div([
-    html.Div(id='network-info-content')
+    #html.Div(id='network-info-content')
 ])
 
 CONTENT = html.Div([html.Div([STATS, GRAPHS, NETWORK_INFO_TABS])], id='main')
 
 # Hidden div inside the app that stores previously decrypted heartbeats
-HIDDEN_DIV = html.Div(id='cached-crawler-stats', style={'display': 'none'})
+# HIDDEN_DIV = html.Div(id='cached-crawler-stats', style={'display': 'none'})
 
 BODY = html.Div([
         dcc.Location(id='url', refresh=False),
         PINNED_MESSAGE,
         HEADER,
-        HIDDEN_DIV,
+        # HIDDEN_DIV,
         CONTENT,
 
         dcc.Interval(

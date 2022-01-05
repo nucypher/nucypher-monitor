@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 TITLE = 'Network Monitor Dashboard Application'
-ASSETS_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'assets')
+ASSETS_PATH = Path(__file__).parent.absolute() / "assets"

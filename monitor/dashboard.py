@@ -1,5 +1,5 @@
 import json
-from os import path
+from pathlib import Path
 
 import IP2Location
 import requests
@@ -8,18 +8,6 @@ from dash import html
 from dash.dependencies import Output, Input, State
 from flask import Flask, request
 from maya import MayaDT
-from nucypher.blockchain.economics import EconomicsFactory
-from nucypher.blockchain.eth.agents import (
-    StakingEscrowAgent,
-    ContractAgency,
-    NucypherTokenAgent,
-    PolicyManagerAgent,
-    AdjudicatorAgent
-)
-from nucypher.blockchain.eth.registry import InMemoryContractRegistry
-from nucypher.blockchain.eth.token import NU
-from twisted.logger import Logger
-
 from monitor import layout, components, settings
 from monitor.charts import (
     stakers_breakdown_pie_chart,
@@ -28,7 +16,17 @@ from monitor.charts import (
 )
 from monitor.components import make_contract_row
 from monitor.crawler import Crawler
-from monitor.supply import calculate_supply_information, calculate_current_total_supply, calculate_circulating_supply
+from monitor.supply import calculate_supply_information
+from nucypher.blockchain.eth.agents import (
+    StakingEscrowAgent,
+    ContractAgency,
+    NucypherTokenAgent,
+    PolicyManagerAgent,
+    AdjudicatorAgent,
+    WorkLockAgent
+)
+from nucypher.blockchain.eth.token import NU
+from twisted.logger import Logger
 
 
 class Dashboard:
@@ -59,9 +57,10 @@ class Dashboard:
         self.token_agent = ContractAgency.get_agent(NucypherTokenAgent, registry=self.registry)
         self.policy_agent = ContractAgency.get_agent(PolicyManagerAgent, registry=self.registry)
         self.adjudicator_agent = ContractAgency.get_agent(AdjudicatorAgent, registry=self.registry)
+        self.worklock_agent = ContractAgency.get_agent(WorkLockAgent, registry=self.registry)
 
         # Economics
-        self.economics = EconomicsFactory.get_economics(registry=self.registry)
+        #self.economics = EconomicsFactory.get_economics(registry=self.registry)
 
         # Add informational endpoints
         # Supply
@@ -73,8 +72,8 @@ class Dashboard:
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
 
         # GeoLocation
-        iplocation_file = path.join(settings.ASSETS_PATH, 'geolocation', 'IP2LOCATION-LITE-DB5.BIN')
-        self.ip2loc = IP2Location.IP2Location(filename=iplocation_file)
+        iplocation_file = Path(settings.ASSETS_PATH, 'geolocation', 'IP2LOCATION-LITE-DB5.BIN')
+        self.ip2loc = IP2Location.IP2Location(filename=iplocation_file.resolve())
 
     def make_request(self):
         url = f'http://{self.crawler_host}:{self.crawler_port}/{Crawler.METRICS_ENDPOINT}'
@@ -94,30 +93,41 @@ class Dashboard:
     def add_supply_endpoint(self, flask_server: Flask):
         @flask_server.route('/supply_information', methods=["GET"])
         def supply_information():
-            economics = EconomicsFactory.retrieve_from_blockchain(registry=self.registry)
-
+            current_total_supply_nunits = self.staking_agent.contract.functions.currentPeriodSupply().call()
+            current_total_supply = NU.from_nunits(current_total_supply_nunits)
             parameter = request.args.get('q')
-            if parameter is None:
+            if parameter is None or parameter == 'est_circulating_supply':
+                # max supply needed
+                max_supply_nunits = self.token_agent.contract.functions.totalSupply().call()
+                max_supply = NU.from_nunits(max_supply_nunits)
+
+                # worklock supply
+                worklock_supply = NU.from_nunits(self.worklock_agent.lot_value)
+
                 # no query - return all supply information
-                supply_info = calculate_supply_information(economics=economics)
-                response = flask_server.response_class(
-                    response=json.dumps(supply_info),
-                    status=200,
-                    mimetype='application/json'
-                )
-            else:
-                # specific request query provided
-                if parameter == 'current_total_supply':
-                    current_total_supply = calculate_current_total_supply(economics)
+                supply_info = calculate_supply_information(max_supply=max_supply,
+                                                           current_total_supply=current_total_supply,
+                                                           worklock_supply=worklock_supply)
+                if parameter is None:
+                    # return all information
                     response = flask_server.response_class(
-                        response=str(current_total_supply),
+                        response=json.dumps(supply_info),
+                        status=200,
+                        mimetype='application/json'
+                    )
+                else:
+                    # only return est. circulating supply
+                    est_circulating_supply = supply_info['est_circulating_supply']
+                    response = flask_server.response_class(
+                        response=str(est_circulating_supply),
                         status=200,
                         mimetype='text/plain'
                     )
-                elif parameter == 'est_circulating_supply':
-                    est_circulating_supply = calculate_circulating_supply(economics)
+            else:
+                # only current total supply requested
+                if parameter == 'current_total_supply':
                     response = flask_server.response_class(
-                        response=str(est_circulating_supply),
+                        response=str(float(current_total_supply.to_tokens())),
                         status=200,
                         mimetype='text/plain'
                     )
@@ -132,7 +142,7 @@ class Dashboard:
     def make_dash_app(self, flask_server: Flask, route_url: str, debug: bool = False):
         dash_app = Dash(name=__name__,
                         server=flask_server,
-                        assets_folder=settings.ASSETS_PATH,
+                        assets_folder=settings.ASSETS_PATH.resolve(),
                         url_base_pathname=route_url,
                         suppress_callback_exceptions=debug,
                         eager_loading=False,
@@ -196,12 +206,10 @@ class Dashboard:
             data = self.verify_cached_stats(latest_crawler_stats)
             return top_stakers_chart(data=data['top_stakers'])
 
-        @dash_app.callback(Output('current-period', 'children'),
-                           [Input('minute-interval', 'n_intervals')],
-                           [State('cached-crawler-stats', 'children')])
-        def current_period(n, latest_crawler_stats):
-            data = self.verify_cached_stats(latest_crawler_stats)
-            return html.Div([html.H4("Current Period"), html.H5(data['current_period'], id='current-period-value')])
+        @dash_app.callback(Output('current-period', 'children'), [Input('url', 'pathname')])  # on page-load
+        def current_period(pathname):
+            halt_period = self.staking_agent.contract.functions.currentMintingPeriod().call()
+            return html.Div([html.H4("Period of NU Inflation Halt"), html.H5(halt_period, id='current-period-value')])
 
         @dash_app.callback(Output('blocktime-value', 'children'),
                            [Input('minute-interval', 'n_intervals')],
@@ -229,8 +237,7 @@ class Dashboard:
 
         @dash_app.callback(Output('registry', 'children'), [Input('url', 'pathname')])  # on page-load
         def registry(pathname):
-            latest = InMemoryContractRegistry.from_latest_publication(network=self.network)
-            return html.Div([html.H4('Registry'), html.H5(latest.id[:16], id="registry-value")])
+            return html.Div([html.H4('Registry'), html.H5(self.registry.id[:16], id="registry-value")])
 
         @dash_app.callback(Output('contracts', 'children'),
                            [Input('domain', 'children')])  # after domain obtained to prevent concurrent blockchain requests
@@ -240,13 +247,12 @@ class Dashboard:
             _components = html.Div([html.H4('Contracts'), *rows], id='contract-names')
             return _components
 
-        @dash_app.callback(Output('staked-tokens', 'children'),
-                           [Input('minute-interval', 'n_intervals')],
-                           [State('cached-crawler-stats', 'children')])
-        def staked_tokens(n, latest_crawler_stats):
-            data = self.verify_cached_stats(latest_crawler_stats)
-            staked = round(NU.from_nunits(sum(data['top_stakers'].values())), 2)  # round to 2 decimals
-            return html.Div([html.H4('Staked in Current Period'), html.H5(f"{staked}", id='staked-tokens-value')])
+        @dash_app.callback(Output('staked-tokens', 'children'), [Input('url', 'pathname')])  # on page-load
+        def staked_tokens(pathname):
+            halt_period = self.staking_agent.contract.functions.currentMintingPeriod().call()
+            total_staked = self.staking_agent.get_global_locked_tokens(at_period=halt_period)
+            staked = round(NU.from_nunits(total_staked), 2)  # round to 2 decimals
+            return html.Div([html.H4('Total Legacy Stakes'), html.H5(f"{staked}", id='staked-tokens-value')])
 
         @dash_app.callback(Output('staked-tokens-next-period', 'children'),
                            [Input('minute-interval', 'n_intervals')],
