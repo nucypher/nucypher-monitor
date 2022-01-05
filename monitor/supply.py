@@ -85,7 +85,9 @@ def calculate_supply_information(max_supply: NU,
     # - Locked allocations
     locked_allocations = OrderedDict()
     initial_supply_info['locked_allocations'] = locked_allocations
-    now = maya.now()
+    # base "now" on static inflation halt transaction time (https://etherscan.io/tx/0x23ef7eacd809399ed5135d5fe7dd9f6970c813f2704f884a12842479c213a87c)
+    # probably don't need to be that specific since vesting is by months, but why not document it here
+    now = maya.MayaDT.from_iso8601('2021-12-31T07:44:37.0Z')
     vest_saft2_team_factor = vesting_remaining_factor(vesting_months=SAFT2_TEAM_VESTING_MONTHS, cliff=False, now=now)
     vest_worklock_factor = vesting_remaining_factor(vesting_months=WORKLOCK_VESTING_MONTHS, cliff=True, now=now)
     vest_nuco_factor = vesting_remaining_factor(vesting_months=NUCO_VESTING_MONTHS, cliff=True, now=now)
