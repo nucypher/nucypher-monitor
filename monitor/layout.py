@@ -2,12 +2,12 @@ from dash import dcc
 from dash import html
 
 # NOTE: changing this to an empty string is enough to remove the pinned message.
-PINNED_MESSAGE_TEXT = 'This page is under active development with frequent updates: bugs/inaccuracies may be present.\n' \
-                       'New issues can be filed at https://github.com/nucypher/nucypher-monitor/issues/.'
+PINNED_MESSAGE_TEXT = 'We are upgrading to Threshold Network (https://threshold.network)!'
 
 MINUTE_REFRESH_RATE = 60 * 1000
 DAILY_REFRESH_RATE = MINUTE_REFRESH_RATE * 60 * 24
-LOGO_PATH = '/assets/nucypher_logo.png'  # TODO: Configure assets path
+NU_LOGO_PATH = '/assets/nucypher_logo.png'  # TODO: Configure assets path
+THRESHOLD_LOGO_PATH = '/assets/threshold_wordmark.png'
 
 # Buttons used for WS topic notifications
 HIDDEN_BUTTONS = html.Div([
@@ -29,16 +29,35 @@ else:
     PINNED_MESSAGE = ''
 
 HEADER = html.Div([
-    html.A(html.Img(src=LOGO_PATH, className='banner'), href='https://www.nucypher.com'),
-    # html.Div(id='header'), TODO not needed?
-    HIDDEN_BUTTONS],
+        html.A(html.Img(src=NU_LOGO_PATH, className='banner'), href='https://www.nucypher.com', target='_'),
+        # html.Div(id='header'), TODO not needed?
+        HIDDEN_BUTTONS
+    ],
     id="controls")
+
+THRESHOLD_NOTE = html.Div([
+        html.A(html.Img(src=THRESHOLD_LOGO_PATH, className='threshold_wordmark'), href='https://threshold.network', target='_'),
+        html.P('We are upgrading to the Threshold Network!'),
+        html.Br(),
+        html.P('Network Information is currently not displayable on the status '
+               'dashboard during the upgrade to Threshold.'),
+        html.Br(),
+        html.P('Existing NU and KEEP stakers will be grandfathered into Threshold '
+               'via special staking adapters. It is not necessary to keep your '
+               'worker node up until until the instructions for Threshold staking '
+               'are shared.'),
+        html.Br(),
+        html.P('Rest assured, your legacy NU stakes are safe and will be eligible '
+               'to be utilized by Threshold Network via a staking adapter to instead '
+               'earn rewards in the T token.')
+    ],
+    id='threshold_note')
 
 STATS = html.Div([
             #html.Div(id='blocktime-value'),
+            html.Div(id='domain'),
             html.Div([html.Div(id='current-period')]),
             #html.Div(id='time-remaining'),
-            html.Div(id='domain'),
             #html.Div(id='active-stakers'),
             html.Div(id='staked-tokens'),
             #html.Div(id='staked-tokens-next-period')
@@ -67,6 +86,7 @@ BODY = html.Div([
         dcc.Location(id='url', refresh=False),
         PINNED_MESSAGE,
         HEADER,
+        THRESHOLD_NOTE,
         # HIDDEN_DIV,
         CONTENT,
 

@@ -209,7 +209,7 @@ class Dashboard:
         @dash_app.callback(Output('current-period', 'children'), [Input('url', 'pathname')])  # on page-load
         def current_period(pathname):
             halt_period = self.staking_agent.contract.functions.currentMintingPeriod().call()
-            return html.Div([html.H4("Period of NU Inflation Halt"), html.H5(halt_period, id='current-period-value')])
+            return html.Div([html.H4("Period of Inflation Halt"), html.H5(halt_period, id='current-period-value')])
 
         @dash_app.callback(Output('blocktime-value', 'children'),
                            [Input('minute-interval', 'n_intervals')],
@@ -252,7 +252,7 @@ class Dashboard:
             halt_period = self.staking_agent.contract.functions.currentMintingPeriod().call()
             total_staked = self.staking_agent.get_global_locked_tokens(at_period=halt_period)
             staked = round(NU.from_nunits(total_staked), 2)  # round to 2 decimals
-            return html.Div([html.H4('Total Legacy Stakes'), html.H5(f"{staked}", id='staked-tokens-value')])
+            return html.Div([html.H4('Total Legacy Stakes Size'), html.H5(f"{staked}", id='staked-tokens-value')])
 
         @dash_app.callback(Output('staked-tokens-next-period', 'children'),
                            [Input('minute-interval', 'n_intervals')],
