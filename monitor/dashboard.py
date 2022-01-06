@@ -91,6 +91,10 @@ class Dashboard:
         return data
 
     def add_supply_endpoint(self, flask_server: Flask):
+        # base "now" on static inflation halt transaction time (https://etherscan.io/tx/0x23ef7eacd809399ed5135d5fe7dd9f6970c813f2704f884a12842479c213a87c)
+        # probably don't need to be that specific since vesting is by months, but why not document it here
+        halt_nu_datetime = MayaDT.from_iso8601('2021-12-31T07:44:37.0Z')
+
         @flask_server.route('/supply_information', methods=["GET"])
         def supply_information():
             current_total_supply_nunits = self.staking_agent.contract.functions.currentPeriodSupply().call()
@@ -107,7 +111,8 @@ class Dashboard:
                 # no query - return all supply information
                 supply_info = calculate_supply_information(max_supply=max_supply,
                                                            current_total_supply=current_total_supply,
-                                                           worklock_supply=worklock_supply)
+                                                           worklock_supply=worklock_supply,
+                                                           now=halt_nu_datetime)
                 if parameter is None:
                     # return all information
                     response = flask_server.response_class(
