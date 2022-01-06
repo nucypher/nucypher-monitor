@@ -9,20 +9,6 @@ DAILY_REFRESH_RATE = MINUTE_REFRESH_RATE * 60 * 24
 NU_LOGO_PATH = '/assets/nucypher_logo.png'  # TODO: Configure assets path
 THRESHOLD_LOGO_PATH = '/assets/threshold_wordmark.png'
 
-# Buttons used for WS topic notifications
-HIDDEN_BUTTONS = html.Div([
-    html.Button("Refresh States",
-                hidden=True,
-                id='state-update-button',
-                type='submit',
-                className='nucypher-button button-primary'),
-    html.Button("Refresh Known Nodes",
-                hidden=True,
-                id='node-update-button',
-                type='submit',
-                className='nucypher-button button-primary'),
-])
-
 if PINNED_MESSAGE_TEXT:
     PINNED_MESSAGE = html.Div([html.P(PINNED_MESSAGE_TEXT)], id='pinned-message')
 else:
@@ -30,8 +16,6 @@ else:
 
 HEADER = html.Div([
         html.A(html.Img(src=NU_LOGO_PATH, className='banner'), href='https://www.nucypher.com', target='_'),
-        # html.Div(id='header'), TODO not needed?
-        HIDDEN_BUTTONS
     ],
     id="controls")
 
@@ -39,12 +23,12 @@ THRESHOLD_NOTE = html.Div([
         html.A(html.Img(src=THRESHOLD_LOGO_PATH, className='threshold_wordmark'), href='https://threshold.network', target='_'),
         html.P('We are upgrading to the Threshold Network!'),
         html.Br(),
-        html.P('Network Information is currently not displayable on the status '
+        html.P('Network information is currently not displayable on the status '
                'dashboard during the upgrade to Threshold.'),
         html.Br(),
         html.P('Existing NU and KEEP stakers will be grandfathered into Threshold '
                'via special staking adapters. It is not necessary to keep your '
-               'worker node up until until the instructions for Threshold staking '
+               'worker node up until the instructions for Threshold staking '
                'are shared.'),
         html.Br(),
         html.P('Rest assured, your legacy NU stakes are safe and will be eligible '
@@ -54,66 +38,23 @@ THRESHOLD_NOTE = html.Div([
     id='threshold_note')
 
 STATS = html.Div([
-            #html.Div(id='blocktime-value'),
             html.Div(id='domain'),
             html.Div([html.Div(id='current-period')]),
-            #html.Div(id='time-remaining'),
-            #html.Div(id='active-stakers'),
             html.Div(id='staked-tokens'),
-            #html.Div(id='staked-tokens-next-period')
 ], id='stats')
 
 
-GRAPHS = html.Div([
+BLOCKCHAIN_DATA = html.Div([
             html.Div(id='registry'),
             html.Div(id='contracts'),
-            #html.Div(id='staker-breakdown'),
-            #html.Div(id='nodes-geolocation-graph'),
-            #html.Div(id='top-stakers-graph'),
-            #html.Div(id='prev-states'),
         ], id='widgets')
 
-NETWORK_INFO_TABS = html.Div([
-    #html.Div(id='network-info-content')
-])
-
-CONTENT = html.Div([html.Div([STATS, GRAPHS, NETWORK_INFO_TABS])], id='main')
-
-# Hidden div inside the app that stores previously decrypted heartbeats
-# HIDDEN_DIV = html.Div(id='cached-crawler-stats', style={'display': 'none'})
+CONTENT = html.Div([html.Div([STATS, BLOCKCHAIN_DATA])], id='main')
 
 BODY = html.Div([
         dcc.Location(id='url', refresh=False),
         PINNED_MESSAGE,
         HEADER,
         THRESHOLD_NOTE,
-        # HIDDEN_DIV,
         CONTENT,
-
-        dcc.Interval(
-            id='second-interval',
-            interval=1 * 1000,  # in milliseconds
-            n_intervals=0
-        ),
-
-        dcc.Interval(
-            id='minute-interval',
-            interval=MINUTE_REFRESH_RATE,
-            n_intervals=0
-        ),
-        dcc.Interval(
-            id='half-minute-interval',
-            interval=(MINUTE_REFRESH_RATE / 2),
-            n_intervals=0,
-        ),
-        dcc.Interval(
-            id='daily-interval',
-            interval=DAILY_REFRESH_RATE,
-            n_intervals=0
-        ),
-        dcc.Interval(
-            id='request-interval',
-            interval=(MINUTE_REFRESH_RATE / 2),  # should ALWAYS be the minimum value of the intervals above
-            n_intervals=0,
-        )
     ])

@@ -4,7 +4,7 @@ import monitor
 import nucypher
 import pytest
 from click.testing import CliRunner
-from monitor.cli.main import monitor as monitor_cli, CRAWLER, MONITOR_BANNER, DASHBOARD
+from monitor.cli.main import monitor as monitor_cli, MONITOR_BANNER, DASHBOARD
 from nucypher.blockchain.eth.agents import StakingEscrowAgent
 from tests.utilities import MockContractAgency
 
@@ -31,8 +31,8 @@ def test_monitor_help_message(click_runner):
         assert sub_command.name in result.output, f"Sub command {sub_command.name} in help message"
 
 
-@pytest.mark.parametrize('command_name, command', ([command.name, command] for command in monitor_cli.commands.values()))
-def test_monitor_sub_command_help_messages(click_runner, command_name, command):
+def test_monitor_sub_command_help_messages(click_runner):
+    command_name = 'dashboard' # only dashboard command
     result = click_runner.invoke(monitor_cli, (command_name, '--help'), catch_exceptions=False)
     assert result.exit_code == 0
     assert f'{monitor_cli.name} {command_name} [OPTIONS]' in result.output, \
@@ -40,7 +40,7 @@ def test_monitor_sub_command_help_messages(click_runner, command_name, command):
 
 
 # TODO fix test
-@pytest.mark.skip('not working')
+@pytest.mark.skip('not working and longer used')
 def test_monitor_crawl_run(click_runner):
     crawl_args = ('crawl', '--dry-run', '--provider', 'tester://pyevm')
     result = click_runner.invoke(monitor_cli, crawl_args, catch_exceptions=False)
