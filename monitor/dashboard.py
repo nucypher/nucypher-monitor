@@ -5,9 +5,6 @@ from dash import html
 from dash.dependencies import Output, Input
 from flask import Flask, request
 from maya import MayaDT
-from monitor import layout, settings
-from monitor.components import make_contract_row
-from monitor.supply import calculate_supply_information
 from nucypher.blockchain.eth.agents import (
     StakingEscrowAgent,
     ContractAgency,
@@ -18,9 +15,20 @@ from nucypher.blockchain.eth.agents import (
 )
 from nucypher.blockchain.eth.token import NU
 from twisted.logger import Logger
+from web3 import Web3
+
+from monitor import layout, settings
+from monitor.components import make_contract_row
+from monitor.supply import calculate_supply_information
 
 
 class Dashboard:
+    # static value from when halt NU inflation occurred - `self.staking_agent.contract.functions.currentMintingPeriod().call()`
+    HALT_PERIOD = 2713
+
+    # based on inflation halt transaction time (https://etherscan.io/tx/0x23ef7eacd809399ed5135d5fe7dd9f6970c813f2704f884a12842479c213a87c)
+    HALT_NU_DATETIME = MayaDT.from_iso8601('2021-12-31T07:44:37.0Z')
+
     """
     Dash Status application for monitoring a swarm of nucypher Ursula nodes.
     """
@@ -52,14 +60,12 @@ class Dashboard:
         self.dash_app = self.make_dash_app(flask_server=flask_server, route_url=route_url)
 
     def add_supply_endpoint(self, flask_server: Flask):
-        # base "now" on static inflation halt transaction time (https://etherscan.io/tx/0x23ef7eacd809399ed5135d5fe7dd9f6970c813f2704f884a12842479c213a87c)
-        # probably don't need to be that specific since vesting is by months, but why not document it here
-        halt_nu_datetime = MayaDT.from_iso8601('2021-12-31T07:44:37.0Z')
+
 
         @flask_server.route('/supply_information', methods=["GET"])
         def supply_information():
-            current_total_supply_nunits = self.staking_agent.contract.functions.currentPeriodSupply().call()
-            current_total_supply = NU.from_nunits(current_total_supply_nunits)
+            frozen_total_supply_nunits = self.staking_agent.contract.functions.currentPeriodSupply().call()
+            frozen_total_supply = NU.from_nunits(frozen_total_supply_nunits)
             parameter = request.args.get('q')
             if parameter is None or parameter == 'est_circulating_supply':
                 # max supply needed
@@ -71,9 +77,9 @@ class Dashboard:
 
                 # no query - return all supply information
                 supply_info = calculate_supply_information(max_supply=max_supply,
-                                                           current_total_supply=current_total_supply,
+                                                           current_total_supply=frozen_total_supply,
                                                            worklock_supply=worklock_supply,
-                                                           now=halt_nu_datetime)
+                                                           now=self.HALT_NU_DATETIME)
                 if parameter is None:
                     # return all information
                     response = flask_server.response_class(
@@ -93,7 +99,7 @@ class Dashboard:
                 # only current total supply requested
                 if parameter == 'current_total_supply':
                     response = flask_server.response_class(
-                        response=str(float(current_total_supply.to_tokens())),
+                        response=str(float(frozen_total_supply.to_tokens())),
                         status=200,
                         mimetype='text/plain'
                     )
@@ -120,8 +126,7 @@ class Dashboard:
 
         @dash_app.callback(Output('current-period', 'children'), [Input('url', 'pathname')])  # on page-load
         def current_period(pathname):
-            halt_period = self.staking_agent.contract.functions.currentMintingPeriod().call()
-            return html.Div([html.H4("Period of Inflation Halt"), html.H5(halt_period, id='current-period-value')])
+            return html.Div([html.H4("Period of Inflation Halt"), html.H5(self.HALT_PERIOD, id='current-period-value')])
 
         @dash_app.callback(Output('domain', 'children'), [Input('url', 'pathname')])  # on page-load
         def domain(pathname):
@@ -136,16 +141,25 @@ class Dashboard:
         @dash_app.callback(Output('contracts', 'children'),
                            [Input('domain', 'children')])  # after domain obtained to prevent concurrent blockchain requests
         def contracts(domain):
-            agents = (self.token_agent, self.staking_agent, self.policy_agent, self.adjudicator_agent)
+            agents = (self.token_agent, self.staking_agent, self.policy_agent, self.adjudicator_agent, self.worklock_agent)
             rows = [make_contract_row(self.network, agent) for agent in agents]
             _components = html.Div([html.H4('Contracts'), *rows], id='contract-names')
             return _components
 
         @dash_app.callback(Output('staked-tokens', 'children'), [Input('url', 'pathname')])  # on page-load
-        def staked_tokens(pathname):
-            halt_period = self.staking_agent.contract.functions.currentMintingPeriod().call()
-            total_staked = self.staking_agent.get_global_locked_tokens(at_period=halt_period)
-            staked = round(NU.from_nunits(total_staked), 2)  # round to 2 decimals
-            return html.Div([html.H4('Total Legacy Stakes Size'), html.H5(f"{staked}", id='staked-tokens-value')])
+        def staking_escrow_nu(pathname):
+            max_supply = NU.from_nunits(self.token_agent.contract.functions.totalSupply().call())
+            frozen_total_supply = NU.from_nunits(self.staking_agent.contract.functions.currentPeriodSupply().call())
+            halted_rewards = max_supply - frozen_total_supply
+
+            nu_in_staking_escrow = NU.from_nunits(self.token_agent.get_balance(self.staking_agent.contract_address)) - halted_rewards
+            staked = round(nu_in_staking_escrow, 2)  # round to 2 decimals
+            return html.Div([html.H4('Legacy Stakes Size'), html.H5(f"{staked}", id='staked-tokens-value')])
+
+        @dash_app.callback(Output('worklock-status', 'children'), [Input('url', 'pathname')])  # on page-load
+        def staking_escrow_nu(pathname):
+            eth_balance_wei = self.worklock_agent.blockchain.client.get_balance(self.worklock_agent.contract_address)
+            eth_balance = Web3.fromWei(eth_balance_wei, "ether")
+            return html.Div([html.H4('ETH in WorkLock'), html.H5(f"{round(eth_balance, 2)} ETH", id='staked-tokens-value')])
 
         return dash_app
