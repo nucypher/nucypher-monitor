@@ -10,7 +10,7 @@ from nucypher.blockchain.eth.token import NU
 from monitor.supply import LAUNCH_DATE, vesting_remaining_factor, DAYS_PER_MONTH, calculate_supply_information, \
     INITIAL_SUPPLY, UNIVERSITY_INITIAL_SUPPLY, CASI_SUPPLY, months_transpired_since_launch, SAFT2_INITIAL_SUPPLY, \
     TEAM_INITIAL_SUPPLY, NUCO_INITIAL_SUPPLY, SAFT1_SUPPLY, NUCO_VESTING_MONTHS, WORKLOCK_VESTING_MONTHS, \
-    UNIVERSITY_VESTING_MONTHS, SAFT2_TEAM_VESTING_MONTHS, calculate_current_total_supply, calculate_circulating_supply
+    UNIVERSITY_VESTING_MONTHS, SAFT2_TEAM_VESTING_MONTHS
 
 # initial values
 MAX_SUPPLY = NU(3_890_000_000, 'NU')
@@ -134,13 +134,11 @@ def test_supply_information_at_launch():
     max_supply = NU(3885390081.748248632541961138, 'NU')
     worklock_supply = NU(225_000_000, 'NU')
 
-    economics = MagicMock(total_supply=max_supply.to_nunits(),
-                          worklock_supply=worklock_supply.to_nunits(),
-                          initial_supply=INITIAL_SUPPLY.to_nunits())
-
-    with patch.object(maya, 'now', return_value=LAUNCH_DATE):
-        supply_information = calculate_supply_information(economics)
-        assert supply_information == launch_result  # order matters
+    supply_information = calculate_supply_information(max_supply=max_supply,
+                                                      current_total_supply=INITIAL_SUPPLY,
+                                                      worklock_supply=worklock_supply,
+                                                      now=LAUNCH_DATE)
+    assert supply_information == launch_result  # order matters
 
 
 @pytest.mark.parametrize('months_transpired', [0, 3, 5, 11, 13, 23, 29, 31, 37, 20, 33, 42, 54, 67, 79, 83, 97, 100])
@@ -149,15 +147,13 @@ def test_supply_information(months_transpired):
     # assume 83,333 NU / month in rewards
     initial_supply_with_rewards = INITIAL_SUPPLY + (months_transpired * TEST_REWARDS_PER_MONTH)
 
-    economics = MagicMock(total_supply=MAX_SUPPLY.to_nunits(),
-                          worklock_supply=WORKLOCK_SUPPLY.to_nunits(),
-                          initial_supply=initial_supply_with_rewards.to_nunits())
-
     future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
-    with patch.object(maya, 'now', return_value=future_date):
-        supply_information = calculate_supply_information(economics)
-        verify_supply_information(supply_information, MAX_SUPPLY, initial_supply_with_rewards,
-                                  WORKLOCK_SUPPLY, future_date)
+    supply_information = calculate_supply_information(worklock_supply=WORKLOCK_SUPPLY,
+                                                      max_supply=MAX_SUPPLY,
+                                                      current_total_supply=initial_supply_with_rewards,
+                                                      now=future_date)
+    verify_supply_information(supply_information, MAX_SUPPLY, initial_supply_with_rewards,
+                              WORKLOCK_SUPPLY, future_date)
 
 
 
@@ -264,27 +260,7 @@ def test_calculate_current_total_supply(months_transpired):
     # assume 83,333 NU / month in rewards
     initial_supply_with_rewards = INITIAL_SUPPLY + (months_transpired * TEST_REWARDS_PER_MONTH)
 
-    economics = MagicMock(total_supply=MAX_SUPPLY.to_nunits(),
-                          worklock_supply=WORKLOCK_SUPPLY.to_nunits(),
-                          initial_supply=initial_supply_with_rewards.to_nunits())
-
-    current_total_supply = calculate_current_total_supply(economics)
-    assert current_total_supply == float(initial_supply_with_rewards.to_tokens())
-
-
-@pytest.mark.parametrize('months_transpired', [0, 29, 31, 37, 54, 67, 79, 97, 100])
-def test_calculate_circulating_supply(months_transpired):
-
-    # assume 83,333 NU / month in rewards
-    initial_supply_with_rewards = INITIAL_SUPPLY + (months_transpired * TEST_REWARDS_PER_MONTH)
-
-    economics = MagicMock(total_supply=MAX_SUPPLY.to_nunits(),
-                          worklock_supply=WORKLOCK_SUPPLY.to_nunits(),
-                          initial_supply=initial_supply_with_rewards.to_nunits())
-
-    future_date = LAUNCH_DATE.add(days=round(months_transpired * DAYS_PER_MONTH))
-    with patch.object(maya, 'now', return_value=future_date):
-        supply_information = calculate_supply_information(economics)
-
-        est_circulating_supply = calculate_circulating_supply(economics)
-        assert supply_information['est_circulating_supply'] == est_circulating_supply
+    supply_information = calculate_supply_information(max_supply=MAX_SUPPLY,
+                                                      current_total_supply=initial_supply_with_rewards,
+                                                      worklock_supply=WORKLOCK_SUPPLY)
+    assert supply_information['current_total_supply'] == float(initial_supply_with_rewards.to_tokens())

@@ -33,7 +33,7 @@ hr {
 }
 
 #pinned-message {
-    background-color: #462e7a;
+    background-color: #7D00FF;
     margin: 0;
     color: #d8d9da;
     display: flex;
@@ -134,6 +134,24 @@ h5 {
 .banner {
     width: 3em;
     margin-right: 1em;
+}
+
+.threshold_wordmark {
+    width: 30em;
+}
+
+#threshold_note {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding-top: 0.75em;
+    padding-bottom: 0;
+    padding-left: 10em;
+    padding-right: 10em;
+    color: #7D00FF;
+    font-size: 1.7rem;
+    font-weight: bold;
 }
 
 .app_name {

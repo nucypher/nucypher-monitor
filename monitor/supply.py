@@ -4,7 +4,6 @@ from typing import Union, Optional, Dict
 
 import maya
 from maya import MayaDT
-from nucypher.blockchain.economics import BaseEconomics
 from nucypher.blockchain.eth.token import NU
 
 SAFT1_ALLOCATION_PERCENTAGE = 0.319
@@ -71,10 +70,13 @@ def vesting_remaining_factor(vesting_months: int,
             return (vesting_months - months_transpired) / vesting_months
 
 
-def calculate_supply_information(economics: BaseEconomics) -> Dict:
+def calculate_supply_information(max_supply: NU,
+                                 current_total_supply: NU,
+                                 worklock_supply: NU,
+                                 now: Optional[MayaDT] = None) -> Dict:
     """Calculates the NU token supply information."""
     supply_info = OrderedDict()
-    max_supply = NU.from_nunits(economics.total_supply)
+    initial_supply_with_rewards = current_total_supply
 
     # Initial Supply Information
     initial_supply_info = OrderedDict()
@@ -84,7 +86,9 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     # - Locked allocations
     locked_allocations = OrderedDict()
     initial_supply_info['locked_allocations'] = locked_allocations
-    now = maya.now()
+    if not now:
+        now = maya.now()
+
     vest_saft2_team_factor = vesting_remaining_factor(vesting_months=SAFT2_TEAM_VESTING_MONTHS, cliff=False, now=now)
     vest_worklock_factor = vesting_remaining_factor(vesting_months=WORKLOCK_VESTING_MONTHS, cliff=True, now=now)
     vest_nuco_factor = vesting_remaining_factor(vesting_months=NUCO_VESTING_MONTHS, cliff=True, now=now)
@@ -100,8 +104,8 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     nuco_locked_supply = NU(value=(NUCO_INITIAL_SUPPLY.to_nunits() * vest_nuco_factor), denomination='NuNit')
     vested_nu += (NUCO_INITIAL_SUPPLY - nuco_locked_supply)
 
-    worklock_locked_supply = NU(value=(economics.worklock_supply * vest_worklock_factor), denomination='NuNit')
-    vested_nu += NU(value=(economics.worklock_supply - worklock_locked_supply.to_nunits()), denomination='NuNit')
+    worklock_locked_supply = NU(value=(worklock_supply.to_nunits() * vest_worklock_factor), denomination='NuNit')
+    vested_nu += (worklock_supply - worklock_locked_supply)
 
     university_locked_supply = NU(value=(UNIVERSITY_INITIAL_SUPPLY.to_nunits() * vest_university_factor),
                                   denomination='NuNit')
@@ -130,7 +134,6 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     # Staking Rewards Information
     staking_rewards_info = OrderedDict()
     supply_info['staking_rewards_supply'] = staking_rewards_info
-    initial_supply_with_rewards = NU.from_nunits(economics.initial_supply)  # economics value includes issued rewards
     staking_rewards_remaining = max_supply - initial_supply_with_rewards
     staking_rewards_issued = initial_supply_with_rewards - INITIAL_SUPPLY
     staking_rewards_total_allocated = staking_rewards_remaining + staking_rewards_issued
@@ -148,13 +151,3 @@ def calculate_supply_information(economics: BaseEconomics) -> Dict:
     supply_info['est_circulating_supply'] = float(total_unlocked_allocations.to_tokens())
     return supply_info
 
-
-def calculate_current_total_supply(economics: BaseEconomics) -> float:
-    initial_supply_with_rewards = NU.from_nunits(economics.initial_supply)  # economics value includes issued rewards
-    return float(initial_supply_with_rewards.to_tokens())
-
-
-def calculate_circulating_supply(economics: BaseEconomics) -> float:
-    supply_info = calculate_supply_information(economics)
-    circulating_supply = supply_info['est_circulating_supply']
-    return circulating_supply

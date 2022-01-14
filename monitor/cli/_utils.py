@@ -1,17 +1,27 @@
-from hendrix.deploy.tls import HendrixDeployTLS
+from pathlib import Path
 
-from nucypher.blockchain.eth.registry import InMemoryContractRegistry, LocalContractRegistry
+from hendrix.deploy.tls import HendrixDeployTLS
+from monitor import settings
+from nucypher.blockchain.eth.networks import NetworksInventory
+from nucypher.blockchain.eth.registry import InMemoryContractRegistry, \
+    LocalContractRegistry
 from nucypher.crypto.keypairs import HostingKeypair
 from nucypher.network.server import TLSHostingPower
 
 
 def _get_registry(registry_filepath, network):
-
+    registry = None
     if registry_filepath:
         registry = LocalContractRegistry(filepath=registry_filepath)
     else:
-        registry = InMemoryContractRegistry.from_latest_publication(network=network)
+        if network == NetworksInventory.MAINNET:
+            local_registry_path = Path(settings.ASSETS_PATH, 'registry', 'mainnet', 'contract_registry.json')
+            if local_registry_path.exists():
+                registry = LocalContractRegistry(filepath=local_registry_path.resolve())
 
+        if not registry:
+            # last resort
+            registry = InMemoryContractRegistry.from_latest_publication(network=network)
     return registry
 
 
