@@ -8,7 +8,7 @@ python_version = "3"
 
 [packages]
 # NuCypher
-nucypher = {git = "https://github.com/derekpierre/nucypher.git", ref = "ease-up-monitor-logs"}
+nucypher = "*"
 # Web
 requests = "*"
 flask = "<2.0" # conflict with itsdangerous dependency in flask version with nucypher
@@ -28,6 +28,7 @@ IP2Location = "*"
 
 [dev-packages]
 dash = {extras = ["testing"],version = "*"}
+celery = {extras = ["redis"],version = "<5.2.0"}  # resolves conflict with 'pytz' library version
 # Pytest
 pytest = "*"
 pytest-cov = "*"
