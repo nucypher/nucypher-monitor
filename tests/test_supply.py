@@ -243,8 +243,9 @@ def verify_supply_information(supply_information: Dict,
     # Staking Rewards
     assert (supply_information['staking_rewards_supply']['total_allocated'] ==
             float((max_supply - INITIAL_SUPPLY).to_tokens()))
+    staking_rewards_issued = initial_supply_with_rewards - INITIAL_SUPPLY
     assert (supply_information['staking_rewards_supply']['staking_rewards_issued'] ==
-            float((initial_supply_with_rewards - INITIAL_SUPPLY).to_tokens()))
+            float(staking_rewards_issued.to_tokens()))
     assert (supply_information['staking_rewards_supply']['staking_rewards_remaining'] ==
             float((max_supply - initial_supply_with_rewards).to_tokens()))
 
@@ -252,7 +253,7 @@ def verify_supply_information(supply_information: Dict,
     assert supply_information['max_supply'] == float(max_supply.to_tokens())
 
     # Circulating Supply
-    assert supply_information['est_circulating_supply'] == float(total_unlocked.to_tokens())
+    assert supply_information['est_circulating_supply'] == float((total_unlocked + staking_rewards_issued).to_tokens())
 
 
 @pytest.mark.parametrize('months_transpired', [0, 3, 5])
