@@ -28,7 +28,7 @@ IP2Location = "*"
 
 [dev-packages]
 dash = {extras = ["testing"],version = "*"}
-celery = {extras = ["redis"],version = "<5.2.0"}  # resolves conflict with 'pytz' library version
+celery = {extras = ["redis"],version = "<5.3.0"}  # resolves conflict with 'pytz' library version
 # Pytest
 pytest = "*"
 pytest-cov = "*"
