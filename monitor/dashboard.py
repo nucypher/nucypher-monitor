@@ -26,9 +26,6 @@ class Dashboard:
     # static value from when halt NU inflation occurred - `self.staking_agent.contract.functions.currentMintingPeriod().call()`
     HALT_PERIOD = 2713
 
-    # based on inflation halt transaction time (https://etherscan.io/tx/0x23ef7eacd809399ed5135d5fe7dd9f6970c813f2704f884a12842479c213a87c)
-    HALT_NU_DATETIME = MayaDT.from_iso8601('2021-12-31T07:44:37.0Z')
-
     """
     Dash Status application for monitoring a swarm of nucypher Ursula nodes.
     """
@@ -68,9 +65,8 @@ class Dashboard:
             frozen_total_supply = NU.from_nunits(frozen_total_supply_nunits)
             parameter = request.args.get('q')
             if parameter is None or parameter == 'est_circulating_supply':
-                # max supply needed
-                max_supply_nunits = self.token_agent.contract.functions.totalSupply().call()
-                max_supply = NU.from_nunits(max_supply_nunits)
+                # the original max supply no longer applies because of Threshold merger
+                max_supply = frozen_total_supply
 
                 # worklock supply
                 worklock_supply = NU.from_nunits(self.worklock_agent.lot_value)
@@ -78,8 +74,7 @@ class Dashboard:
                 # no query - return all supply information
                 supply_info = calculate_supply_information(max_supply=max_supply,
                                                            current_total_supply=frozen_total_supply,
-                                                           worklock_supply=worklock_supply,
-                                                           now=self.HALT_NU_DATETIME)
+                                                           worklock_supply=worklock_supply)
                 if parameter is None:
                     # return all information
                     response = flask_server.response_class(

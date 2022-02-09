@@ -147,7 +147,8 @@ def calculate_supply_information(max_supply: NU,
     # Current Total Supply
     supply_info['current_total_supply'] = float(initial_supply_with_rewards.to_tokens())
 
-    # Est. Circulating Supply
-    supply_info['est_circulating_supply'] = float(total_unlocked_allocations.to_tokens())
+    # Est. Circulating Supply = total unlocked + rewards
+    est_circulating_supply = total_unlocked_allocations + staking_rewards_issued
+    supply_info['est_circulating_supply'] = float(est_circulating_supply.to_tokens())
     return supply_info
 
