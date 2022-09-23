@@ -71,7 +71,7 @@ parsimonious==0.8.1
 pendulum==2.1.2; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'
 pillow==8.1.0
 plotly==5.5.0
-protobuf==3.14.0
+protobuf==3.18.3
 py-ecc==4.1.0; python_version >= '3.5' and python_version < '4'
 py-evm==0.3.0a20
 py-geth==2.4.0; python_version >= '3'
