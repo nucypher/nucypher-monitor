@@ -14,14 +14,7 @@ def _get_registry(registry_filepath, network):
     if registry_filepath:
         registry = LocalContractRegistry(filepath=registry_filepath)
     else:
-        if network == NetworksInventory.MAINNET:
-            local_registry_path = Path(settings.ASSETS_PATH, 'registry', 'mainnet', 'contract_registry.json')
-            if local_registry_path.exists():
-                registry = LocalContractRegistry(filepath=local_registry_path.resolve())
-
-        if not registry:
-            # last resort
-            registry = InMemoryContractRegistry.from_latest_publication(network=network)
+        registry = InMemoryContractRegistry.from_latest_publication(network=network)
     return registry
 
 
