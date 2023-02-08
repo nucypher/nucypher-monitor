@@ -19,7 +19,7 @@ colorama==0.4.4; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.
 constant-sorrow==0.1.0a9; python_version >= '3'
 constantly==15.1.0
 construct==2.10.56; python_version >= '3.6'
-cryptography==3.3.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4, 3.5'
+cryptography==39.0.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4, 3.5'
 cytoolz==0.11.0; implementation_name == 'cpython' and implementation_name == 'cpython'
 dash-core-components==2.0.0
 dash-daq==0.5.0
